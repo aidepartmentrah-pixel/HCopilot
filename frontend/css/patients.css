@@ -1,0 +1,183 @@
+/* ── Patients Section ────────────────────────────────────────────────── */
+
+.pat-section-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ── Add Card ────────────────────────────────────────────────────────── */
+
+.pat-add-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.pat-add-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 26px;
+    border-bottom: 1px solid #eef0f5;
+    background: linear-gradient(135deg, #f8f9ff 0%, #f3f4fd 100%);
+}
+
+.pat-add-icon { font-size: 20px; }
+
+.pat-add-top h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+
+.pat-add-body {
+    padding: 24px 26px 20px;
+}
+
+.pat-add-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    display: none;
+}
+
+.pat-add-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px 20px;
+    margin-bottom: 20px;
+}
+
+.pat-field-wide { grid-column: span 2; }
+
+.pat-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 5px;
+}
+
+.pat-hint {
+    font-size: 10px;
+    color: #9ca3af;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.pat-field input,
+.pat-field select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1a1a2e;
+    background: #fafbff;
+    box-sizing: border-box;
+    transition: border 0.18s, box-shadow 0.18s;
+}
+
+.pat-field input:focus,
+.pat-field select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+    background: #fff;
+}
+
+.pat-field input[type="datetime-local"] {
+    color-scheme: light;
+    cursor: pointer;
+}
+
+/* ── Gender badge ────────────────────────────────────────────────── */
+
+.pat-gender-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.pat-gender-m  { background: #dbeafe; color: #1d4ed8; }
+.pat-gender-f  { background: #fce7f3; color: #be185d; }
+.pat-gender-o  { background: #f3f4f6; color: #374151; }
+
+/* ── Scheduling patient name line ────────────────────────────────── */
+.sch-item-name {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+.pat-td-arrival {
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.pat-add-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #eef0f5;
+    padding-top: 18px;
+}
+
+/* ── Dataset Card ────────────────────────────────────────────────────── */
+
+.pat-dataset-card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.pat-dataset-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 26px;
+    border-bottom: 1px solid #eef0f5;
+    background: #fafbff;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.pat-dataset-top h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 2px;
+}
+
+.pat-dataset-top p {
+    font-size: 13px;
+    color: #999;
+    margin: 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .pat-add-grid { grid-template-columns: repeat(2, 1fr); }
+    .pat-field-wide { grid-column: span 2; }
+}
+
+@media (max-width: 560px) {
+    .pat-add-grid { grid-template-columns: 1fr; }
+    .pat-field-wide { grid-column: span 1; }
+}

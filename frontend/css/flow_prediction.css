@@ -1,0 +1,82 @@
+.flow-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.flow-btn {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.flow-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.flow-stats {
+    margin-bottom: 30px;
+}
+
+.flow-chart-container {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.flow-chart-container canvas {
+    max-height: 400px;
+}
+
+.flow-predictions {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.predictions-table h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 20px;
+}
+
+.predictions-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.predictions-table th {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.predictions-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #dee2e6;
+    color: #666;
+}
+
+.predictions-table tr:hover {
+    background: #f8f9fa;
+}
+
+.predictions-table strong {
+    color: #667eea;
+    font-size: 18px;
+}

@@ -1,0 +1,678 @@
+/* ── Statistics & Evaluation Section ────────────────────────────────────── */
+
+/* Data quality warning banner */
+.stats-quality-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #fff8e1;
+    border: 1px solid #f59e0b;
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    font-size: 13px;
+    color: #78350f;
+    line-height: 1.5;
+}
+
+.quality-banner-icon {
+    font-size: 1.3rem;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+
+
+#statistics .section-header {
+    background: white;
+    padding: 20px 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#statistics .section-header h2 {
+    color: #333;
+    font-size: 1.4rem;
+}
+
+#statistics .section-description {
+    color: #666;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+.stats-refresh-btn {
+    padding: 8px 18px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.stats-refresh-btn:hover {
+    opacity: 0.88;
+}
+
+/* KPI grid */
+.stats-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.stats-kpi-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.stats-kpi-card:hover {
+    transform: translateY(-2px);
+}
+
+.stats-kpi-icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+}
+
+.stats-kpi-label {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.stats-kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.stats-kpi-sub {
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+.stats-kpi-value.good   { color: #27ae60; }
+.stats-kpi-value.warn   { color: #f39c12; }
+.stats-kpi-value.danger { color: #e74c3c; }
+
+/* Charts rows */
+.stats-charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.stats-chart-card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+
+.stats-chart-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stats-chart-meta {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.stats-chart-meta span {
+    font-size: 12px;
+    color: #666;
+    background: #f7f7f7;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.stats-chart-canvas {
+    max-height: 220px;
+}
+
+/* Bottom row: complaints + vitals */
+.stats-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Acuity breakdown table inside chart card */
+.stats-acuity-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 6px;
+}
+
+.stats-acuity-table th {
+    background: #f7f7f7;
+    color: #555;
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.stats-acuity-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #444;
+}
+
+.stats-acuity-table tr:last-child td {
+    border-bottom: none;
+}
+
+.acuity-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+}
+
+.acuity-1 { background: #c0392b; }
+.acuity-2 { background: #e67e22; }
+.acuity-3 { background: #f1c40f; color: #333; }
+.acuity-4 { background: #2ecc71; }
+.acuity-5 { background: #27ae60; }
+
+/* Top complaints table */
+.stats-complaints-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.stats-complaints-table th {
+    background: #f7f7f7;
+    color: #555;
+    font-weight: 600;
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.stats-complaints-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #444;
+}
+
+.stats-complaints-table tr:last-child td {
+    border-bottom: none;
+}
+
+.complaint-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.complaint-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    min-width: 4px;
+}
+
+/* Vitals cards */
+.stats-vitals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 4px;
+}
+
+.stats-vital-item {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    border-left: 4px solid #ddd;
+}
+
+.stats-vital-item.normal { border-left-color: #27ae60; }
+.stats-vital-item.abnormal { border-left-color: #e74c3c; }
+
+.stats-vital-name {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.stats-vital-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.stats-vital-unit {
+    font-size: 11px;
+    color: #aaa;
+    margin-left: 3px;
+}
+
+.stats-vital-range {
+    font-size: 11px;
+    color: #999;
+    margin-top: 2px;
+}
+
+.stats-vital-status {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 3px;
+}
+
+.stats-vital-status.normal   { color: #27ae60; }
+.stats-vital-status.abnormal { color: #e74c3c; }
+
+/* Empty / no data state */
+.stats-no-data {
+    text-align: center;
+    padding: 40px 20px;
+    color: #aaa;
+    font-size: 14px;
+}
+
+.stats-no-data-icon {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* ── Main tab bar (Patients / Nurses / Doctors) ──────────────────────────── */
+
+.stats-main-tabbar {
+    display: flex;
+    gap: 6px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+    padding: 10px 14px;
+    margin-bottom: 20px;
+}
+
+.stats-main-tab {
+    padding: 8px 22px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    font-size: 13px;
+    font-weight: 500;
+    color: #777;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+}
+
+.stats-main-tab:hover {
+    background: rgba(102,126,234,0.1);
+    color: #667eea;
+}
+
+.stats-main-tab.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.35);
+}
+
+/* Tab panes */
+.stats-main-tab-pane {
+    display: none;
+}
+
+.stats-main-tab-pane.active {
+    display: block;
+}
+
+/* KPI row inside each pane */
+.stats-staff-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.stats-staff-kpi-card {
+    background: white;
+    border-radius: 10px;
+    padding: 16px 18px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+    text-align: center;
+}
+
+.stats-staff-kpi-icon { font-size: 1.6rem; margin-bottom: 6px; }
+.stats-staff-kpi-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stats-staff-kpi-value { font-size: 1.5rem; font-weight: 700; color: #333; }
+.stats-staff-kpi-sub   { font-size: 11px; color: #aaa; margin-top: 3px; }
+.stats-staff-kpi-value.good   { color: #27ae60; }
+.stats-staff-kpi-value.warn   { color: #f39c12; }
+.stats-staff-kpi-value.danger { color: #e74c3c; }
+
+/* Patient-load bar table */
+.staff-load-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.staff-load-table th {
+    background: #f7f7f7;
+    color: #555;
+    font-weight: 600;
+    padding: 7px 8px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.staff-load-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid #f0f0f0;
+    color: #444;
+}
+
+.staff-load-table tr:last-child td { border-bottom: none; }
+
+.staff-load-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.staff-load-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    min-width: 4px;
+}
+
+/* Shift distribution grid */
+.stats-shift-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+
+.stats-shift-group {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.stats-shift-group-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+}
+
+.stats-shift-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.stats-shift-row:last-child { border-bottom: none; }
+
+.stats-shift-label { color: #555; }
+.stats-shift-count { font-weight: 600; color: #333; }
+
+/* ── Staff lookup selector ────────────────────────────────────────────────── */
+
+.staff-lookup-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+
+.staff-select {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    font-size: 13px;
+    color: #444;
+    background: white;
+    cursor: pointer;
+    outline: none;
+}
+
+.staff-select:focus { border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.18); }
+
+/* ── Staff profile card ───────────────────────────────────────────────────── */
+
+.staff-profile {
+    display: grid;
+    gap: 16px;
+}
+
+.staff-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.staff-profile-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#667eea,#764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.staff-profile-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+}
+
+.staff-profile-meta {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.staff-profile-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+}
+
+.staff-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #e9ecef;
+    color: #555;
+}
+
+.staff-badge.absent  { background: #fde8e8; color: #c0392b; }
+.staff-badge.active  { background: #e8f8f0; color: #27ae60; }
+.staff-badge.morning { background: #fff8e1; color: #b7860b; }
+.staff-badge.night   { background: #e8eaf6; color: #5c6bc0; }
+
+.staff-free-time {
+    font-size: 12px;
+    color: #27ae60;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* Profile two-column layout */
+.staff-profile-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.staff-profile-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Patient mini table */
+.staff-patient-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.staff-patient-table th {
+    background: #f7f7f7;
+    color: #555;
+    font-weight: 600;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 2px solid #eee;
+}
+
+.staff-patient-table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #f5f5f5;
+    color: #444;
+    vertical-align: middle;
+}
+
+.staff-patient-table tr:last-child td { border-bottom: none; }
+
+.esi-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+
+.esi-1 { background:#c0392b; }
+.esi-2 { background:#e67e22; }
+.esi-3 { background:#f1c40f; }
+.esi-4 { background:#2ecc71; }
+.esi-5 { background:#27ae60; }
+
+/* Beds & ward distribution */
+.staff-beds-block { display: grid; gap: 14px; }
+
+.staff-bed-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.bed-number-badge {
+    background: #667eea;
+    color: white;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    flex-shrink: 0;
+}
+
+.bed-type-tag {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.bed-type-icu     { background:#fde8e8; color:#c0392b; }
+.bed-type-monitor { background:#fff8e1; color:#b7860b; }
+.bed-type-normal  { background:#e8f8f0; color:#27ae60; }
+
+.bed-ward-label { color: #888; font-size: 11px; margin-left: auto; }
+
+.staff-ward-dist {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.ward-dist-pill {
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg,#667eea22,#764ba222);
+    border: 1px solid #667eea44;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+    .stats-charts-row,
+    .stats-bottom-row {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-kpi-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    }
+
+    .staff-profile-body {
+        grid-template-columns: 1fr;
+    }
+}

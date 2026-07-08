@@ -1,0 +1,1196 @@
+/* ============================================================
+   Simulation section — patient intake + OR scheduling
+   All selectors are prefixed with .sim- to avoid collisions.
+   ============================================================ */
+
+/* ── Change notification bar ──────────────────────────────── */
+
+.sim-notifications {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.sim-notification {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    border-left: 4px solid #3b82f6;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #1e40af;
+    animation: simNotifSlide 0.25s ease;
+}
+
+@keyframes simNotifSlide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.sim-notif-close {
+    background: none;
+    border: none;
+    color: #93c5fd;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.sim-notif-close:hover { color: #3b82f6; }
+
+/* ── Two-panel layout ─────────────────────────────────────── */
+
+.sim-layout {
+    display: grid;
+    grid-template-columns: 1fr;   /* OR panel full-width by default */
+    gap: 20px;
+    align-items: start;
+}
+
+.sim-layout.intake-visible {
+    grid-template-columns: 380px 1fr;
+}
+
+@media (max-width: 900px) {
+    .sim-layout.intake-visible {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Shared panel card ────────────────────────────────────── */
+
+.sim-panel {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+
+.sim-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1.5px solid #f0f0f0;
+    background: #f9fafb;
+}
+
+.sim-panel-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+/* ── Intake panel ─────────────────────────────────────────── */
+
+.sim-next-btn {
+    padding: 8px 16px;
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+}
+.sim-next-btn:hover { background: #4338ca; }
+.sim-next-btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+
+.sim-waiting-list {
+    padding: 12px;
+    min-height: 200px;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+.sim-empty-state {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 13px;
+    padding: 32px 0;
+}
+
+/* Individual waiting-patient card */
+.sim-waiting-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    background: #fff;
+    cursor: default;
+    position: relative;
+}
+
+.sim-waiting-card.lane-critical {
+    border-color: #fca5a5;
+    background: #fff5f5;
+}
+.sim-waiting-card.lane-normal {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.sim-waiting-card.lane-low {
+    border-color: #d1fae5;
+    background: #f0fdf4;
+}
+
+.sim-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.sim-acuity-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.sim-acuity-badge.badge-critical { background: #fee2e2; color: #b91c1c; }
+.sim-acuity-badge.badge-normal   { background: #dbeafe; color: #1d4ed8; }
+.sim-acuity-badge.badge-low      { background: #d1fae5; color: #065f46; }
+
+.sim-patient-id {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.sim-wait-label {
+    margin-left: auto;
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.sim-patient-name {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+    margin: 2px 0 4px;
+}
+
+.sim-complaint {
+    font-size: 12px;
+    color: #4b5563;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Editable base-score for acuity 3-4 */
+.sim-score-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+.sim-score-label {
+    font-size: 11px;
+    color: #6b7280;
+}
+.sim-score-input {
+    width: 64px;
+    padding: 3px 6px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+    text-align: center;
+}
+.sim-score-display {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+/* ── OR panel ─────────────────────────────────────────────── */
+
+.sim-or-settings {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 10px 14px;
+    border-bottom: 1.5px solid #f0f0f0;
+    background: #f8faff;
+    flex-wrap: wrap;
+    row-gap: 8px;
+}
+
+/* Group block — shift/group OR nurses */
+.sim-ors-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    flex-wrap: wrap;
+}
+
+.sim-ors-group-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    margin-right: 4px;
+}
+
+/* Vertical separator between groups */
+.sim-ors-sep {
+    width: 1px;
+    height: 28px;
+    background: #e0e7ff;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* Push restore container to the right */
+.sim-ors-restore {
+    margin-left: auto;
+    padding: 0 4px;
+}
+
+.sim-strict-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #374151;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+}
+.sim-strict-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #4f46e5;
+}
+
+.sim-sg-field {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.sim-sg-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+.sim-sg-select {
+    font-size: 13px;
+    padding: 5px 10px;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 8px;
+    background: #fff;
+    color: #1f2937;
+    cursor: pointer;
+    transition: border-color .15s;
+}
+.sim-sg-select:focus { outline: none; border-color: #6366f1; }
+.sim-sg-hint {
+    font-size: 11.5px;
+    color: #9ca3af;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+.sim-run-btn {
+    padding: 8px 18px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    margin-left: auto;
+}
+.sim-run-btn:hover { background: #047857; }
+.sim-run-btn:disabled { background: #6ee7b7; cursor: not-allowed; }
+
+.sim-or-body {
+    padding: 12px;
+    min-height: 200px;
+    max-height: 65vh;
+    overflow-y: auto;
+}
+
+/* Shift indicator */
+.sim-shift-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 999px;
+    margin-bottom: 10px;
+}
+.sim-shift-tag.morning { background: #fef3c7; color: #92400e; }
+.sim-shift-tag.night   { background: #ede9fe; color: #5b21b6; }
+
+/* ── Restore-rejected bar ─────────────────────────────────── */
+
+.sim-restore-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f5f3ff;
+    border: 1.5px solid #c4b5fd;
+    border-radius: 20px;
+    padding: 4px 10px;
+}
+.sim-restore-count {
+    font-size: 12px;
+    color: #6d28d9;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.sim-restore-btn {
+    font-size: 12px;
+    font-weight: 600;
+    color: #5b21b6;
+    background: #ede9fe;
+    border: 1px solid #c4b5fd;
+    border-radius: 12px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+.sim-restore-btn:hover {
+    background: #ddd6fe;
+}
+
+/* ── Emergency alert banner ───────────────────────────────── */
+
+.sim-emergency-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #fef2f2;
+    border: 1.5px solid #fca5a5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+.sim-emergency-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.sim-emergency-text {
+    font-size: 13px;
+    color: #991b1b;
+    font-weight: 600;
+    line-height: 1.4;
+}
+.sim-emergency-sub {
+    font-size: 12px;
+    color: #b91c1c;
+    font-weight: 400;
+    margin-top: 2px;
+}
+
+/* ICU-shortage banner reuses the emergency banner shape with an amber palette */
+.sim-icu-banner {
+    background: #fffbeb;
+    border-color: #fcd34d;
+}
+.sim-icu-banner .sim-emergency-text { color: #92400e; }
+.sim-icu-banner .sim-emergency-sub  { color: #b45309; }
+
+/* ── ICU decision panel (shown on a suggestion card with no ICU bed free) ──── */
+
+.sim-icu-decision-panel {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #fffbeb;
+    border: 1.5px dashed #fcd34d;
+    border-radius: 8px;
+}
+.sim-icu-decision-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 8px;
+}
+.sim-icu-occupant-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid #fef3c7;
+}
+.sim-icu-occupant-row:last-of-type { border-bottom: none; }
+.sim-icu-pat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.sim-icu-pat-id {
+    font-size: 11px;
+    font-weight: 700;
+    color: #dc2626;
+}
+.sim-icu-pat-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sim-icu-pat-bed {
+    font-size: 11px;
+    color: #6b7280;
+}
+.sim-icu-move-btn {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 4px 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.sim-icu-move-btn:hover { background: #dbeafe; }
+.sim-icu-empty {
+    font-size: 12px;
+    color: #9ca3af;
+    font-style: italic;
+    padding: 4px 0;
+}
+.sim-icu-decision-or {
+    text-align: center;
+    font-size: 11px;
+    color: #b45309;
+    margin: 8px 0;
+}
+.sim-icu-chariot-btn {
+    width: 100%;
+    font-size: 12px;
+    font-weight: 700;
+    color: #92400e;
+    background: #fef3c7;
+    border: 1.5px solid #fcd34d;
+    border-radius: 7px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.sim-icu-chariot-btn:hover { background: #fde68a; }
+.sim-icu-chariot-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Suggestion card ──────────────────────────────────────── */
+
+.sim-suggestion-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.sim-suggestion-card.lane-critical .sim-sug-header { background: #fee2e2; border-bottom-color: #fca5a5; }
+.sim-suggestion-card.lane-critical { border-color: #fca5a5; }
+
+.sim-suggestion-card.lane-overflow .sim-sug-header { background: #ffedd5; border-bottom-color: #fb923c; }
+.sim-suggestion-card.lane-overflow { border-color: #fb923c; }
+
+.sim-suggestion-card.lane-normal .sim-sug-header { background: #dbeafe; border-bottom-color: #93c5fd; }
+.sim-suggestion-card.lane-normal { border-color: #93c5fd; }
+
+.sim-suggestion-card.lane-low .sim-sug-header { background: #d1fae5; border-bottom-color: #6ee7b7; }
+.sim-suggestion-card.lane-low { border-color: #6ee7b7; }
+
+/* Unurgent path card */
+.sim-unurgent-card { border-color: #a7f3d0; background: #f0fdf9; }
+.sim-unurgent-card .sim-sug-header { background: #d1fae5; border-bottom: 1.5px solid #a7f3d0; }
+.sim-unurgent-badge {
+    display: inline-block;
+    background: #059669;
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    letter-spacing: .05em;
+    margin-left: auto;
+}
+.sim-unurgent-path-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #ecfdf5;
+    border: 1.5px solid #6ee7b7;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 8px 14px 0;
+}
+.sim-unurgent-path-icon { font-size: 24px; }
+.sim-unurgent-path-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #065f46;
+}
+.sim-unurgent-path-sub {
+    font-size: 12px;
+    color: #047857;
+    margin-top: 2px;
+}
+.sim-confirm-unurgent-btn {
+    padding: 7px 16px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.sim-confirm-unurgent-btn:hover { background: #047857; }
+.sim-confirm-unurgent-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+
+.sim-sug-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1.5px solid #e5e7eb;
+    flex-wrap: wrap;
+}
+
+.sim-sug-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+    flex: 1;
+}
+
+.sim-overflow-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: #dc2626;
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+.sim-no-bed-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: #6b7280;
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+.sim-warn-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: #f59e0b;
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.sim-sug-body {
+    padding: 12px 14px;
+    background: #fff;
+}
+
+/* Resource row (bed / doctor / nurses) */
+.sim-resource-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.sim-resource-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1.5px solid #e5e7eb;
+    background: #f9fafb;
+    color: #374151;
+}
+.sim-resource-chip.chip-bed    { border-color: #a5b4fc; background: #eef2ff; color: #3730a3; }
+.sim-resource-chip.chip-doctor { border-color: #6ee7b7; background: #ecfdf5; color: #065f46; }
+.sim-resource-chip.chip-nurse  { border-color: #fcd34d; background: #fffbeb; color: #92400e; }
+.sim-resource-chip.chip-none   { border-color: #d1d5db; background: #f3f4f6; color: #9ca3af; }
+.sim-resource-chip .chip-id    { opacity: .65; font-size: .9em; margin: 0 1px; }
+
+/* Reasons list */
+.sim-reasons {
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.sim-reasons li {
+    font-size: 12px;
+    color: #4b5563;
+    line-height: 1.5;
+    padding: 2px 0 2px 14px;
+    position: relative;
+}
+.sim-reasons li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: #9ca3af;
+}
+.sim-reasons li.reason-warn { color: #b45309; }
+.sim-reasons li.reason-error { color: #dc2626; }
+
+/* ── Inline edit panel ────────────────────────────────────────────── */
+
+.sim-edit-panel {
+    background: #f8f9ff;
+    border-top: 1.5px solid #e0e7ff;
+    border-bottom: 1.5px solid #e0e7ff;
+    padding: 14px 16px;
+    animation: simEpSlideIn .18s ease;
+}
+@keyframes simEpSlideIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.sim-ep-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.sim-ep-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #4338ca;
+}
+
+.sim-ep-hint {
+    font-size: 11px;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.sim-ep-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px 14px;
+}
+
+.sim-ep-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sim-ep-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #374151;
+    letter-spacing: .2px;
+}
+
+.sim-ep-select {
+    padding: 6px 10px;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 12.5px;
+    color: #111827;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    font-family: inherit;
+    width: 100%;
+}
+.sim-ep-select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+
+/* ── Action buttons ───────────────────────────────────────────────── */
+
+.sim-sug-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1.5px solid #f0f0f0;
+    background: #f9fafb;
+    flex-wrap: wrap;
+}
+
+.sim-sug-time-note {
+    font-size: 11px;
+    color: #9ca3af;
+    flex: 1;
+    white-space: nowrap;
+}
+
+.sim-edit-btn {
+    padding: 7px 14px;
+    background: #fff;
+    color: #4f46e5;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+}
+.sim-edit-btn:hover { background: #f0f4ff; border-color: #818cf8; }
+.sim-edit-btn.sim-edit-btn-open {
+    background: #4f46e5;
+    color: #fff;
+    border-color: #4338ca;
+}
+.sim-edit-btn.sim-edit-btn-open:hover { background: #4338ca; }
+
+.sim-confirm-btn {
+    padding: 7px 18px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    font-family: inherit;
+    white-space: nowrap;
+}
+.sim-confirm-btn:hover { background: #047857; }
+.sim-confirm-btn:disabled { background: #6ee7b7; cursor: not-allowed; }
+
+.sim-reject-btn {
+    padding: 7px 14px;
+    background: #fff;
+    color: #6b7280;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+}
+.sim-reject-btn:hover { background: #f3f4f6; border-color: #9ca3af; }
+
+/* ── Sample-patient confirmation modal ────────────────────── */
+
+.sim-modal-vitals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 10px 0;
+}
+
+.sim-vital-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+}
+.sim-vital-label { color: #6b7280; }
+.sim-vital-value { color: #1f2937; font-weight: 600; }
+
+.sim-null-acuity-warn {
+    background: #fef3c7;
+    border: 1.5px solid #fcd34d;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #92400e;
+    margin-top: 8px;
+}
+
+/* Acuity-5 unurgent routing notice in the confirmation modal */
+.sim-unurgent-acuity-warn {
+    background: #ecfdf5;
+    border: 1.5px solid #6ee7b7;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #065f46;
+    margin-top: 8px;
+}
+
+/* Loading spinner reuse */
+.sim-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6b7280;
+    font-size: 13px;
+    padding: 16px;
+}
+
+/* ── Live clock bar ───────────────────────────────────────────────────── */
+
+.sim-clock-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    color: #e0e7ff;
+    border-radius: 12px;
+    padding: 10px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(31,27,93,.18);
+}
+
+.sim-clock-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    flex-wrap: wrap;
+}
+
+.sim-clock-time {
+    font-size: 22px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: .04em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.sim-clock-sep {
+    color: #818cf8;
+    font-size: 14px;
+}
+
+.sim-clock-shift {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c7d2fe;
+    white-space: nowrap;
+}
+
+.sim-clock-group {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c7d2fe;
+    white-space: nowrap;
+}
+
+.sim-clock-no-match {
+    color: #fca5a5;
+    font-style: italic;
+}
+
+.sim-audit-btn {
+    padding: 8px 18px;
+    background: #4f46e5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sim-audit-btn:hover    { background: #4338ca; }
+.sim-audit-btn:disabled { background: #6366f1; opacity: .65; cursor: not-allowed; }
+
+/* Strict-nurses toggle — sits inside the dark clock bar */
+.sim-audit-strict-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #c7d2fe;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sim-audit-strict-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    accent-color: #818cf8;
+    flex-shrink: 0;
+}
+.sim-audit-strict-label:has(input:checked) {
+    color: #fff;
+}
+.sim-audit-strict-badge {
+    font-size: 11px;
+    font-weight: 700;
+    background: rgba(129,140,248,.25);
+    color: #a5b4fc;
+    border: 1px solid rgba(129,140,248,.4);
+    border-radius: 5px;
+    padding: 1px 6px;
+    letter-spacing: .03em;
+}
+.sim-audit-strict-label:has(input:checked) .sim-audit-strict-badge {
+    background: rgba(129,140,248,.45);
+    color: #fff;
+    border-color: #818cf8;
+}
+
+/* ── Staff audit panel ────────────────────────────────────────────────── */
+
+.sim-audit-panel {
+    background: #fff;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    animation: simAuditIn .2s ease;
+}
+@keyframes simAuditIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.sim-audit-panel-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 16px;
+    background: #f0f4ff;
+    border-bottom: 1.5px solid #c7d2fe;
+}
+
+.sim-audit-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #312e81;
+}
+
+.sim-audit-close-btn {
+    background: none;
+    border: none;
+    color: #6366f1;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+}
+.sim-audit-close-btn:hover { color: #4338ca; }
+
+.sim-audit-body {
+    padding: 12px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.sim-audit-all-ok {
+    text-align: center;
+    color: #059669;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 24px 0;
+}
+
+/* One card per patient that has issues */
+.sim-audit-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.sim-audit-card.lane-critical { border-color: #fca5a5; }
+.sim-audit-card.lane-normal   { border-color: #93c5fd; }
+
+.sim-audit-card-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-bottom: 1.5px solid #f0f0f0;
+    flex-wrap: wrap;
+}
+.sim-audit-card.lane-critical .sim-audit-card-hdr { background: #fff5f5; border-bottom-color: #fca5a5; }
+.sim-audit-card.lane-normal   .sim-audit-card-hdr { background: #eff6ff; border-bottom-color: #93c5fd; }
+
+.sim-audit-patient-lbl {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.sim-audit-bed {
+    font-size: 12px;
+    color: #4b5563;
+    margin-left: auto;
+}
+
+.sim-audit-occ {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+/* Issue rows inside the card */
+.sim-audit-issues {
+    padding: 8px 12px;
+}
+
+.sim-audit-issue-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+.sim-audit-issue-row:last-child { border-bottom: none; }
+
+.sim-audit-warn-icon {
+    font-size: 14px;
+    color: #f59e0b;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.sim-audit-ok-icon {
+    font-size: 14px;
+    color: #059669;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* Correctly-assigned staff rows are visually muted */
+.sim-audit-ok-row {
+    opacity: .82;
+    background: #f9fdfb;
+    border-radius: 6px;
+}
+
+.sim-audit-ok-who {
+    color: #374151;
+}
+.sim-audit-ok-who em { color: #059669; }
+
+/* "Update & Confirm" on an already-OK row uses a neutral colour */
+.sim-audit-confirm-ok {
+    background: #6366f1 !important;
+}
+.sim-audit-confirm-ok:hover    { background: #4f46e5 !important; }
+.sim-audit-confirm-ok:disabled { background: #a5b4fc !important; }
+
+.sim-audit-issue-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.sim-audit-issue-who {
+    font-size: 12.5px;
+    color: #374151;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+.sim-audit-issue-who em {
+    font-style: normal;
+    font-weight: 700;
+    color: #dc2626;
+}
+
+.sim-audit-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sim-audit-arrow {
+    color: #059669;
+    font-weight: 700;
+}
+
+.sim-audit-suggestion strong {
+    color: #1f2937;
+    font-size: 12.5px;
+}
+
+.sim-audit-role {
+    font-size: 11.5px;
+    color: #6b7280;
+}
+
+.sim-audit-select {
+    flex: 1;
+    min-width: 0;
+    max-width: 340px;
+    padding: 5px 9px;
+    border: 1.5px solid #c7d2fe;
+    border-radius: 7px;
+    background: #fff;
+    font-size: 12.5px;
+    color: #111827;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+.sim-audit-select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+}
+
+.sim-audit-confirm-btn {
+    padding: 5px 13px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sim-audit-confirm-btn:hover    { background: #047857; }
+.sim-audit-confirm-btn:disabled { background: #6ee7b7; cursor: not-allowed; }
+
+.sim-audit-no-sugg {
+    font-size: 12px;
+    color: #9ca3af;
+    font-style: italic;
+}
+

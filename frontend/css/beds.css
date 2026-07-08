@@ -1,0 +1,315 @@
+.beds-stats {
+    margin-bottom: 30px;
+}
+
+.beds-grid {
+    margin-top: 20px;
+}
+
+.ward-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.ward-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 3px solid #dee2e6;
+}
+
+.ward-header h3 {
+    color: #333;
+    font-size: 24px;
+    margin: 0;
+}
+
+.ward-stats {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.ward-stat {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.ward-stat.occupied {
+    color: #e74c3c;
+}
+
+.ward-stat.available {
+    color: #27ae60;
+}
+
+.ward-stat.total {
+    color: #667eea;
+}
+
+.beds-visual-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.bed-item {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    border: 2px solid #ddd;
+}
+
+.bed-item.occupied {
+    background: #ffe5e5;
+    border-color: #e74c3c;
+}
+
+.bed-item.available {
+    background: #e8f8f0;
+    border-color: #27ae60;
+}
+
+.bed-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.bed-graphic {
+    position: relative;
+    width: 80px;
+    height: 60px;
+    margin: 10px auto 15px;
+}
+
+.bed-pillow {
+    position: absolute;
+    top: 0;
+    left: 10px;
+    width: 60px;
+    height: 15px;
+    background: #fff;
+    border: 2px solid #999;
+    border-radius: 8px 8px 0 0;
+}
+
+.bed-item.occupied .bed-pillow {
+    background: #ffcccc;
+    border-color: #e74c3c;
+}
+
+.bed-item.available .bed-pillow {
+    background: #d4f1e8;
+    border-color: #27ae60;
+}
+
+.bed-mattress {
+    position: absolute;
+    top: 15px;
+    left: 5px;
+    width: 70px;
+    height: 30px;
+    background: #f0f0f0;
+    border: 2px solid #999;
+    border-radius: 4px;
+}
+
+.bed-item.occupied .bed-mattress {
+    background: #ffb3b3;
+    border-color: #e74c3c;
+}
+
+.bed-item.available .bed-mattress {
+    background: #a8e6cf;
+    border-color: #27ae60;
+}
+
+.bed-frame {
+    position: absolute;
+    top: 45px;
+    left: 0;
+    width: 80px;
+    height: 15px;
+    background: #8b7355;
+    border: 2px solid #5d4e37;
+    border-radius: 0 0 4px 4px;
+}
+
+.bed-info {
+    margin-top: 10px;
+}
+
+.bed-number {
+    font-size: 16px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.bed-status {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 10px;
+    display: inline-block;
+    text-transform: uppercase;
+}
+
+.bed-item.occupied .bed-status {
+    background: #e74c3c;
+    color: white;
+}
+
+.bed-item.available .bed-status {
+    background: #27ae60;
+    color: white;
+}
+
+.bed-item.under-repair {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    opacity: 0.9;
+}
+
+.bed-item.under-repair .bed-pillow  { background: #fde68a; }
+.bed-item.under-repair .bed-mattress { background: #fef3c7; border-color: #fcd34d; }
+.bed-item.under-repair .bed-frame   { background: #f59e0b; }
+
+.bed-item.under-repair .bed-status {
+    background: #f59e0b;
+    color: white;
+}
+
+.under-repair-text { color: #f59e0b; }
+
+.ward-stat.under-repair { color: #d97706; }
+
+.modal-btn.repair-btn {
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.modal-btn.repair-btn:hover { background: #d97706; }
+
+.bed-type-badge {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+    display: inline-block;
+    text-transform: uppercase;
+    margin-top: 3px;
+    letter-spacing: 0.3px;
+}
+.bed-type-badge.type-icu     { background: #fee2e2; color: #b91c1c; }
+.bed-type-badge.type-monitor { background: #dbeafe; color: #1d4ed8; }
+.bed-type-badge.type-normal  { background: #f3f4f6; color: #4b5563; }
+.bed-type-badge.type-chariot { background: #fef3c7; color: #92400e; }
+
+.bed-patient-block {
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.bed-patient-id {
+    font-size: 10px;
+    font-weight: 700;
+    color: #e74c3c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bed-patient-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.bed-patient-meta {
+    font-size: 10px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bed-patient {
+    font-size: 11px;
+    font-weight: 600;
+    color: #1d4ed8;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 2px 8px;
+    border-radius: 8px;
+    margin-top: 5px;
+    display: inline-block;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bed-patient-empty {
+    color: #6b7280;
+    background: #f3f4f6;
+    border-color: #e5e7eb;
+}
+
+.bed-patient-unknown {
+    color: #92400e;
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.bed-person {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* Modal patient display */
+.modal-patient-pill {
+    display: inline-block;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.modal-no-patient {
+    color: #9ca3af;
+    font-style: italic;
+}

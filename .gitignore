@@ -1,0 +1,6 @@
+backend/datasets/*.csv
+
+# Python byte-code and cache directories — never commit these
+__pycache__/
+*.pyc
+*.pyo

@@ -1,0 +1,2818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HCopilot - Healthcare Data Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/home.css">
+    <link rel="stylesheet" href="css/datasets.css">
+    <link rel="stylesheet" href="css/flow_prediction.css">
+    <link rel="stylesheet" href="css/beds.css">
+    <link rel="stylesheet" href="css/models.css">
+    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/settings.css">
+    <link rel="stylesheet" href="css/patients.css">
+    <link rel="stylesheet" href="css/scheduling.css">
+    <link rel="stylesheet" href="css/simulation.css">
+    <link rel="stylesheet" href="css/unurgent.css">
+    <link rel="stylesheet" href="css/statistics.css">
+    <link rel="stylesheet" href="css/settings_reset.css">
+    <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+    <div class="container">
+        <header class="app-header">
+            <!-- Brand strip -->
+            <div class="app-header-brand">
+                <span class="app-logo">🏥</span>
+                <div class="app-brand-text">
+                    <span class="app-brand-name">HCopilot</span>
+                    <span class="app-brand-sub">Healthcare Data Management</span>
+                </div>
+                <button class="nav-hamburger" id="nav-hamburger"
+                        onclick="toggleNavMenu()" aria-label="Open menu">
+                    ☰
+                </button>
+            </div>
+            <!-- Horizontal pill nav (desktop / tablet) -->
+            <nav class="main-nav" id="main-nav">
+                <!-- Standalone sections -->
+                <button class="nav-btn active" data-section="home"
+                        onclick="showSection('home')">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">Home</span>
+                </button>
+                <button class="nav-btn" data-section="flow-prediction"
+                        onclick="showSection('flow-prediction')">
+                    <span class="nav-icon">📈</span>
+                    <span class="nav-label">Flow Prediction</span>
+                </button>
+                <button class="nav-btn" data-section="patients"
+                        onclick="showSection('patients')">
+                    <span class="nav-icon">🧑‍⚕️</span>
+                    <span class="nav-label">Patients</span>
+                </button>
+                <!-- Group: Care (Beds + Unurgent) -->
+                <button class="nav-btn nav-group-btn" id="navg-care-btn"
+                        onclick="toggleNavGroup('navg-care', event)">
+                    <span class="nav-icon">🛏️</span>
+                    <span class="nav-label">Care</span>
+                    <span class="nav-chevron">▾</span>
+                </button>
+                <!-- Group: Operations (Scheduling + Simulation) -->
+                <button class="nav-btn nav-group-btn" id="navg-ops-btn"
+                        onclick="toggleNavGroup('navg-ops', event)">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-label">Operations</span>
+                    <span class="nav-chevron">▾</span>
+                </button>
+                <button class="nav-btn" data-section="statistics"
+                        onclick="showSection('statistics')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Statistics</span>
+                </button>
+                <button class="nav-btn" data-section="settings"
+                        onclick="showSection('settings')">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Settings</span>
+                </button>
+            </nav>
+            <!-- User badge (right edge of header) -->
+            <div class="auth-user-badge-wrap" id="auth-user-badge-wrap" style="display:none">
+                <div class="auth-user-avatar" id="auth-user-avatar">
+                    <span id="auth-user-initial">A</span>
+                </div>
+                <div class="auth-user-info">
+                    <span class="auth-user-display" id="auth-user-badge">Admin</span>
+                    <span class="auth-user-role" id="auth-user-role-badge">admin</span>
+                </div>
+                <button class="auth-logout-btn" onclick="authLogout()" title="Sign out">⏻</button>
+            </div>
+        </header>
+
+        <div id="message" class="message"></div>
+
+        <section id="home" class="section active">
+            <div class="home-container">
+                <div class="welcome-card">
+                    <h2>🏥 Welcome to HCopilot</h2>
+                    <p class="welcome-text">Healthcare Data Management System</p>
+                    <p class="welcome-description">Manage and view healthcare datasets with ease. Access patient flow data, patient records, vital signs, and more.</p>
+                </div>
+
+                <div class="feature-cards">
+                    <div class="feature-card" onclick="showSection('patients')">
+                        <div class="feature-icon">🧑‍⚕️</div>
+                        <h3>Patients</h3>
+                        <p>Add and manage patient stays, view vital signs, and track patient records</p>
+                        <button class="feature-btn">View Patients →</button>
+                    </div>
+
+                    <div class="feature-card" onclick="showSection('flow-prediction')">
+                        <div class="feature-icon">📈</div>
+                        <h3>Flow Prediction</h3>
+                        <p>Predict patient flow using XGBoost machine learning model</p>
+                        <button class="feature-btn">View Predictions →</button>
+                    </div>
+
+                    <div class="feature-card" onclick="showSection('beds-display')">
+                        <div class="feature-icon">🛏️</div>
+                        <h3>Beds Display</h3>
+                        <p>View all hospital beds with status and ward information</p>
+                        <button class="feature-btn">View Beds →</button>
+                    </div>
+
+                    <div class="feature-card" onclick="showSection('scheduling')">
+                        <div class="feature-icon">📅</div>
+                        <h3>Scheduling</h3>
+                        <p>Assign patients to beds, doctors, and nurses to manage care assignments</p>
+                        <button class="feature-btn">View Scheduling →</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="flow-prediction" class="section">
+            <div class="section-header">
+                <h2>📈 Flow Prediction</h2>
+                <p class="section-description">Patient flow predictions using XGBoost model</p>
+            </div>
+
+            <div class="flow-controls">
+                <button class="flow-btn" onclick="loadFlowPrediction(30)">30 Days</button>
+                <button class="flow-btn" onclick="loadFlowPrediction(60)">60 Days</button>
+                <button class="flow-btn" onclick="loadFlowPrediction(90)">90 Days</button>
+            </div>
+
+            <div class="flow-stats" id="flow-stats">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading statistics...
+                </div>
+            </div>
+
+            <div class="flow-chart-container">
+                <canvas id="flowChart"></canvas>
+            </div>
+
+            <div class="flow-predictions" id="flow-predictions">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading predictions...
+                </div>
+            </div>
+        </section>
+
+        <section id="beds-display" class="section">
+            <div class="section-header">
+                <h2>🛏️ Beds Display</h2>
+                <p class="section-description">Hospital beds status and information</p>
+            </div>
+
+            <div class="beds-stats" id="beds-stats">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading statistics...
+                </div>
+            </div>
+
+            <div class="beds-grid" id="beds-grid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    Loading beds...
+                </div>
+            </div>
+        </section>
+
+        <!-- Bed Add/Edit Modal -->
+        <div id="bed-form-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🛏️</span>
+                        <h2 id="bed-form-title">Add New Bed</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeBedFormModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="bed-form-error" class="form-error-box"></div>
+                    <div class="form-group">
+                        <label class="form-label">Bed Number</label>
+                        <input class="form-input" type="text" id="form-bed-number" placeholder="e.g. 6-1">
+                        <span class="form-hint">Format: ward-bednum &nbsp;(e.g. 1-5, 3-12)</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <div class="status-toggle-group">
+                            <button type="button" class="status-toggle-btn st-avail active"
+                                    data-val="Available" onclick="selectStatus('Available')">
+                                <span class="st-dot"></span>Available
+                            </button>
+                            <button type="button" class="status-toggle-btn st-occ"
+                                    data-val="Occupied" onclick="selectStatus('Occupied')">
+                                <span class="st-dot"></span>Occupied
+                            </button>
+                        </div>
+                        <input type="hidden" id="form-bed-status" value="Available">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Ward</label>
+                        <div class="ward-quick-row" id="ward-quick-row"></div>
+                        <input class="form-input" type="number" id="form-ward-id" min="1" placeholder="Ward number">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <div class="status-toggle-group">
+                            <button type="button" class="bed-type-toggle-btn bt-normal active"
+                                    data-val="normal" onclick="selectBedType('normal')">
+                                <span class="st-dot"></span>Normal
+                            </button>
+                            <button type="button" class="bed-type-toggle-btn bt-monitor"
+                                    data-val="monitor" onclick="selectBedType('monitor')">
+                                <span class="st-dot"></span>Monitor
+                            </button>
+                            <button type="button" class="bed-type-toggle-btn bt-icu"
+                                    data-val="ICU" onclick="selectBedType('ICU')">
+                                <span class="st-dot"></span>ICU
+                            </button>
+                            <button type="button" class="bed-type-toggle-btn bt-chariot"
+                                    data-val="chariot" onclick="selectBedType('chariot')">
+                                <span class="st-dot"></span>Chariot
+                            </button>
+                        </div>
+                        <input type="hidden" id="form-bed-type" value="normal">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeBedFormModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-bed-btn" onclick="saveBed()">Save Bed</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bed Delete Confirmation Modal -->
+        <div id="bed-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeBedDeleteModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Bed?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="delete-bed-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeBedDeleteModal()">Keep Bed</button>
+                    <button class="modal-btn delete-confirm-btn" id="delete-confirm-btn" onclick="deleteBed()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bed Management Modal -->
+        <div id="bed-modal" class="modal">
+            <div class="modal-content">
+                <span class="modal-close" onclick="closeBedModal()">&times;</span>
+                <h2>Manage Bed <span id="modal-bed-number"></span></h2>
+                <div class="modal-bed-info">
+                    <p><strong>Status:</strong> <span id="modal-current-status"></span></p>
+                    <p><strong>Type:</strong> <span id="modal-bed-type">—</span></p>
+                    <p><strong>Patient:</strong> <span id="modal-patient-id">—</span></p>
+                </div>
+
+                <!-- Assign form: visible when bed is available -->
+                <div id="modal-assign-section" style="display:none; margin-top:14px;">
+                    <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Enter a Patient ID to assign to this bed:</p>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="number" id="modal-assign-patient-input"
+                               class="patient-edit-input" placeholder="Patient ID" min="1"
+                               style="flex:1;" />
+                        <button class="modal-btn occupied-btn" onclick="assignPatientToBed()">
+                            🔴 Assign Patient
+                        </button>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <p style="font-size:12px;color:#6b7280;margin-bottom:4px;">🕐 Bed Occupation Time <span style="color:#9ca3af;">(suggested: now — edit if needed)</span></p>
+                        <input type="datetime-local" id="modal-assign-arrival-time"
+                               class="patient-edit-input" style="width:100%;box-sizing:border-box;" />
+                    </div>
+                    <p id="modal-assign-error" style="color:#e74c3c;font-size:12px;margin-top:6px;min-height:16px;"></p>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="modal-btn" id="modal-change-bed-btn"
+                            onclick="openChangeBedModal(currentPatientId, currentBedId, document.getElementById('modal-bed-number').textContent)"
+                            style="display:none;background:#2563eb;color:#fff;">
+                        🔄 Change Bed
+                    </button>
+                    <button class="modal-btn occupied-btn" id="modal-release-btn"
+                            onclick="openBedDischargeModal()" style="display:none">
+                        🚪 Discharge Patient
+                    </button>
+                    <button class="modal-btn repair-btn" id="modal-repair-btn"
+                            onclick="setBedCondition('Under Repair')" style="display:none">
+                        🟡 Mark as Under Repair
+                    </button>
+                    <button class="modal-btn available-btn" id="modal-fix-btn"
+                            onclick="setBedCondition('Available')" style="display:none">
+                        🟢 Mark as Available
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Bed Modal — reusable from any section to move a patient to a different bed -->
+        <div id="change-bed-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header" style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🔄</span>
+                        <h2>Change Bed</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeChangeBedModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="cb-info" style="background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#1e40af;line-height:1.5;"></div>
+                    <div class="form-group">
+                        <label class="form-label">New Bed <span style="color:#dc2626">*</span></label>
+                        <select class="form-input" id="cb-new-bed-select"></select>
+                        <span class="form-hint">Only beds currently Available are listed</span>
+                    </div>
+                    <div id="cb-error" class="form-error-box" style="display:block;min-height:16px;border:none;background:none;padding:0;color:#e74c3c;font-size:12px;"></div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeChangeBedModal()">Cancel</button>
+                    <button class="modal-btn" id="cb-confirm-btn" onclick="confirmChangeBed()"
+                            style="background:#2563eb;color:#fff;border:none;">Move Patient</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Add/Edit Modal -->
+        <div id="doctor-form-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">👨‍⚕️</span>
+                        <h2 id="doctor-form-title">Add Doctor / Intern</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeDoctorFormModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="doctor-form-error" class="form-error-box"></div>
+                    <div class="form-group">
+                        <label class="form-label">Name <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-doctor-name" placeholder="e.g. Dr. Martin">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Type</label>
+                        <div class="status-toggle-group">
+                            <button type="button" class="type-toggle-btn st-doctor active" data-val="doctor" onclick="selectDoctorType('doctor')">
+                                <span class="st-dot"></span>Doctor
+                            </button>
+                            <button type="button" class="type-toggle-btn st-intern" data-val="intern" onclick="selectDoctorType('intern')">
+                                <span class="st-dot"></span>Intern
+                            </button>
+                        </div>
+                        <input type="hidden" id="form-doctor-type" value="doctor">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Shift</label>
+                        <div class="status-toggle-group" id="doctor-shift-toggle-group">
+                            <span class="form-loading-hint">Loading shifts…</span>
+                        </div>
+                        <input type="hidden" id="form-doctor-shift" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Group</label>
+                        <div class="status-toggle-group" id="doctor-group-toggle-group">
+                            <span class="form-loading-hint">Loading groups…</span>
+                        </div>
+                        <input type="hidden" id="form-doctor-group" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Patient Nb <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-doctor-patient-nb" placeholder="e.g. 5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Availability Time Start <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-doctor-avail-time" placeholder="e.g. 08:00">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDoctorFormModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-doctor-btn" onclick="saveDoctorForm()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor Delete Confirmation Modal -->
+        <div id="doctor-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeDoctorDeleteModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Doctor?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="delete-doctor-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDoctorDeleteModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="delete-doctor-confirm-btn" onclick="deleteDoctor()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nurse Add/Edit Modal -->
+        <div id="nurse-form-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">👩‍⚕️</span>
+                        <h2 id="nurse-form-title">Add Nurse</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeNurseFormModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="nurse-form-error" class="form-error-box"></div>
+                    <div class="form-group">
+                        <label class="form-label">Name <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-nurse-name" placeholder="e.g. Sarah Dupont">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <div class="status-toggle-group">
+                            <button type="button" class="role-toggle-btn st-pn" data-val="PN" onclick="selectNurseRole('PN')">
+                                <span class="st-dot"></span>PN
+                            </button>
+                            <button type="button" class="role-toggle-btn st-rn active" data-val="RN" onclick="selectNurseRole('RN')">
+                                <span class="st-dot"></span>RN
+                            </button>
+                            <button type="button" class="role-toggle-btn st-ba" data-val="Bed_Admission" onclick="selectNurseRole('Bed_Admission')">
+                                <span class="st-dot"></span>Bed Admission
+                            </button>
+                        </div>
+                        <input type="hidden" id="form-nurse-role" value="RN">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Shift</label>
+                        <div class="status-toggle-group" id="nurse-shift-toggle-group">
+                            <span class="form-loading-hint">Loading shifts…</span>
+                        </div>
+                        <input type="hidden" id="form-nurse-shift" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Group</label>
+                        <div class="status-toggle-group" id="nurse-group-toggle-group">
+                            <span class="form-loading-hint">Loading groups…</span>
+                        </div>
+                        <input type="hidden" id="form-nurse-group" value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Patient NB <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-nurse-patient-nb" placeholder="e.g. 8">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Availability Time Start <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-nurse-avail-time" placeholder="e.g. 07:00">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeNurseFormModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-nurse-btn" onclick="saveNurseForm()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nurse Delete Confirmation Modal -->
+        <div id="nurse-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeNurseDeleteModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Nurse?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="delete-nurse-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeNurseDeleteModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="delete-nurse-confirm-btn" onclick="deleteNurse()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ward Add/Edit Modal -->
+        <div id="ward-form-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🏢</span>
+                        <h2 id="ward-form-title">Add Ward</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeWardFormModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="ward-form-error" class="form-error-box"></div>
+                    <div class="form-group">
+                        <label class="form-label">Ward Name</label>
+                        <input class="form-input" type="text" id="form-ward-name" placeholder="e.g. recovery room">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Department ID</label>
+                        <input class="form-input" type="number" id="form-ward-dept-id" min="1" placeholder="e.g. 1">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeWardFormModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-ward-btn" onclick="saveWardForm()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ward Delete Confirmation Modal -->
+        <div id="ward-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeWardDeleteModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Ward?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="delete-ward-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeWardDeleteModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="delete-ward-confirm-btn" onclick="deleteWard()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DailyPatients Add/Edit Modal -->
+        <div id="dp-form-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">📅</span>
+                        <h2 id="dp-form-title">Add Patient Stay</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeDpFormModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="dp-form-error" class="form-error-box"></div>
+                    <div class="form-group">
+                        <label class="form-label">Subject ID</label>
+                        <input class="form-input" type="number" id="form-dp-subject-id" placeholder="e.g. 10000032">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stay ID</label>
+                        <input class="form-input" type="number" id="form-dp-stay-id" placeholder="e.g. 32952584">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Name <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-dp-name" placeholder="e.g. Jane Doe">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Gender <span class="form-hint">(optional)</span></label>
+                        <select class="form-input" id="form-dp-gender">
+                            <option value="">— Select —</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Age <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" id="form-dp-age" placeholder="e.g. 45" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Arrival Time <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="datetime-local" id="form-dp-arrival-time">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Departure Time <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="datetime-local" id="form-dp-departure-time" oninput="dpAutoOccupation()">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bed Occupation Time <span class="form-hint">(auto-computed or manual)</span></label>
+                        <input class="form-input" type="text" id="form-dp-bed-occupation-time" placeholder="e.g. 5.50h">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Temperature <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" step="0.1" id="form-dp-temperature" placeholder="e.g. 37.2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Heart Rate <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" id="form-dp-heartrate" placeholder="e.g. 80">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Respiratory Rate <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" id="form-dp-resprate" placeholder="e.g. 16">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">O2 Saturation <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" step="0.1" id="form-dp-o2sat" placeholder="e.g. 98">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">SBP <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" id="form-dp-sbp" placeholder="e.g. 120">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">DBP <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" id="form-dp-dbp" placeholder="e.g. 80">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Pain <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-dp-pain" placeholder="e.g. 5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Acuity <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="number" step="0.1" id="form-dp-acuity" placeholder="e.g. 2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Chief Complaint <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="form-dp-chiefcomplaint" placeholder="e.g. Chest pain">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDpFormModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-dp-btn" onclick="saveDpForm()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Edit Modal -->
+        <div id="patient-edit-modal" class="modal">
+            <div class="modal-content bfm-content" style="max-width:640px">
+                <div class="bfm-header">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🧑‍⚕️</span>
+                        <h2 id="patient-edit-title">Edit Patient Stay</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeEditPatientModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="patient-edit-error" class="form-error-box"></div>
+
+                    <!-- IDs row -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+                        <div class="form-group">
+                            <label class="form-label">Patient ID</label>
+                            <input class="form-input" type="number" id="pedit-patient-id" placeholder="e.g. 10000032">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Stay ID <span class="form-hint">(read-only)</span></label>
+                            <input class="form-input" type="number" id="pedit-stay-id" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Patient info row -->
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 16px">
+                        <div class="form-group">
+                            <label class="form-label">Name <span class="form-hint">(optional)</span></label>
+                            <input class="form-input" type="text" id="pedit-name" placeholder="e.g. Jane Doe">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gender <span class="form-hint">(optional)</span></label>
+                            <select class="form-input" id="pedit-gender">
+                                <option value="">— Select —</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Age <span class="form-hint">(optional)</span></label>
+                            <input class="form-input" type="number" id="pedit-age" placeholder="e.g. 45" min="0">
+                        </div>
+                    </div>
+
+                    <!-- Timestamps row -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+                        <div class="form-group">
+                            <label class="form-label">Arrival Time</label>
+                            <input class="form-input" type="datetime-local" id="pedit-arrival-time" oninput="peditAutoOccupation()">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Departure Time <span class="form-hint">(optional)</span></label>
+                            <input class="form-input" type="datetime-local" id="pedit-departure-time">
+                        </div>
+                    </div>
+
+                    <!-- Bed occupation spans full width -->
+                    <div class="form-group">
+                        <label class="form-label">Bed Occupation Time <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="datetime-local" id="pedit-bed-occupation-time">
+                    </div>
+
+                    <!-- Vitals 2-column grid -->
+                    <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 4px">Vital Signs</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+                        <div class="form-group">
+                            <label class="form-label">Temperature <span class="form-hint">(°C)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-temperature" placeholder="e.g. 37.0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Heart Rate <span class="form-hint">(bpm)</span></label>
+                            <input class="form-input" type="number" id="pedit-heartrate" placeholder="e.g. 80">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Resp. Rate</label>
+                            <input class="form-input" type="number" id="pedit-resprate" placeholder="e.g. 16">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">O₂ Saturation <span class="form-hint">(%)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-o2sat" placeholder="e.g. 98">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">SBP <span class="form-hint">(mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-sbp" placeholder="e.g. 120">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">DBP <span class="form-hint">(mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-dbp" placeholder="e.g. 80">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Pain</label>
+                            <input class="form-input" type="text" id="pedit-pain" placeholder="e.g. 5">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Acuity <span class="form-hint">(1–5)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-acuity" placeholder="e.g. 2">
+                        </div>
+                    </div>
+
+                    <!-- Chief complaint spans full width -->
+                    <div class="form-group">
+                        <label class="form-label">Chief Complaint <span class="form-hint">(optional)</span></label>
+                        <input class="form-input" type="text" id="pedit-chiefcomplaint" placeholder="e.g. Chest pain">
+                    </div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeEditPatientModal()">Cancel</button>
+                    <button class="modal-btn save-btn" id="save-patient-edit-btn" onclick="saveEditPatient()">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Patient Delete Confirmation Modal -->
+        <div id="patient-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeDeletePatientModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Patient Stay?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="pat-delete-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDeletePatientModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="pat-delete-confirm-btn" onclick="deletePatient()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DailyPatients Delete Confirmation Modal -->
+        <div id="dp-delete-modal" class="modal">
+            <div class="modal-content bdm-content">
+                <div class="bdm-header">
+                    <div class="bdm-trash-icon">&#x1F5D1;</div>
+                    <button class="bfm-close bdm-x" onclick="closeDpDeleteModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <h3 class="bdm-title">Delete Patient Stay?</h3>
+                    <p class="bdm-msg">You are about to permanently delete <strong id="delete-dp-label"></strong>.</p>
+                    <p class="bdm-warn">This action cannot be undone.</p>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDpDeleteModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="delete-dp-confirm-btn" onclick="deleteDp()">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <section id="patients" class="section">
+            <div class="section-header">
+                <h2>🧑‍⚕️ Patients</h2>
+                <p class="section-description">Add and manage patient stays</p>
+            </div>
+            <div class="pat-section-layout">
+
+                <!-- Inline Add Form -->
+                <div class="pat-add-card">
+                    <div class="pat-add-top">
+                        <span class="pat-add-icon">➕</span>
+                        <h3>Add New Patient Stay</h3>
+                    </div>
+                    <div class="pat-add-body">
+                        <div id="pat-add-error" class="pat-add-error"></div>
+                        <div class="pat-add-grid">
+                            <div class="pat-field">
+                                <label>Patient ID <span class="pat-hint">(auto)</span></label>
+                                <input type="number" id="pat-patient-id" placeholder="Auto-generated">
+                            </div>
+                            <div class="pat-field">
+                                <label>Stay ID <span class="pat-hint">(auto)</span></label>
+                                <input type="number" id="pat-stay-id" placeholder="Auto-generated">
+                            </div>
+                            <div class="pat-field pat-field-wide">
+                                <label>Name <span class="pat-hint">(optional)</span></label>
+                                <input type="text" id="pat-name" placeholder="e.g. Jane Doe">
+                            </div>
+                            <div class="pat-field">
+                                <label>Gender <span class="pat-hint">(optional)</span></label>
+                                <select id="pat-gender">
+                                    <option value="">— Select —</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="pat-field">
+                                <label>Age <span class="pat-hint">(optional)</span></label>
+                                <input type="number" id="pat-age" placeholder="e.g. 45" min="0">
+                            </div>
+                            <div class="pat-field">
+                                <label>Arrival Time <span class="pat-hint">(auto)</span></label>
+                                <input type="datetime-local" id="pat-arrival-time" oninput="patAutoOccupation()">
+                            </div>
+                            <div class="pat-field">
+                                <label>Departure Time <span class="pat-hint">(optional)</span></label>
+                                <input type="datetime-local" id="pat-departure-time">
+                            </div>
+                            <div class="pat-field">
+                                <label>Bed Occupation Time <span class="pat-hint">(optional)</span></label>
+                                <input type="datetime-local" id="pat-bed-occupation-time">
+                            </div>
+                            <div class="pat-field">
+                                <label>Temperature <span class="pat-hint">(optional, °C)</span></label>
+                                <input type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0">
+                            </div>
+                            <div class="pat-field">
+                                <label>Heart Rate <span class="pat-hint">(optional, bpm)</span></label>
+                                <input type="number" id="pat-heartrate" placeholder="e.g. 80">
+                            </div>
+                            <div class="pat-field">
+                                <label>Respiratory Rate <span class="pat-hint">(optional)</span></label>
+                                <input type="number" id="pat-resprate" placeholder="e.g. 16">
+                            </div>
+                            <div class="pat-field">
+                                <label>O₂ Saturation <span class="pat-hint">(optional, %)</span></label>
+                                <input type="number" step="0.1" id="pat-o2sat" placeholder="e.g. 98">
+                            </div>
+                            <div class="pat-field">
+                                <label>SBP <span class="pat-hint">(optional, mmHg)</span></label>
+                                <input type="number" id="pat-sbp" placeholder="e.g. 120">
+                            </div>
+                            <div class="pat-field">
+                                <label>DBP <span class="pat-hint">(optional, mmHg)</span></label>
+                                <input type="number" id="pat-dbp" placeholder="e.g. 80">
+                            </div>
+                            <div class="pat-field">
+                                <label>Pain <span class="pat-hint">(optional)</span></label>
+                                <input type="text" id="pat-pain" placeholder="e.g. 5">
+                            </div>
+                            <div class="pat-field">
+                                <label>Acuity <span class="pat-hint">(optional, 1–5)</span></label>
+                                <input type="number" step="0.1" id="pat-acuity" placeholder="e.g. 2">
+                            </div>
+                            <div class="pat-field pat-field-wide">
+                                <label>Chief Complaint <span class="pat-hint">(optional)</span></label>
+                                <input type="text" id="pat-chiefcomplaint" placeholder="e.g. Chest pain">
+                            </div>
+                        </div>
+                        <div class="pat-add-footer">
+                            <button class="s-btn s-btn-outline" onclick="clearPatientForm()">🗑️ Clear</button>
+                            <button class="s-btn s-btn-primary" id="pat-add-btn" onclick="submitPatientForm()">➕ Add Patient</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dataset Table -->
+                <div class="pat-dataset-card">
+                    <div class="pat-dataset-top">
+                        <div>
+                            <h3 id="pat-dataset-card-title">📋 Patient Dataset</h3>
+                            <p id="pat-dataset-card-subtitle">All patient stays in the system</p>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div style="display:flex;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden">
+                                <button class="pat-view-btn active" data-view="daily"
+                                        onclick="switchPatientView('daily')"
+                                        style="padding:6px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#eef2ff;color:#4338ca;transition:all .15s">
+                                    📋 Daily Patients
+                                </button>
+                                <button class="pat-view-btn" data-view="log"
+                                        onclick="switchPatientView('log')"
+                                        style="padding:6px 14px;font-size:13px;font-weight:600;border:none;border-left:1.5px solid #e5e7eb;cursor:pointer;background:#fff;color:#6b7280;transition:all .15s">
+                                    📁 Patient Log
+                                </button>
+                            </div>
+                            <button class="s-btn s-btn-outline" onclick="patActiveView==='daily'?loadPatients():loadPatientLog()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="pat-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">📋</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="pat-stat-total">–</span>
+                                <span class="s-stat-lbl">Total Stays</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-avail">
+                            <span class="s-stat-icon">🧑‍⚕️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="pat-stat-subjects">–</span>
+                                <span class="s-stat-lbl">Unique Subjects</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="pat-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="pat-search" type="text" placeholder="Search by subject/stay ID or complaint…" oninput="filterPatients()">
+                        </div>
+                        <span class="s-result-count" id="pat-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="patients-table-container">
+                        <div class="loading"><div class="spinner"></div>Loading patients...</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Bed Display Discharge Modal -->
+        <div id="bed-discharge-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🚪</span>
+                        <h2>Discharge Patient</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeBedDischargeModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="bed-discharge-info" style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#92400e;line-height:1.5;"></div>
+                    <div class="form-group">
+                        <label class="form-label">Departure Time</label>
+                        <input class="form-input" type="datetime-local" id="bed-discharge-departure-time">
+                        <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
+                    </div>
+                    <div id="bed-discharge-error" class="form-error-box"></div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeBedDischargeModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="bed-discharge-confirm-btn" onclick="confirmBedDischarge()">Discharge Patient</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Discharge Confirmation Modal -->
+        <div id="discharge-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header" style="background:linear-gradient(135deg,#dc2626 0%,#b91c1c 100%)">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🚪</span>
+                        <h2>Discharge Patient</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeDischargeModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="discharge-modal-info" style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#92400e;line-height:1.5;"></div>
+                    <div class="form-group">
+                        <label class="form-label">Departure Time</label>
+                        <input class="form-input" type="datetime-local" id="discharge-departure-time">
+                        <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
+                    </div>
+                    <div id="discharge-error" class="form-error-box"></div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeDischargeModal()">Cancel</button>
+                    <button class="modal-btn delete-confirm-btn" id="discharge-confirm-btn" onclick="confirmDischarge()">Discharge Patient</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Assignment Modal -->
+        <div id="sched-edit-modal" class="modal">
+            <div class="modal-content bfm-content">
+                <div class="bfm-header" style="background:linear-gradient(135deg,#2563eb 0%,#1d4ed8 100%)">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">✏️</span>
+                        <h2>Edit Assignment</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeSchedEditModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div id="sched-edit-modal-info" style="background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#1e40af;line-height:1.5;"></div>
+                    <div class="form-group">
+                        <label class="form-label">Bed <span style="color:#dc2626">*</span></label>
+                        <select class="form-input" id="sched-edit-bed"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Doctor <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+                        <select class="form-input" id="sched-edit-doctor"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nurse 1 <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+                        <select class="form-input" id="sched-edit-nurse1"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nurse 2 <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+                        <select class="form-input" id="sched-edit-nurse2"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Bed Occupation Time <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+                        <input class="form-input" type="datetime-local" id="sched-edit-occupation-time">
+                        <span class="form-hint">Leave blank to keep the existing value</span>
+                    </div>
+                    <div id="sched-edit-error" class="form-error-box"></div>
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeSchedEditModal()">Cancel</button>
+                    <button class="modal-btn" id="sched-edit-confirm-btn" onclick="saveSchedEdit()"
+                            style="background:#2563eb;color:#fff;border:none;">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- Scheduling Section                                        -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="scheduling" class="section">
+            <div class="section-header">
+                <h2>📅 Scheduling</h2>
+                <p class="section-description">Assign patients to beds, doctors, and nurses</p>
+            </div>
+
+            <div class="sch-layout">
+
+                <!-- ── Top bar ────────────────────────────────────────── -->
+                <div class="sch-topbar">
+                    <div class="sch-topbar-info">
+                        Select a patient and a bed to create an assignment. Doctor and nurses are optional.
+                    </div>
+                    <button id="sch-refresh-btn" class="sch-refresh-btn" onclick="loadSchedulingSection()">
+                        <span class="sch-refresh-icon">🔄</span>
+                        <span class="sch-refresh-label">Refresh</span>
+                    </button>
+                </div>
+
+                <!-- ── Staff filter bar ───────────────────────────────── -->
+                <div class="sch-staff-filter-bar">
+                    <div class="sch-sf-group">
+                        <span class="sch-sf-group-icon">📅</span>
+                        <span class="sch-sf-label">Shift</span>
+                        <select id="sch-sf-shift" class="sch-sf-select" onchange="applySchedStaffFilter()">
+                            <option value="">All Shifts</option>
+                        </select>
+                    </div>
+                    <div class="sch-sf-sep"></div>
+                    <div class="sch-sf-group">
+                        <span class="sch-sf-group-icon">👥</span>
+                        <span class="sch-sf-label">Group</span>
+                        <select id="sch-sf-group" class="sch-sf-select" onchange="applySchedStaffFilter()">
+                            <option value="">All Groups</option>
+                        </select>
+                    </div>
+                    <div class="sch-sf-sep"></div>
+                    <div class="sch-sf-group">
+                        <label class="sch-sf-absent-label">
+                            <input type="checkbox" id="sch-sf-hide-absent" onchange="applySchedStaffFilter()" checked>
+                            <span>🚫 Hide absent</span>
+                        </label>
+                    </div>
+                    <span class="sch-sf-hint" id="sch-sf-hint"></span>
+                </div>
+
+                <!-- ── Selection Panels ───────────────────────────────── -->
+                <div class="sch-panels-row">
+
+                    <!-- Patient Panel -->
+                    <div class="sch-panel">
+                        <div class="sch-panel-header sch-ph-patient">
+                            <span class="sch-panel-icon">🧑‍⚕️</span>
+                            <span class="sch-panel-title">Patient</span>
+                            <span class="sch-badge sch-badge-req">Required</span>
+                        </div>
+                        <div class="sch-panel-search">
+                            <input type="text" id="sch-patient-search" class="sch-panel-search-input"
+                                   placeholder="Search by ID or complaint…"
+                                   oninput="filterSchedPatients()">
+                        </div>
+                        <div class="sch-panel-list" id="sch-patient-list">
+                            <div class="loading"><div class="spinner"></div>Loading patients…</div>
+                        </div>
+                    </div>
+
+                    <!-- Doctor Panel -->
+                    <div class="sch-panel">
+                        <div class="sch-panel-header sch-ph-doctor">
+                            <span class="sch-panel-icon">👨‍⚕️</span>
+                            <span class="sch-panel-title">Doctor</span>
+                            <span class="sch-badge sch-badge-opt">Optional</span>
+                        </div>
+                        <div class="sch-panel-search">
+                            <input type="text" id="sch-doctor-search" class="sch-panel-search-input"
+                                   placeholder="Search by ID, type or shift…"
+                                   oninput="filterSchedDoctors()">
+                        </div>
+                        <div class="sch-panel-list" id="sch-doctor-list">
+                            <div class="loading"><div class="spinner"></div>Loading doctors…</div>
+                        </div>
+                    </div>
+
+                    <!-- Nurse Panel (up to 2 selections) -->
+                    <div class="sch-panel">
+                        <div class="sch-panel-header sch-ph-nurse">
+                            <span class="sch-panel-icon">👩‍⚕️</span>
+                            <span class="sch-panel-title">Nurses</span>
+                            <span class="sch-badge sch-badge-opt">Up to 2</span>
+                        </div>
+                        <div class="sch-nurse-slots-bar" id="sch-nurse-slots-bar">
+                            Slot 1: <strong style="color:#9ca3af">—</strong> &nbsp;·&nbsp; Slot 2: <strong style="color:#9ca3af">—</strong>
+                        </div>
+                        <div class="sch-panel-search">
+                            <input type="text" id="sch-nurse-search" class="sch-panel-search-input"
+                                   placeholder="Search by ID, role or shift…"
+                                   oninput="filterSchedNurses()">
+                        </div>
+                        <div class="sch-panel-list" id="sch-nurse-list">
+                            <div class="loading"><div class="spinner"></div>Loading nurses…</div>
+                        </div>
+                    </div>
+
+                    <!-- Bed / Unurgent Panel -->
+                    <div class="sch-panel" id="sch-bed-panel">
+                        <div class="sch-panel-header sch-ph-bed" id="sch-bed-panel-header">
+                            <span class="sch-panel-icon" id="sch-bed-panel-icon">🛏️</span>
+                            <span class="sch-panel-title" id="sch-bed-panel-title">Bed</span>
+                            <span class="sch-badge sch-badge-req" id="sch-bed-panel-badge">Required</span>
+                            <button class="sch-unurgent-toggle" id="sch-unurgent-toggle"
+                                    onclick="toggleSchedUnurgent()"
+                                    title="Switch to Unurgent Care mode">
+                                🟢 Unurgent
+                            </button>
+                        </div>
+                        <!-- Bed mode -->
+                        <div id="sch-bed-mode-content">
+                            <div class="sch-panel-search">
+                                <input type="text" id="sch-bed-search" class="sch-panel-search-input"
+                                       placeholder="Search by number or ID…"
+                                       oninput="filterSchedBeds()">
+                                <select id="sch-bed-status-filter" class="sch-bed-status-filter"
+                                        onchange="filterSchedBeds()">
+                                    <option value="">All statuses</option>
+                                    <option value="Available">🟢 Available</option>
+                                    <option value="Occupied">🔴 Occupied</option>
+                                </select>
+                            </div>
+                            <div class="sch-panel-list" id="sch-bed-list">
+                                <div class="loading"><div class="spinner"></div>Loading beds…</div>
+                            </div>
+                        </div>
+                        <!-- Unurgent mode banner -->
+                        <div id="sch-unurgent-mode-content" style="display:none">
+                            <div class="sch-unurgent-panel-banner">
+                                <div class="sch-unurgent-panel-icon">🏥</div>
+                                <div class="sch-unurgent-panel-title">Unurgent Care Path</div>
+                                <div class="sch-unurgent-panel-sub">
+                                    No bed required — this patient will be treated
+                                    in the non-urgent care area.
+                                </div>
+                                <button class="sch-unurgent-cancel-btn"
+                                        onclick="toggleSchedUnurgent()">
+                                    ← Back to Bed
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- ── Assignment Preview Card ─────────────────────────── -->
+                <div class="sch-summary-card">
+                    <div class="sch-summary-header">
+                        <span class="sch-summary-title">📋 Assignment Preview</span>
+                        <button class="sch-clear-btn" onclick="clearSchedSelections()">🗑️ Clear All</button>
+                    </div>
+
+                    <div class="sch-summary-flow">
+                        <!-- Patient -->
+                        <div class="sch-slot">
+                            <div class="sch-slot-label">Patient <span style="color:#dc2626">*</span></div>
+                            <div class="sch-slot-card slot-patient" id="sch-slot-patient">
+                                <div style="font-size:24px;color:#d1d5db">🧑‍⚕️</div>
+                                <div class="sch-slot-placeholder">Select a patient</div>
+                            </div>
+                        </div>
+
+                        <div class="sch-flow-arrow">→</div>
+
+                        <!-- Doctor -->
+                        <div class="sch-slot">
+                            <div class="sch-slot-label">Doctor</div>
+                            <div class="sch-slot-card slot-doctor" id="sch-slot-doctor">
+                                <div style="font-size:24px;color:#d1d5db">👨‍⚕️</div>
+                                <div class="sch-slot-placeholder">Select a doctor</div>
+                            </div>
+                        </div>
+
+                        <div class="sch-flow-arrow">→</div>
+
+                        <!-- Nurse 1 -->
+                        <div class="sch-slot">
+                            <div class="sch-slot-label">Nurse 1</div>
+                            <div class="sch-slot-card slot-nurse1" id="sch-slot-nurse1">
+                                <div style="font-size:24px;color:#d1d5db">👩‍⚕️</div>
+                                <div class="sch-slot-placeholder">Select nurse 1</div>
+                            </div>
+                        </div>
+
+                        <div class="sch-flow-arrow">→</div>
+
+                        <!-- Nurse 2 -->
+                        <div class="sch-slot">
+                            <div class="sch-slot-label">Nurse 2 <span style="color:#9ca3af;font-size:9px">(optional)</span></div>
+                            <div class="sch-slot-card slot-nurse2" id="sch-slot-nurse2">
+                                <div style="font-size:24px;color:#d1d5db">👩‍⚕️</div>
+                                <div class="sch-slot-placeholder">Optional</div>
+                            </div>
+                        </div>
+
+                        <div class="sch-flow-arrow">→</div>
+
+                        <!-- Bed / Unurgent destination -->
+                        <div class="sch-slot">
+                            <div class="sch-slot-label" id="sch-slot-bed-label">Bed <span style="color:#dc2626">*</span></div>
+                            <div class="sch-slot-card slot-bed" id="sch-slot-bed">
+                                <div style="font-size:24px;color:#d1d5db">🛏️</div>
+                                <div class="sch-slot-placeholder">Select a bed</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="sch-occ-time-row" style="padding:12px 20px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <label style="font-size:13px;color:#6b7280;font-weight:500;white-space:nowrap;">🕐 Bed Occupation Time <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
+                        <input type="datetime-local" id="sch-arrival-time"
+                               style="flex:1;min-width:180px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#1f2937;" />
+                    </div>
+                    <div class="sch-summary-footer">
+                        <div id="sch-assign-error" class="sch-error-msg"></div>
+                        <button class="sch-confirm-btn" id="sch-confirm-btn" disabled
+                                onclick="confirmSchedAssignment()">
+                            ✓ Confirm Assignment
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Existing Assignments ────────────────────────────── -->
+                <div class="sch-assignments-card">
+                    <div class="sch-assignments-header">
+                        <h3>📋 Existing Assignments</h3>
+                        <div class="sch-assignments-toolbar">
+                            <input id="sch-assignments-search"
+                                   class="sch-assignments-search"
+                                   type="search"
+                                   placeholder="Search by patient, bed, doctor, nurse…"
+                                   oninput="filterSchedAssignments()">
+                            <button class="s-btn s-btn-outline" onclick="loadSchedAssignments()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <div id="sch-assignments-table">
+                        <div class="loading"><div class="spinner"></div>Loading assignments…</div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- Simulation — Sample Patient Confirmation Modal           -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="sim-patient-modal" class="modal" style="display:none">
+            <div class="modal-content bfm-content" style="max-width:560px">
+                <div class="bfm-header" style="background:linear-gradient(135deg,#4f46e5 0%,#4338ca 100%)">
+                    <div class="bfm-header-left">
+                        <span class="bfm-header-icon">🧪</span>
+                        <h2>Confirm New Patient</h2>
+                    </div>
+                    <button class="bfm-close" onclick="closeSimPatientModal()">&#x2715;</button>
+                </div>
+                <div class="bfm-body">
+                    <div style="display:flex;gap:16px;align-items:baseline;margin-bottom:4px">
+                        <div>
+                            <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em">New Patient ID</div>
+                            <div style="font-size:22px;font-weight:800;color:#1f2937" id="sim-modal-patient-id">—</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:#6b7280;font-weight:600;text-transform:uppercase;letter-spacing:.06em">New Stay ID</div>
+                            <div style="font-size:22px;font-weight:800;color:#1f2937" id="sim-modal-stay-id">—</div>
+                        </div>
+                        <div style="font-size:11px;color:#9ca3af;align-self:center" id="sim-modal-source-id"></div>
+                    </div>
+
+                    <div style="display:flex;gap:12px;align-items:center;margin:10px 0 8px">
+                        <div>
+                            <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:2px">Acuity</div>
+                            <div style="font-size:18px;font-weight:700;color:#dc2626" id="sim-modal-acuity">—</div>
+                        </div>
+                        <div style="flex:1">
+                            <div style="font-size:11px;color:#6b7280;font-weight:600;margin-bottom:2px">Chief Complaint</div>
+                            <div style="font-size:13px;color:#1f2937;font-weight:500" id="sim-modal-complaint">—</div>
+                        </div>
+                    </div>
+
+                    <div id="sim-modal-null-warn" class="sim-null-acuity-warn" style="display:none">
+                        ⚠ Acuity is null in the dataset — the OR scheduler will treat this patient as
+                        acuity&nbsp;1 (most critical) and assign a critical-ward bed.
+                    </div>
+
+                    <div id="sim-modal-unurgent-warn" class="sim-unurgent-acuity-warn" style="display:none">
+                        🟢 Acuity 5 — Non-urgent. This patient will appear in the daily patients
+                        list and the OR scheduler will suggest routing them to
+                        <strong>Unurgent Care</strong>. No bed will be assigned.
+                    </div>
+
+                    <div class="sim-modal-vitals">
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">Temperature</span>
+                            <span class="sim-vital-value" id="sim-modal-temp">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">Heart Rate</span>
+                            <span class="sim-vital-value" id="sim-modal-hr">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">Resp. Rate</span>
+                            <span class="sim-vital-value" id="sim-modal-rr">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">O₂ Sat</span>
+                            <span class="sim-vital-value" id="sim-modal-o2">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">SBP</span>
+                            <span class="sim-vital-value" id="sim-modal-sbp">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">DBP</span>
+                            <span class="sim-vital-value" id="sim-modal-dbp">—</span>
+                        </div>
+                        <div class="sim-vital-row">
+                            <span class="sim-vital-label">Pain</span>
+                            <span class="sim-vital-value" id="sim-modal-pain">—</span>
+                        </div>
+                    </div>
+
+                    <p style="font-size:12px;color:#6b7280;margin-top:8px">
+                        Confirming will add this patient to Daily Patients with the current
+                        time as arrival time.  The OR scheduler will include them in the next run.
+                    </p>
+                </div>
+                <div style="padding:8px 20px;font-size:12px;color:#6b7280;background:#f9fafb;border-top:1px solid #f0f0f0;">
+                    🕐 <strong>Arrival time</strong> will be auto-recorded at the moment of confirmation.
+                </div>
+                <div class="bfm-footer">
+                    <button class="modal-btn cancel-btn" onclick="closeSimPatientModal()">Skip</button>
+                    <button class="modal-btn save-btn" id="sim-modal-confirm-btn"
+                            onclick="simConfirmPatient()">✓ Confirm &amp; Add</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- Simulation Section                                        -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <section id="simulation" class="section">
+            <div class="section-header">
+                <h2>🧪 Simulation</h2>
+                <p class="section-description">
+                    Test patient intake and OR bed/staff scheduling in a controlled environment
+                </p>
+            </div>
+
+            <!-- Live shift/group clock + audit trigger -->
+            <div class="sim-clock-bar" id="sim-clock-bar">
+                <div class="sim-clock-left">
+                    <span class="sim-clock-time" id="sim-clock-time">--:--</span>
+                    <span class="sim-clock-sep">·</span>
+                    <span class="sim-clock-shift" id="sim-clock-shift">—</span>
+                    <span class="sim-clock-sep">·</span>
+                    <span class="sim-clock-group" id="sim-clock-group">Group —</span>
+                </div>
+                <label class="sim-audit-strict-label">
+                    <input type="checkbox" id="sim-audit-strict-nurses"
+                           onchange="if(document.getElementById('sim-audit-panel').style.display!=='none') simRunStaffAudit()">
+                    <span>Strict nurses</span>
+                    <span class="sim-audit-strict-badge">1 RN + 1 PN</span>
+                </label>
+                <button class="sim-audit-btn" id="sim-audit-btn" onclick="simRunStaffAudit()">
+                    🔍 Audit Staff Assignments
+                </button>
+            </div>
+
+            <!-- Staff audit results panel (hidden until audit is run) -->
+            <div id="sim-audit-panel" class="sim-audit-panel" style="display:none">
+                <div class="sim-audit-panel-hdr">
+                    <span class="sim-audit-panel-title" id="sim-audit-panel-title">Staff Audit</span>
+                    <button class="sim-audit-close-btn"
+                            onclick="document.getElementById('sim-audit-panel').style.display='none'">✕</button>
+                </div>
+                <div id="sim-audit-body" class="sim-audit-body"></div>
+            </div>
+
+            <!-- Live change notifications from other sections -->
+            <div id="sim-notifications" class="sim-notifications"></div>
+
+            <div class="sim-layout" id="sim-layout">
+
+                <!-- ── Left: Patient Intake ───────────────────────── -->
+                <div class="sim-panel" id="sim-intake-panel" style="display:none">
+                    <div class="sim-panel-header">
+                        <h3>🏥 Patient Intake</h3>
+                        <button class="sim-next-btn" id="sim-next-btn" onclick="simSamplePatient()">
+                            Next Patient →
+                        </button>
+                    </div>
+                    <div class="sim-waiting-list" id="sim-waiting-list">
+                        <div class="sim-empty-state">Click "Next Patient" to draw a record from the dataset.</div>
+                    </div>
+                </div>
+
+                <!-- ── Right: OR Scheduler ────────────────────────── -->
+                <div class="sim-panel">
+                    <div class="sim-panel-header">
+                        <h3>⚙️ OR Scheduler</h3>
+                        <button class="sim-run-btn" id="sim-run-btn" onclick="simRunOR()">
+                            Run OR Scheduler
+                        </button>
+                    </div>
+                    <div class="sim-or-settings">
+                        <div class="sim-ors-group sim-ors-context">
+                            <span class="sim-ors-group-label">📅 Shift &amp; Group</span>
+                            <div class="sim-sg-field">
+                                <label class="sim-sg-label">Shift</label>
+                                <select id="sim-shift-select" class="sim-sg-select" onchange="simOnShiftGroupChange()">
+                                    <option value="">Auto-detect</option>
+                                </select>
+                            </div>
+                            <div class="sim-sg-field">
+                                <label class="sim-sg-label">Group</label>
+                                <select id="sim-group-select" class="sim-sg-select" onchange="simOnShiftGroupChange()">
+                                    <option value="">Auto-detect</option>
+                                </select>
+                            </div>
+                            <span class="sim-sg-hint" id="sim-sg-hint"></span>
+                        </div>
+                        <div class="sim-ors-sep"></div>
+                        <div class="sim-ors-group sim-ors-nurses">
+                            <span class="sim-ors-group-label">👩‍⚕️ Nurses</span>
+                            <label class="sim-strict-label">
+                                <input type="checkbox" id="sim-strict-nurses"
+                                       onchange="simStrictNurses = this.checked">
+                                Strict mode (1 RN + 1 PN)
+                            </label>
+                        </div>
+                        <div id="sim-restore-container" class="sim-ors-restore"></div>
+                    </div>
+                    <div class="sim-or-body" id="sim-or-body">
+                        <div class="sim-empty-state">
+                            Run the OR scheduler to see assignment suggestions.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <!--   UNURGENT CARE SECTION                                          -->
+        <!-- ══════════════════════════════════════════════════════════════════ -->
+        <section id="unurgent" class="section">
+            <div class="section-header">
+                <h2>🟢 Unurgent Care</h2>
+                <p class="section-subtitle">
+                    Patients with acuity 5 routed to the non-urgent treatment path. No bed required.
+                </p>
+            </div>
+
+            <div class="uu-toolbar">
+                <input type="text" id="unurgent-search" class="uu-search"
+                       placeholder="Search by ID, name or complaint…"
+                       oninput="filterUnurgentPatients()">
+                <button class="uu-refresh-btn" onclick="loadUnurgentSection()">
+                    🔄 Refresh
+                </button>
+                <span class="uu-count" id="unurgent-count"></span>
+            </div>
+
+            <div id="unurgent-spinner" class="uu-spinner" style="display:none">
+                <div class="spinner"></div> Loading…
+            </div>
+
+            <div id="unurgent-list" class="uu-list">
+                <div class="uu-empty">Loading patients…</div>
+            </div>
+        </section>
+
+        <!-- Unurgent Discharge Modal -->
+        <div id="uu-discharge-modal" class="modal" style="display:none">
+            <div class="uu-dm-card">
+                <div class="uu-dm-header">
+                    <div class="uu-dm-header-left">
+                        <div class="uu-dm-header-icon">🏠</div>
+                        <div>
+                            <div class="uu-dm-title">Discharge from Unurgent Care</div>
+                            <div class="uu-dm-subtitle" id="uu-dm-patient-info">Patient #—</div>
+                        </div>
+                    </div>
+                    <button class="uu-dm-close-btn" onclick="closeUnurgentDischargeModal()">✕</button>
+                </div>
+                <div class="uu-dm-body">
+                    <div class="uu-dm-chips" id="uu-dm-details"></div>
+                    <div class="uu-dm-notice">
+                        <span class="uu-dm-notice-icon">📋</span>
+                        <span>The stay will be archived to the patient log and all staff assignments released.</span>
+                    </div>
+                    <div class="uu-dm-field">
+                        <label class="uu-dm-label">🕐 Departure Time</label>
+                        <input type="datetime-local" id="uu-discharge-time" class="uu-dm-time-input">
+                    </div>
+                </div>
+                <div class="uu-dm-footer">
+                    <button class="uu-dm-cancel" onclick="closeUnurgentDischargeModal()">Cancel</button>
+                    <button class="uu-dm-confirm" id="uu-discharge-confirm-btn"
+                            onclick="confirmUnurgentDischarge()">
+                        🏠 Confirm Discharge
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <section id="settings" class="section">
+            <div class="section-header">
+                <h2>⚙️ Settings</h2>
+                <p class="section-description">Manage application configuration and data</p>
+            </div>
+            <div class="settings-danger-banner" id="settings-danger-banner">
+                <div class="sdb-left">
+                    <div class="sdb-badge">CAUTION</div>
+                    <div class="sdb-icon">⚠️</div>
+                    <div class="sdb-title">Restricted<br>Area</div>
+                </div>
+                <div class="sdb-divider"></div>
+                <div class="sdb-body">
+                    <div class="sdb-headline">Handle with care — you are editing live system data</div>
+                    <p class="sdb-lead">Only make changes here when strictly necessary. This section bypasses normal workflow validation and writes directly to the underlying records.</p>
+                    <ul class="sdb-list">
+                        <li>Arbitrary edits to patients, staff, or relations can silently corrupt data consistency</li>
+                        <li>Changes take effect immediately and cannot be automatically undone</li>
+                        <li>Prefer the main workflow sections (Patients, Scheduling, Beds) for routine operations</li>
+                    </ul>
+                </div>
+                <button class="sdb-dismiss" onclick="document.getElementById('settings-danger-banner').style.display='none'" title="Dismiss">✕</button>
+            </div>
+            <div class="settings-tab-bar">
+                <!-- Group: Resources -->
+                <div class="stab-group open" id="stabg-resources">
+                    <button class="stab-group-btn has-active" onclick="toggleStabGroup('stabg-resources')">
+                        🏥<span class="stab-label"> Resources</span><span class="stab-caret">▾</span>
+                    </button>
+                    <div class="stab-group-items">
+                        <button class="settings-tab active" data-tab="beds" onclick="showSettingsTab('beds')">🛏️<span class="stab-label"> Beds</span></button>
+                        <button class="settings-tab" data-tab="doctors" onclick="showSettingsTab('doctors')">👨‍⚕️<span class="stab-label"> Doctors</span></button>
+                        <button class="settings-tab" data-tab="nurses" onclick="showSettingsTab('nurses')">👩‍⚕️<span class="stab-label"> Nurses</span></button>
+                        <button class="settings-tab" data-tab="wards" onclick="showSettingsTab('wards')">🏢<span class="stab-label"> Wards</span></button>
+                    </div>
+                </div>
+                <div class="stab-sep"></div>
+                <!-- Group: Patients -->
+                <div class="stab-group" id="stabg-patients">
+                    <button class="stab-group-btn" onclick="toggleStabGroup('stabg-patients')">
+                        👥<span class="stab-label"> Patients</span><span class="stab-caret">▾</span>
+                    </button>
+                    <div class="stab-group-items">
+                        <button class="settings-tab" data-tab="daily-patients" onclick="showSettingsTab('daily-patients')">📅<span class="stab-label"> Daily</span></button>
+                        <button class="settings-tab" data-tab="log-patients" onclick="showSettingsTab('log-patients')">📁<span class="stab-label"> Log</span></button>
+                    </div>
+                </div>
+                <div class="stab-sep"></div>
+                <!-- Group: Scheduling -->
+                <div class="stab-group" id="stabg-sched">
+                    <button class="stab-group-btn" onclick="toggleStabGroup('stabg-sched')">
+                        ⏱️<span class="stab-label"> Scheduling</span><span class="stab-caret">▾</span>
+                    </button>
+                    <div class="stab-group-items">
+                        <button class="settings-tab" data-tab="shifts" onclick="showSettingsTab('shifts')">⏱️<span class="stab-label"> Shifts</span></button>
+                        <button class="settings-tab" data-tab="groups" onclick="showSettingsTab('groups')">👥<span class="stab-label"> Groups</span></button>
+                    </div>
+                </div>
+                <div class="stab-sep"></div>
+                <!-- Group: Data -->
+                <div class="stab-group" id="stabg-data">
+                    <button class="stab-group-btn" onclick="toggleStabGroup('stabg-data')">
+                        📁<span class="stab-label"> Data</span><span class="stab-caret">▾</span>
+                    </button>
+                    <div class="stab-group-items">
+                        <button class="settings-tab" data-tab="datasets" onclick="showSettingsTab('datasets')">📊<span class="stab-label"> Datasets</span></button>
+                        <button class="settings-tab" data-tab="relations" onclick="showSettingsTab('relations')">🔗<span class="stab-label"> Relations</span></button>
+                    </div>
+                </div>
+                <div class="stab-sep"></div>
+                <!-- Group: System -->
+                <div class="stab-group" id="stabg-system">
+                    <button class="stab-group-btn" onclick="toggleStabGroup('stabg-system')">
+                        ⚙️<span class="stab-label"> System</span><span class="stab-caret">▾</span>
+                    </button>
+                    <div class="stab-group-items">
+                        <button class="settings-tab" data-tab="models" onclick="showSettingsTab('models')">🤖<span class="stab-label"> Models</span></button>
+                        <button class="settings-tab" data-tab="features" onclick="showSettingsTab('features')">🎛️<span class="stab-label"> Features</span></button>
+                    </div>
+                </div>
+                <div class="stab-sep"></div>
+                <!-- Standalone: Accounts (admin only) -->
+                <button class="settings-tab" data-tab="accounts" onclick="showSettingsTab('accounts')" style="display:none">👤<span class="stab-label"> Accounts</span></button>
+                <!-- Standalone: Reset -->
+                <button class="settings-tab" data-tab="reset" onclick="showSettingsTab('reset')">⚠️<span class="stab-label"> Reset</span></button>
+            </div>
+            <div class="settings-wrap">
+                <div class="settings-card" data-settings-tab="beds">
+                    <!-- Card Header -->
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🛏️ Bed Management</h3>
+                            <p>Add, edit, or remove hospital beds from the dataset</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadSettingsBeds()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddBedModal()">➕ Add New Bed</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="s-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">🛏️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="s-stat-total">–</span>
+                                <span class="s-stat-lbl">Total Beds</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-avail">
+                            <span class="s-stat-icon">🟢</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-avail" id="s-stat-avail">–</span>
+                                <span class="s-stat-lbl">Available</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-occ">
+                            <span class="s-stat-icon">🔴</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-occ" id="s-stat-occ">–</span>
+                                <span class="s-stat-lbl">Occupied</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-ward">
+                            <span class="s-stat-icon">🏥</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="s-stat-wards">–</span>
+                                <span class="s-stat-lbl">Wards</span>
+                            </div>
+                        </div>
+                        <div class="s-occ-card">
+                            <div class="s-occ-card-header">
+                                <span class="s-occ-label">Occupancy Rate</span>
+                                <span class="s-occ-pct" id="s-occ-pct">0%</span>
+                            </div>
+                            <div class="s-occ-bar-track">
+                                <div class="s-occ-bar-fill" id="s-occ-bar-fill" style="width:0%"></div>
+                            </div>
+                            <div class="s-occ-bar-legend">
+                                <span class="s-leg-avail">Available</span>
+                                <span class="s-leg-occ">Occupied</span>
+                            </div>
+                        </div>
+                    </div>                    <!-- Filter Bar -->
+                    <div id="s-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="s-search" type="text" placeholder="Search bed number…" oninput="filterBeds()">
+                        </div>
+                        <select class="s-filter-select" id="s-filter-ward" onchange="filterBeds()">
+                            <option value="">All Wards</option>
+                        </select>
+                        <select class="s-filter-select" id="s-filter-status" onchange="filterBeds()">
+                            <option value="">All Statuses</option>
+                            <option value="Available">🟢 Available</option>
+                            <option value="Occupied">🔴 Occupied</option>
+                        </select>
+                        <select class="s-filter-select" id="s-filter-type" onchange="filterBeds()">
+                            <option value="">All Types</option>
+                            <option value="normal">Normal</option>
+                            <option value="monitor">Monitor</option>
+                            <option value="ICU">ICU</option>
+                            <option value="chariot">🛒 Chariot</option>
+                        </select>
+                        <span class="s-result-count" id="s-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-beds-container">
+                        <div class="loading"><div class="spinner"></div>Loading beds...</div>
+                    </div>
+                </div>
+
+                <!-- ── Doctors Card ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="doctors" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>👨‍⚕️ Doctors Management</h3>
+                            <p>Add, edit, or remove doctors and interns from the dataset</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadDoctorsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddDoctorModal()">➕ Add Doctor</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="d-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">👨‍⚕️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="d-stat-total">–</span>
+                                <span class="s-stat-lbl">Total</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-doctor">
+                            <span class="s-stat-icon">🩺</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="d-stat-doctors">–</span>
+                                <span class="s-stat-lbl">Doctors</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-intern">
+                            <span class="s-stat-icon">🎓</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#c2410c" id="d-stat-interns">–</span>
+                                <span class="s-stat-lbl">Interns</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-morning">
+                            <span class="s-stat-icon">☀️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#92400e" id="d-stat-morning">–</span>
+                                <span class="s-stat-lbl">Morning</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-night">
+                            <span class="s-stat-icon">🌙</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#3730a3" id="d-stat-night">–</span>
+                                <span class="s-stat-lbl">Night</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-g1">
+                            <span class="s-stat-icon">1️⃣</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-avail" id="d-stat-g1">–</span>
+                                <span class="s-stat-lbl">Group 1</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-g2">
+                            <span class="s-stat-icon">2️⃣</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#7e22ce" id="d-stat-g2">–</span>
+                                <span class="s-stat-lbl">Group 2</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="d-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="d-search" type="text" placeholder="Search by name or ID…" oninput="filterDoctors()">
+                        </div>
+                        <select class="s-filter-select" id="d-filter-type" onchange="filterDoctors()">
+                            <option value="">All Types</option>
+                            <option value="doctor">Doctor</option>
+                            <option value="intern">Intern</option>
+                        </select>
+                        <select class="s-filter-select" id="d-filter-shift" onchange="filterDoctors()">
+                            <option value="">All Shifts</option>
+                        </select>
+                        <select class="s-filter-select" id="d-filter-group" onchange="filterDoctors()">
+                            <option value="">All Groups</option>
+                        </select>
+                        <select class="s-filter-select" id="d-filter-absent" onchange="filterDoctors()">
+                            <option value="">All Staff</option>
+                            <option value="present">Present only</option>
+                            <option value="absent">Absent only</option>
+                        </select>
+                        <span class="s-result-count" id="d-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-doctors-container">
+                        <div class="loading"><div class="spinner"></div>Loading doctors...</div>
+                    </div>
+                </div>
+
+                <!-- ── Nurses Card ───────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="nurses" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>👩‍⚕️ Nurses Management</h3>
+                            <p>Add, edit, or remove nurses from the dataset</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadNursesSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddNurseModal()">➕ Add Nurse</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="n-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">👩‍⚕️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="n-stat-total">–</span>
+                                <span class="s-stat-lbl">Total</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-pn">
+                            <span class="s-stat-icon">🏥</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#0d9488" id="n-stat-pn">–</span>
+                                <span class="s-stat-lbl">PN</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-rn">
+                            <span class="s-stat-icon">💊</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="n-stat-rn">–</span>
+                                <span class="s-stat-lbl">RN</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-ba">
+                            <span class="s-stat-icon">🛏️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#7e22ce" id="n-stat-ba">–</span>
+                                <span class="s-stat-lbl">Bed Admission</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-morning">
+                            <span class="s-stat-icon">☀️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#92400e" id="n-stat-morning">–</span>
+                                <span class="s-stat-lbl">Morning</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-night">
+                            <span class="s-stat-icon">🌙</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#3730a3" id="n-stat-night">–</span>
+                                <span class="s-stat-lbl">Night</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-g1">
+                            <span class="s-stat-icon">1️⃣</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-avail" id="n-stat-g1">–</span>
+                                <span class="s-stat-lbl">Group 1</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-g2">
+                            <span class="s-stat-icon">2️⃣</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" style="color:#7e22ce" id="n-stat-g2">–</span>
+                                <span class="s-stat-lbl">Group 2</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="n-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="n-search" type="text" placeholder="Search by name or ID…" oninput="filterNurses()">
+                        </div>
+                        <select class="s-filter-select" id="n-filter-role" onchange="filterNurses()">
+                            <option value="">All Roles</option>
+                            <option value="PN">PN</option>
+                            <option value="RN">RN</option>
+                            <option value="Bed_Admission">Bed Admission</option>
+                        </select>
+                        <select class="s-filter-select" id="n-filter-shift" onchange="filterNurses()">
+                            <option value="">All Shifts</option>
+                        </select>
+                        <select class="s-filter-select" id="n-filter-group" onchange="filterNurses()">
+                            <option value="">All Groups</option>
+                        </select>
+                        <select class="s-filter-select" id="n-filter-absent" onchange="filterNurses()">
+                            <option value="">All Staff</option>
+                            <option value="present">Present only</option>
+                            <option value="absent">Absent only</option>
+                        </select>
+                        <span class="s-result-count" id="n-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-nurses-container">
+                        <div class="loading"><div class="spinner"></div>Loading nurses...</div>
+                    </div>
+                </div>
+
+                <!-- ── Wards Card ────────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="wards" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🏢 Wards Management</h3>
+                            <p>Add, edit, or remove wards from the dataset</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadWardsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddWardModal()">➕ Add Ward</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="w-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">🏢</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="w-stat-total">–</span>
+                                <span class="s-stat-lbl">Total Wards</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-avail">
+                            <span class="s-stat-icon">🛏️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="w-stat-beds">–</span>
+                                <span class="s-stat-lbl">Assigned Beds</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-ward">
+                            <span class="s-stat-icon">🏥</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="w-stat-depts">–</span>
+                                <span class="s-stat-lbl">Departments</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="w-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="w-search" type="text" placeholder="Search by name…" oninput="filterWards()">
+                        </div>
+                        <span class="s-result-count" id="w-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-wards-container">
+                        <div class="loading"><div class="spinner"></div>Loading wards...</div>
+                    </div>
+                </div>
+
+                <!-- ── Daily Patients Card ───────────────────────────── -->
+                <div class="settings-card" data-settings-tab="daily-patients" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>📅 Daily Patients Management</h3>
+                            <p>Add, edit, or remove daily patient stays from the dataset</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadDailyPatientsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddDpModal()">➕ Add Stay</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="dp-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">📅</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="dp-stat-total">–</span>
+                                <span class="s-stat-lbl">Total Stays</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-avail">
+                            <span class="s-stat-icon">🧑‍⚕️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="dp-stat-subjects">–</span>
+                                <span class="s-stat-lbl">Unique Subjects</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="dp-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="dp-search" type="text" placeholder="Search by subject/stay ID or complaint…" oninput="filterDailyPatients()">
+                        </div>
+                        <span class="s-result-count" id="dp-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-dp-container">
+                        <div class="loading"><div class="spinner"></div>Loading daily patients...</div>
+                    </div>
+                </div>
+
+                <!-- ── Log Patients Card ───────────────────────────── -->
+                <div class="settings-card" data-settings-tab="log-patients" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>📁 Log Patients</h3>
+                            <p>Archive of all discharged patients</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadLogPatientsSettings()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <!-- Stats Bar -->
+                    <div id="lp-stats-bar" class="s-stats-bar" style="display:none">
+                        <div class="s-stat-card">
+                            <span class="s-stat-icon">📁</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val" id="lp-stat-total">–</span>
+                                <span class="s-stat-lbl">Total Discharged</span>
+                            </div>
+                        </div>
+                        <div class="s-stat-card s-stat-card-avail">
+                            <span class="s-stat-icon">🧑‍⚕️</span>
+                            <div class="s-stat-content">
+                                <span class="s-stat-val s-val-blue" id="lp-stat-subjects">–</span>
+                                <span class="s-stat-lbl">Unique Subjects</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Filter Bar -->
+                    <div id="lp-filter-bar" class="s-filter-bar" style="display:none">
+                        <div class="s-search-box">
+                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                            <input class="s-search-input" id="lp-search" type="text" placeholder="Search by subject/stay ID or complaint…" oninput="filterLogPatients()">
+                        </div>
+                        <span class="s-result-count" id="lp-visible-count"></span>
+                    </div>
+                    <!-- Table -->
+                    <div id="settings-lp-container">
+                        <div class="loading"><div class="spinner"></div>Loading log patients...</div>
+                    </div>
+                </div>
+
+                <!-- ── Relations Card ──────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="relations" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🔗 Relations Management</h3>
+                            <p>Manage junction tables between patients, staff, beds and wards</p>
+                        </div>
+                    </div>
+                    <!-- Sub-table tabs -->
+                    <div class="s-filter-bar" style="padding:12px 20px 0; flex-wrap:wrap; gap:6px; border-bottom:1px solid #eef0f5;">
+                        <button class="rel-tab-btn active" data-table="ward_doctor" onclick="switchRelTable('ward_doctor')">🏥 Ward ↔ Doctor</button>
+                        <button class="rel-tab-btn" data-table="ward_nurse" onclick="switchRelTable('ward_nurse')">🏥 Ward ↔ Nurse</button>
+                        <button class="rel-tab-btn" data-table="ward_bed" onclick="switchRelTable('ward_bed')">🏥 Ward ↔ Bed</button>
+                        <button class="rel-tab-btn" data-table="patient_doctor" onclick="switchRelTable('patient_doctor')">🧑‍⚕️ Patient ↔ Doctor</button>
+                        <button class="rel-tab-btn" data-table="patient_nurse" onclick="switchRelTable('patient_nurse')">🧑‍⚕️ Patient ↔ Nurse</button>
+                        <button class="rel-tab-btn" data-table="patient_bed" onclick="switchRelTable('patient_bed')">🧑‍⚕️ Patient ↔ Bed</button>
+                    </div>
+                    <!-- Add form -->
+                    <div style="padding:16px 20px; border-bottom:1px solid #eef0f5; background:#fafbff;">
+                        <div id="rel-add-error" class="form-error-box" style="display:none;margin-bottom:10px;"></div>
+                        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                            <div>
+                                <label class="form-label" id="rel-col-a-label" style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px;">ID A</label>
+                                <input class="form-input" type="number" id="rel-col-a-input" placeholder="ID" style="width:130px;">
+                            </div>
+                            <div>
+                                <label class="form-label" id="rel-col-b-label" style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.6px;display:block;margin-bottom:4px;">ID B</label>
+                                <input class="form-input" type="number" id="rel-col-b-input" placeholder="ID" style="width:130px;">
+                            </div>
+                            <button class="s-btn s-btn-primary" onclick="addRelation()">➕ Add Relation</button>
+                        </div>
+                    </div>
+                    <!-- Table -->
+                    <div id="relations-table-container" style="padding:0;">
+                        <div class="loading"><div class="spinner"></div>Loading...</div>
+                    </div>
+                </div>
+
+                <!-- ── Datasets Card ────────────────────────────────── -->
+                <!-- ── Shifts Card ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="shifts" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>⏱️ Shift Configuration</h3>
+                            <p>Define work shifts with names and hour ranges. Staff are matched to the active shift when the OR tool runs.</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadShiftsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddShiftModal()">➕ Add Shift</button>
+                        </div>
+                    </div>
+                    <div id="settings-shifts-container">
+                        <div class="loading"><div class="spinner"></div>Loading shifts...</div>
+                    </div>
+                </div>
+
+                <!-- ── Groups Card ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="groups" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>👥 Group Configuration</h3>
+                            <p>Define rotation groups and which days of the week each group is on duty. Group 1 = Mon–Thu, Group 2 = Fri–Sun by default.</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadGroupsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="openAddGroupModal()">➕ Add Group</button>
+                        </div>
+                    </div>
+                    <div id="settings-groups-container">
+                        <div class="loading"><div class="spinner"></div>Loading groups...</div>
+                    </div>
+                </div>
+
+                <!-- Shift Add/Edit Modal -->
+                <div id="shift-form-modal" class="modal">
+                    <div class="modal-content bfm-content" style="max-width:440px">
+                        <div class="bfm-header">
+                            <div class="bfm-header-left">
+                                <span class="bfm-header-icon">⏱️</span>
+                                <h2 id="shift-form-title">Add Shift</h2>
+                            </div>
+                            <button class="bfm-close" onclick="closeShiftFormModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <div id="shift-form-error" class="form-error-box"></div>
+                            <div class="form-group" id="shift-id-row" style="display:none">
+                                <label class="form-label">Shift ID <span class="form-hint">(must be unique)</span></label>
+                                <input class="form-input" type="number" id="form-shift-id" min="1" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Shift Name</label>
+                                <input class="form-input" type="text" id="form-shift-name" placeholder="e.g. morning">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Start Hour <span class="form-hint">(0–23)</span></label>
+                                <input class="form-input" type="number" id="form-shift-start" min="0" max="23" placeholder="e.g. 7">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">End Hour <span class="form-hint">(0–23, can be less than start for overnight)</span></label>
+                                <input class="form-input" type="number" id="form-shift-end" min="0" max="23" placeholder="e.g. 15">
+                            </div>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeShiftFormModal()">Cancel</button>
+                            <button class="modal-btn save-btn" id="save-shift-btn" onclick="saveShiftForm()">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Add/Edit Modal -->
+                <div id="group-form-modal" class="modal">
+                    <div class="modal-content bfm-content" style="max-width:460px">
+                        <div class="bfm-header">
+                            <div class="bfm-header-left">
+                                <span class="bfm-header-icon">👥</span>
+                                <h2 id="group-form-title">Add Group</h2>
+                            </div>
+                            <button class="bfm-close" onclick="closeGroupFormModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <div id="group-form-error" class="form-error-box"></div>
+                            <div class="form-group" id="group-id-row" style="display:none">
+                                <label class="form-label">Group ID <span class="form-hint">(must be unique — updates all linked staff)</span></label>
+                                <input class="form-input" type="number" id="form-group-id" min="1" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Group Name</label>
+                                <input class="form-input" type="text" id="form-group-name" placeholder="e.g. Group 1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Days on Duty</label>
+                                <div class="day-picker" id="group-day-picker">
+                                    <label class="day-btn-wrap"><input type="checkbox" value="0"><span>Mon</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="1"><span>Tue</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="2"><span>Wed</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="3"><span>Thu</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="4"><span>Fri</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="5"><span>Sat</span></label>
+                                    <label class="day-btn-wrap"><input type="checkbox" value="6"><span>Sun</span></label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeGroupFormModal()">Cancel</button>
+                            <button class="modal-btn save-btn" id="save-group-btn" onclick="saveGroupForm()">Save</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shift Delete Confirmation Modal -->
+                <div id="shift-delete-modal" class="modal">
+                    <div class="modal-content bdm-content">
+                        <div class="bdm-header">
+                            <div class="bdm-trash-icon">&#x1F5D1;</div>
+                            <button class="bfm-close bdm-x" onclick="closeShiftDeleteModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <h3 class="bdm-title">Delete Shift?</h3>
+                            <p class="bdm-msg">You are about to permanently delete <strong id="delete-shift-label"></strong>.</p>
+                            <p class="bdm-warn">Staff assigned to this shift will need to be reassigned. This action cannot be undone.</p>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeShiftDeleteModal()">Cancel</button>
+                            <button class="modal-btn delete-confirm-btn" onclick="doDeleteShift()">Delete Shift</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Delete Confirmation Modal -->
+                <div id="group-delete-modal" class="modal">
+                    <div class="modal-content bdm-content">
+                        <div class="bdm-header">
+                            <div class="bdm-trash-icon">&#x1F5D1;</div>
+                            <button class="bfm-close bdm-x" onclick="closeGroupDeleteModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <h3 class="bdm-title">Delete Group?</h3>
+                            <p class="bdm-msg">You are about to permanently delete <strong id="delete-group-label"></strong>.</p>
+                            <p class="bdm-warn">Staff assigned to this group will need to be reassigned. This action cannot be undone.</p>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeGroupDeleteModal()">Cancel</button>
+                            <button class="modal-btn delete-confirm-btn" onclick="doDeleteGroup()">Delete Group</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card settings-card-overflow" data-settings-tab="datasets" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>📊 Dataset Displayment</h3>
+                            <p>View and explore all healthcare datasets</p>
+                        </div>
+                    </div>
+                    <div class="settings-datasets-body">
+                        <div class="datasets-grid" id="datasets-grid">
+                            <!-- Dataset cards dynamically generated by app.js -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Models Card ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="models" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🤖 Model Files</h3>
+                            <p>AI/ML model files stored in the system</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadModelFiles()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <div class="settings-models-body">
+                        <div class="models-container" id="models-container">
+                            <div class="loading"><div class="spinner"></div>Loading model files...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Features Card ─────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="features" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🎛️ Feature Visibility</h3>
+                            <p>Show or hide individual sections and panels across the application</p>
+                        </div>
+                    </div>
+                    <div class="feat-list">
+
+                        <div class="feat-row">
+                            <div class="feat-row-icon">📈</div>
+                            <div class="feat-row-body">
+                                <span class="feat-row-name">Flow Prediction</span>
+                                <span class="feat-row-desc">Show the Flow Prediction section in the navigation bar</span>
+                            </div>
+                            <label class="feat-toggle-label">
+                                <input type="checkbox" id="feat-toggle-flow"
+                                       onchange="setFeature('flow', this.checked)">
+                                <span class="feat-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="feat-row">
+                            <div class="feat-row-icon">🏥</div>
+                            <div class="feat-row-body">
+                                <span class="feat-row-name">Patient Intake</span>
+                                <span class="feat-row-desc">Show the Patient Intake panel inside Simulation (testing tool)</span>
+                            </div>
+                            <label class="feat-toggle-label">
+                                <input type="checkbox" id="feat-toggle-intake"
+                                       onchange="setFeature('intake', this.checked)">
+                                <span class="feat-slider"></span>
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- ── Accounts Card ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="accounts" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>👤 Account Management</h3>
+                            <p>Create and manage user accounts and section access permissions</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadAccountsSettings()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" onclick="accOpenAddModal()">➕ Add User</button>
+                        </div>
+                    </div>
+                    <div id="acc-list-container">
+                        <div class="acc-empty">Loading…</div>
+                    </div>
+                </div>
+
+                <!-- ── Reset Section ──────────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="reset" style="display:none">
+                    <div class="rst-warning-banner">
+                        ⚠️ <strong>Warning:</strong> All reset actions are <strong>permanent and irreversible</strong>. Cleared data cannot be recovered. Use with caution.
+                    </div>
+
+                    <div class="rst-grid">
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">🧑‍⚕️</span>
+                                <h4>Patients</h4>
+                            </div>
+                            <ul>
+                                <li>Daily Patients</li>
+                                <li>Log Patients</li>
+                                <li>Patient ↔ Bed, Doctor, Nurse relations</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('patients','Patients','Daily Patients, Log Patients, patient relations')">Reset Patients</button>
+                        </div>
+
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">🛏️</span>
+                                <h4>Beds</h4>
+                            </div>
+                            <ul>
+                                <li>ED Beds</li>
+                                <li>Patient ↔ Bed relations</li>
+                                <li>Ward ↔ Bed relations</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('beds','Beds','ED Beds, bed relations')">Reset Beds</button>
+                        </div>
+
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">👨‍⚕️</span>
+                                <h4>Doctors</h4>
+                            </div>
+                            <ul>
+                                <li>Doctor records</li>
+                                <li>Patient ↔ Doctor relations</li>
+                                <li>Ward ↔ Doctor relations</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('doctors','Doctors','Doctor records, doctor relations')">Reset Doctors</button>
+                        </div>
+
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">👩‍⚕️</span>
+                                <h4>Nurses</h4>
+                            </div>
+                            <ul>
+                                <li>Nurse records</li>
+                                <li>Patient ↔ Nurse relations</li>
+                                <li>Ward ↔ Nurse relations</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('nurses','Nurses','Nurse records, nurse relations')">Reset Nurses</button>
+                        </div>
+
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">🏢</span>
+                                <h4>Wards</h4>
+                            </div>
+                            <ul>
+                                <li>Ward records</li>
+                                <li>Ward ↔ Bed, Doctor, Nurse relations</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('wards','Wards','Ward records, ward relations')">Reset Wards</button>
+                        </div>
+
+                        <div class="rst-card">
+                            <div class="rst-card-header">
+                                <span class="rst-card-icon">🔗</span>
+                                <h4>Relations Only</h4>
+                            </div>
+                            <ul>
+                                <li>All patient, bed, doctor, nurse, ward relations</li>
+                                <li>Core records are kept</li>
+                            </ul>
+                            <button class="rst-btn" onclick="confirmReset('relations','Relations','All relation tables (records kept)')">Reset Relations</button>
+                        </div>
+                    </div>
+
+                    <!-- Nuclear option -->
+                    <div class="rst-nuclear">
+                        <div class="rst-nuclear-header">
+                            <span class="rst-nuc-icon">☢️</span>
+                            <div>
+                                <h4>Reset Everything</h4>
+                                <p>Wipes all patients, beds, doctors, nurses, wards, and every relation table. The system returns to a blank state.</p>
+                            </div>
+                        </div>
+                        <div class="rst-nuclear-body">
+                            <label>Type <code>RESET</code> to confirm:</label>
+                            <input id="rst-all-input" class="rst-nuclear-input" type="text" placeholder="RESET" oninput="checkResetAll()" autocomplete="off">
+                            <button id="rst-all-btn" class="rst-btn rst-btn-nuclear" disabled onclick="doResetAll()">Reset Everything</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ── Statistics & Evaluation ─────────────────────────────────── -->
+        <section id="statistics" class="section">
+            <div class="section-header">
+                <div>
+                    <h2>📊 Statistics &amp; Evaluation</h2>
+                    <p class="section-description">Patient experience metrics and urgency department performance</p>
+                </div>
+                <button class="stats-refresh-btn" onclick="loadStatistics()">↻ Refresh</button>
+            </div>
+
+            <!-- Data Quality Banner (hidden when quality is good) -->
+            <div class="stats-quality-banner" id="stats-quality-banner" style="display:none"></div>
+
+            <!-- Main tab bar -->
+            <div class="stats-main-tabbar">
+                <button class="stats-main-tab active" data-stats-tab="patients" onclick="switchStatsTab('patients', this)">🏥 Patients</button>
+                <button class="stats-main-tab" data-stats-tab="nurses" onclick="switchStatsTab('nurses', this)">👩‍⚕️ Nurses</button>
+                <button class="stats-main-tab" data-stats-tab="doctors" onclick="switchStatsTab('doctors', this)">🩺 Doctors</button>
+            </div>
+
+            <!-- ── Patients pane ───────────────────────────────────────── -->
+            <div class="stats-main-tab-pane active" id="stats-tab-patients">
+
+                <!-- KPI Cards -->
+                <div class="stats-kpi-grid" id="stats-kpi-grid">
+                    <div class="loading"><div class="spinner"></div> Loading metrics...</div>
+                </div>
+
+                <!-- Charts row 1: Wait Time + Length of Stay -->
+                <div class="stats-charts-row">
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Wait Time to Bed Distribution</div>
+                        <div class="stats-chart-meta" id="wait-chart-meta"></div>
+                        <canvas id="waitTimeChart" class="stats-chart-canvas"></canvas>
+                    </div>
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Length of Stay Distribution</div>
+                        <div class="stats-chart-meta" id="los-chart-meta"></div>
+                        <canvas id="losChart" class="stats-chart-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Charts row 2: Acuity + Throughput -->
+                <div class="stats-charts-row">
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Patient Acuity Breakdown (ESI Scale)</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+                            <div style="position:relative;height:220px;">
+                                <canvas id="acuityChart"></canvas>
+                            </div>
+                            <div id="acuity-breakdown-table"></div>
+                        </div>
+                    </div>
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Patient Arrivals by Hour of Day</div>
+                        <div class="stats-chart-meta" id="throughput-meta"></div>
+                        <canvas id="throughputChart" class="stats-chart-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Bottom row: Complaints + Vitals -->
+                <div class="stats-bottom-row">
+                    <div class="stats-chart-card" id="stats-complaints">
+                        <div class="loading"><div class="spinner"></div> Loading complaints...</div>
+                    </div>
+                    <div class="stats-chart-card" id="stats-vitals">
+                        <div class="loading"><div class="spinner"></div> Loading vitals...</div>
+                    </div>
+                </div>
+
+
+            </div>
+
+            <!-- ── Nurses pane ─────────────────────────────────────────── -->
+            <div class="stats-main-tab-pane" id="stats-tab-nurses">
+                <div class="stats-staff-kpi-row" id="stats-nurse-kpis">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+                <div class="stats-charts-row">
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Role Distribution</div>
+                        <div style="position:relative;height:220px;">
+                            <canvas id="nurseRoleChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Patient Load Distribution</div>
+                        <div id="nurse-load-block"></div>
+                    </div>
+                </div>
+                <div class="stats-chart-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title">Shift Distribution</div>
+                    <div id="nurse-shift-dist"></div>
+                </div>
+
+                <!-- Nurse individual lookup -->
+                <div class="stats-chart-card staff-lookup-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title">Individual Nurse Details</div>
+                    <div class="staff-lookup-bar">
+                        <select class="staff-select" id="nurse-staff-select">
+                            <option value="">— select a nurse —</option>
+                        </select>
+                    </div>
+                    <div id="nurse-staff-profile"></div>
+                </div>
+            </div>
+
+            <!-- ── Doctors pane ────────────────────────────────────────── -->
+            <div class="stats-main-tab-pane" id="stats-tab-doctors">
+                <div class="stats-staff-kpi-row" id="stats-doctor-kpis">
+                    <div class="loading"><div class="spinner"></div> Loading...</div>
+                </div>
+                <div class="stats-charts-row">
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Type Distribution</div>
+                        <div style="position:relative;height:220px;">
+                            <canvas id="doctorTypeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="stats-chart-card">
+                        <div class="stats-chart-title">Patient Load Distribution</div>
+                        <div id="doctor-load-block"></div>
+                    </div>
+                </div>
+                <div class="stats-chart-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title">Shift Distribution</div>
+                    <div id="doctor-shift-dist"></div>
+                </div>
+
+                <!-- Doctor individual lookup -->
+                <div class="stats-chart-card staff-lookup-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title">Individual Doctor Details</div>
+                    <div class="staff-lookup-bar">
+                        <select class="staff-select" id="doctor-staff-select">
+                            <option value="">— select a doctor —</option>
+                        </select>
+                    </div>
+                    <div id="doctor-staff-profile"></div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Reset confirmation modal -->
+    <div id="rst-modal" class="modal" onclick="if(event.target===this)closeRstModal()">
+        <div class="modal-content">
+            <h3 class="rst-modal-title" id="rst-modal-title">Reset Confirmation</h3>
+            <p class="rst-modal-intro">The following data will be <strong>permanently deleted</strong>:</p>
+            <ul id="rst-modal-list"></ul>
+            <p class="rst-modal-note">This action cannot be undone. Are you sure?</p>
+            <div class="rst-modal-actions">
+                <button class="s-btn s-btn-outline" onclick="closeRstModal()">Cancel</button>
+                <button class="rst-btn" id="rst-modal-confirm-btn" onclick="executeReset()">Yes, Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/dataset_display.js"></script>
+    <script src="js/flow_prediction.js"></script>
+    <script src="js/beds_display.js"></script>
+    <script src="js/change_bed.js"></script>
+    <script src="js/settings.js"></script>
+    <script src="js/settings_shifts.js"></script>
+    <script src="js/settings_groups.js"></script>
+    <script src="js/settings_doctors.js"></script>
+    <script src="js/settings_nurses.js"></script>
+    <script src="js/settings_wards.js"></script>
+    <script src="js/settings_daily_patients.js"></script>
+    <script src="js/settings_log_patients.js"></script>
+    <script src="js/settings_relations.js"></script>
+    <script src="js/patients.js"></script>
+    <script src="js/scheduling.js"></script>
+    <script src="js/simulation.js"></script>
+    <script src="js/unurgent.js"></script>
+    <script src="js/model_files.js"></script>
+    <script src="js/statistics.js"></script>
+    <script src="js/settings_reset.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/settings_features.js"></script>
+    <script src="js/settings_accounts.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Mobile nav drawer -->
+    <div class="nav-overlay" id="nav-overlay" onclick="closeNavMenu()"></div>
+    <div class="nav-drawer" id="nav-drawer">
+        <div class="nav-drawer-header">
+            <span class="nav-drawer-logo">🏥</span>
+            <span class="nav-drawer-name">HCopilot</span>
+            <button class="nav-drawer-close" onclick="closeNavMenu()">✕</button>
+        </div>
+        <div class="nav-drawer-list">
+            <!-- Standalone -->
+            <button class="nav-drawer-btn active" data-section="home"
+                    onclick="showSection('home')">
+                <span class="nav-icon">🏠</span><span>Home</span>
+            </button>
+            <button class="nav-drawer-btn" data-section="flow-prediction"
+                    onclick="showSection('flow-prediction')">
+                <span class="nav-icon">📈</span><span>Flow Prediction</span>
+            </button>
+            <button class="nav-drawer-btn" data-section="patients"
+                    onclick="showSection('patients')">
+                <span class="nav-icon">🧑‍⚕️</span><span>Patients</span>
+            </button>
+            <!-- Group: Care -->
+            <div class="nav-drawer-group" id="dg-care">
+                <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-care')">
+                    <span class="nav-icon">🛏️</span><span>Care</span>
+                    <span class="nav-drawer-caret">▾</span>
+                </button>
+                <div class="nav-drawer-group-items">
+                    <button class="nav-drawer-btn nav-drawer-sub" data-section="beds-display"
+                            onclick="showSection('beds-display')">
+                        <span class="nav-icon">🛏️</span><span>Beds Display</span>
+                    </button>
+                    <button class="nav-drawer-btn nav-drawer-sub" data-section="unurgent"
+                            onclick="showSection('unurgent')">
+                        <span class="nav-icon">🟢</span><span>Unurgent Care</span>
+                    </button>
+                </div>
+            </div>
+            <!-- Group: Operations -->
+            <div class="nav-drawer-group" id="dg-ops">
+                <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-ops')">
+                    <span class="nav-icon">📅</span><span>Operations</span>
+                    <span class="nav-drawer-caret">▾</span>
+                </button>
+                <div class="nav-drawer-group-items">
+                    <button class="nav-drawer-btn nav-drawer-sub" data-section="scheduling"
+                            onclick="showSection('scheduling')">
+                        <span class="nav-icon">📅</span><span>Scheduling</span>
+                    </button>
+                    <button class="nav-drawer-btn nav-drawer-sub" data-section="simulation"
+                            onclick="showSection('simulation')">
+                        <span class="nav-icon">🧪</span><span>Simulation</span>
+                    </button>
+                </div>
+            </div>
+            <button class="nav-drawer-btn" data-section="statistics"
+                    onclick="showSection('statistics')">
+                <span class="nav-icon">📊</span><span>Statistics</span>
+            </button>
+            <button class="nav-drawer-btn" data-section="settings"
+                    onclick="showSection('settings')">
+                <span class="nav-icon">⚙️</span><span>Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Nav group dropdowns (fixed-position, avoids header overflow) ── -->
+    <div class="nav-dropdown" id="navg-care-dd">
+        <button class="nav-dd-item" data-section="beds-display"
+                onclick="showSection('beds-display')">
+            <span class="nav-dd-icon">🛏️</span> Beds Display
+        </button>
+        <button class="nav-dd-item" data-section="unurgent"
+                onclick="showSection('unurgent')">
+            <span class="nav-dd-icon">🟢</span> Unurgent Care
+        </button>
+    </div>
+    <div class="nav-dropdown" id="navg-ops-dd">
+        <button class="nav-dd-item" data-section="scheduling"
+                onclick="showSection('scheduling')">
+            <span class="nav-dd-icon">📅</span> Scheduling
+        </button>
+        <button class="nav-dd-item" data-section="simulation"
+                onclick="showSection('simulation')">
+            <span class="nav-dd-icon">🧪</span> Simulation
+        </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         LOGIN OVERLAY
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div class="auth-overlay" id="auth-overlay">
+        <div class="auth-card">
+            <div class="auth-card-head">
+                <div class="auth-logo-ring">🏥</div>
+                <div>
+                    <div class="auth-brand-name">HCopilot</div>
+                    <div class="auth-brand-sub">Healthcare Data Management</div>
+                </div>
+            </div>
+            <div class="auth-card-body">
+                <h2 class="auth-heading">Sign In</h2>
+                <div class="auth-field">
+                    <label for="auth-username">Username</label>
+                    <input type="text" id="auth-username" placeholder="Enter username"
+                           autocomplete="username">
+                </div>
+                <div class="auth-field">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" placeholder="Enter password"
+                           autocomplete="current-password">
+                </div>
+                <div class="auth-error" id="auth-error"></div>
+                <button class="auth-login-btn" id="auth-login-btn" onclick="authLogin()">
+                    Sign In
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         ADD / EDIT USER MODAL
+         ═══════════════════════════════════════════════════════════════════ -->
+    <div class="acc-modal-overlay" id="acc-modal-overlay" style="display:none">
+        <div class="acc-modal-box">
+            <div class="acc-modal-head">
+                <h3 id="acc-modal-title">Add User</h3>
+                <button class="acc-modal-close" onclick="accCloseModal()">✕</button>
+            </div>
+            <div class="acc-modal-body">
+                <div class="acc-form-error" id="acc-form-error"></div>
+                <div class="acc-form-row">
+                    <div class="acc-form-group">
+                        <label for="acc-field-username">Username *</label>
+                        <input type="text" id="acc-field-username" placeholder="e.g. jsmith"
+                               autocomplete="off">
+                    </div>
+                    <div class="acc-form-group">
+                        <label for="acc-field-name">Display Name</label>
+                        <input type="text" id="acc-field-name" placeholder="e.g. John Smith"
+                               autocomplete="off">
+                    </div>
+                </div>
+                <div class="acc-form-group">
+                    <label for="acc-field-password">Password</label>
+                    <input type="password" id="acc-field-password" placeholder="Set password"
+                           autocomplete="new-password">
+                    <div class="acc-pw-note" id="acc-pw-note" style="display:none">
+                        Leave blank to keep the current password.
+                    </div>
+                </div>
+                <div class="acc-form-group">
+                    <label>Role</label>
+                    <div class="acc-role-group">
+                        <label class="acc-role-option" id="acc-role-opt-admin">
+                            <input type="radio" name="acc-role" value="admin"
+                                   onchange="accOnRoleChange(this)">
+                            🛡️ Admin
+                        </label>
+                        <label class="acc-role-option" id="acc-role-opt-user">
+                            <input type="radio" name="acc-role" value="user"
+                                   onchange="accOnRoleChange(this)" checked>
+                            👤 User
+                        </label>
+                    </div>
+                </div>
+                <div class="acc-form-group">
+                    <div class="acc-sections-label">
+                        Sections Access
+                        <span class="acc-sec-all-note" id="acc-sec-all-note" style="display:none">
+                            Admin has access to all sections
+                        </span>
+                    </div>
+                    <div class="acc-sections-grid" id="acc-sections-grid"></div>
+                </div>
+            </div>
+            <div class="acc-modal-footer">
+                <button class="acc-btn-cancel" onclick="accCloseModal()">Cancel</button>
+                <button class="acc-btn-save" id="acc-save-btn" onclick="accSaveUser()">Save</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

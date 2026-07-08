@@ -1,0 +1,93 @@
+.models-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.models-grid {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.model-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    transition: all 0.3s;
+}
+
+.model-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.model-icon {
+    font-size: 48px;
+    flex-shrink: 0;
+}
+
+.model-info {
+    flex: 1;
+}
+
+.model-name {
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 15px;
+    word-break: break-word;
+}
+
+.model-details {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.model-detail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.detail-label {
+    color: #666;
+    font-weight: 600;
+    font-size: 14px;
+    min-width: 80px;
+}
+
+.detail-value {
+    color: #333;
+    font-size: 14px;
+}
+
+.model-path {
+    font-family: 'Courier New', monospace;
+    background: #f8f9fa;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.models-summary {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.models-summary p {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+}
+
+.models-summary strong {
+    color: #667eea;
+    font-size: 18px;
+}
