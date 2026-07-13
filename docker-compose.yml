@@ -1,0 +1,99 @@
+# docker-compose.yml — HCopilot full stack (sqlserver + db-init + backend + frontend)
+#
+# Mirrors the shape already used by RAH Lab's other SQL-Server-backed project
+# (voice-project_Deployment): sqlserver -> db-init (one-shot, alembic upgrade
+# head) -> backend -> frontend, each gated on the previous service's health/
+# completion.
+#
+# NOTE ON SHARED SQL SERVER: per RAH Lab policy, one SQL Server instance may
+# host multiple project databases. If this hospital's offline server already
+# runs a shared SQL Server instance (e.g. for another project), you can point
+# DATABASE_SERVER at that instance instead and remove the sqlserver/db-init
+# services below — see release/documentation/INSTALL_OFFLINE.md.
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Express
+    volumes:
+      - hcopilot_sqlserver_data:/var/opt/mssql
+      # Host-side backup destination — survives container/volume recreation.
+      # See release/scripts/backup_database.sh and restore_database.sh.
+      - ./backups:/var/opt/mssql/backup
+    ports:
+      # Exposed for optional GUI access (DBeaver/SSMS/Azure Data Studio) —
+      # not required for the app itself, which reaches sqlserver over the
+      # internal Compose network.
+      - "${DATABASE_PORT:-1433}:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  db-init:
+    image: hcopilot-backend:1.0.0
+    # First install: create the database, build the schema, then transport
+    # this hospital's existing lookup/configuration data (real ward layout,
+    # bed numbers, staff roster) from the CSVs baked into the image — see
+    # backend/scripts/migrate_csv_to_mssql.py. Idempotent: safe to re-run on
+    # every container start (skips any table that already has rows).
+    command: ["sh", "-c", "python scripts/ensure_database_exists.py && alembic upgrade head && python scripts/migrate_csv_to_mssql.py && python scripts/import_ml_historical_data.py"]
+    environment:
+      DATABASE_SERVER: sqlserver
+      DATABASE_PORT: 1433
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
+      DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: hcopilot-backend:1.0.0
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_SERVER: sqlserver
+      DATABASE_PORT: 1433
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USER: ${DATABASE_USER}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
+      DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
+    ports:
+      - "${BACKEND_PORT:-8090}:8090"
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8090/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    image: hcopilot-frontend:1.0.0
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-8082}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  hcopilot_sqlserver_data:

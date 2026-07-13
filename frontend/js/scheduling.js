@@ -21,11 +21,11 @@
  *   selectedPatient / selectedBed / selectedDoctor / selectedNurses — current picks
  */
 
-const SCHED_BASE         = 'http://localhost:8090/api/scheduling';
-const SCHED_PATIENTS_URL = 'http://localhost:8090/api/patients/list';
-const SCHED_DOCTORS_URL  = 'http://localhost:8090/api/staff/doctors/list';
-const SCHED_NURSES_URL   = 'http://localhost:8090/api/staff/nurses/list';
-const SCHED_BEDS_URL     = 'http://localhost:8090/api/beds/list';
+const SCHED_BASE         = '/api/scheduling';
+const SCHED_PATIENTS_URL = '/api/patients/list';
+const SCHED_DOCTORS_URL  = '/api/staff/doctors/list';
+const SCHED_NURSES_URL   = '/api/staff/nurses/list';
+const SCHED_BEDS_URL     = '/api/beds/list';
 
 // Raw data pools fetched from the API — rendered into lists and re-filtered on search
 let schedPatients         = [];
@@ -127,8 +127,8 @@ async function _loadSchedNurses() {
 async function _loadSchedShiftsGroups() {
     try {
         const [sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         _schedShifts = (await sRes.json()).shifts || [];
         _schedGroups = (await gRes.json()).groups || [];
@@ -207,7 +207,7 @@ function _syncSimShiftGroupSelects(shiftVal, groupVal) {
 
 async function _loadSchedUnurgentIds() {
     try {
-        const res  = await fetch('http://localhost:8090/api/unurgent/list');
+        const res  = await fetch('/api/unurgent/list');
         const data = await res.json();
         schedUnurgentIds = new Set((data.patients || []).map(p => p.subject_id));
     } catch (_) {
@@ -597,7 +597,7 @@ async function confirmSchedAssignment() {
         btn.disabled    = true;
         btn.textContent = 'Sending…';
         try {
-            const res  = await fetch('http://localhost:8090/api/simulation/or-confirm', {
+            const res  = await fetch('/api/simulation/or-confirm', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

@@ -22,7 +22,7 @@
 // the returned user object (no password, no token).
 
 // var so these are accessible from other script files (const is not globally scoped)
-var AUTH_API    = 'http://localhost:8090/api/auth';
+var AUTH_API    = '/api/auth';
 var SESSION_KEY = 'hcopilot_session';
 
 // Ordered list of settings tabs — used for access control and the settings-tab sub-picker.

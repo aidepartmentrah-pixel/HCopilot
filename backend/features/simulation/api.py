@@ -6,32 +6,22 @@
 #   POST /api/simulation/or-suggest       — run the OR scheduler on all unassigned patients
 #   POST /api/simulation/or-confirm       — apply one OR suggestion (create the assignment)
 
-import os
 import math
 import pandas as pd
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
+from db.session import SessionLocal
+from db.models import DailyPatient, PatientBed, EDBed, WardBed, Ward, PatientDoctor, PatientNurse, Doctor, Nurse, Group
+
 from .dataset_sampler import DatasetSampler
 from .or_scheduler    import (ORScheduler, CRITICAL_WARD_ID,
                                _active_shift_name, _active_group_id,
                                _active_shift_names, _active_group_ids,
                                _active_group_names,
-                               _effective_acuity, _GROUPS_FILE)
+                               _effective_acuity)
 from .models          import ConfirmPatientRequest, ORSuggestRequest, ORConfirmRequest, StaffSwapRequest
-
-# ── File paths (reused by audit endpoints) ────────────────────────────────────
-_DS              = os.path.join(os.path.dirname(__file__), "..", "..", "datasets")
-_DAILY_FILE      = os.path.join(_DS, "DailyPatients.csv")
-_BED_FILE        = os.path.join(_DS, "EDbeds.csv")
-_WARD_BED_FILE   = os.path.join(_DS, "ward_bed.csv")
-_WARDS_FILE      = os.path.join(_DS, "Wards.csv")
-_PAT_BED_FILE    = os.path.join(_DS, "patient_bed.csv")
-_PAT_DOC_FILE    = os.path.join(_DS, "patient_doctor.csv")
-_PAT_NURSE_FILE  = os.path.join(_DS, "patient_nurse.csv")
-_DOCTORS_FILE    = os.path.join(_DS, "Doctors.csv")
-_NURSES_FILE     = os.path.join(_DS, "Nurses.csv")
 
 # Reuse the same write-path logic as the scheduling feature by importing its dependencies
 from features.data_management.daily_patients_manager  import DailyPatientsManager
@@ -191,18 +181,14 @@ async def or_confirm(body: ORConfirmRequest):
             nurse_mgr.update_patient_count(body.nurse2_id, +1)
 
         # Stamp bed_occupation_time on the DailyPatients row
-        df = dp_mgr._read_df()
-        if "bed_occupation_time" not in df.columns:
-            df["bed_occupation_time"] = None
-        df["bed_occupation_time"] = df["bed_occupation_time"].astype(object)
-        mask = (
-            (df["stay_id"] == body.stay_id)
-            if body.stay_id
-            else (df["subject_id"] == body.patient_id)
-        )
-        if mask.any():
-            df.loc[mask, "bed_occupation_time"] = occupation_time
-            dp_mgr._write_df(df)
+        with SessionLocal() as session:
+            if body.stay_id:
+                rows = session.query(DailyPatient).filter(DailyPatient.stay_id == body.stay_id).all()
+            else:
+                rows = session.query(DailyPatient).filter(DailyPatient.subject_id == body.patient_id).all()
+            for r in rows:
+                r.bed_occupation_time = occupation_time
+            session.commit()
 
         return {
             "ok":              True,
@@ -229,10 +215,10 @@ async def current_context():
 
     group_names: list = []
     try:
-        gdf = pd.read_csv(_GROUPS_FILE)
+        with SessionLocal() as session:
+            groups_by_id = {g.group_id: g.name for g in session.query(Group).all()}
         for gid in active_groups:
-            row = gdf[gdf["group_id"] == gid]
-            group_names.append(str(row.iloc[0]["name"]) if not row.empty else f"Group {gid}")
+            group_names.append(groups_by_id.get(gid, f"Group {gid}"))
     except Exception:
         group_names = [f"Group {gid}" for gid in active_groups]
 
@@ -296,33 +282,45 @@ async def staff_audit(
     no_shift_match = len(active_shifts) == 0
     no_group_match = len(active_groups) == 0
 
-    # ── Load all CSVs ────────────────────────────────────────────────────────
-    if not os.path.exists(_DAILY_FILE) or not os.path.exists(_PAT_BED_FILE):
-        return {"patients": [], "current_shifts": active_shifts, "current_groups": active_groups,
-                "no_shift_match": no_shift_match, "no_group_match": no_group_match}
+    # ── Load all tables ──────────────────────────────────────────────────────
+    with SessionLocal() as session:
+        dp_rows = session.query(DailyPatient).all()
+        pb_rows = session.query(PatientBed).all()
+        if not dp_rows or not pb_rows:
+            return {"patients": [], "current_shifts": active_shifts, "current_groups": active_groups,
+                    "no_shift_match": no_shift_match, "no_group_match": no_group_match}
 
-    dp  = pd.read_csv(_DAILY_FILE, dtype=object)
-    pb  = pd.read_csv(_PAT_BED_FILE)
+        dp = pd.DataFrame([{
+            "subject_id": p.subject_id, "name": p.name,
+            "acuity": p.acuity, "bed_occupation_time": p.bed_occupation_time,
+        } for p in dp_rows])
+        pb = pd.DataFrame([{"patient_id": r.patient_id, "bed_id": r.bed_id} for r in pb_rows])
+
+        beds_df  = pd.DataFrame([{"bed_id": b.bed_id, "bed_number": b.bed_number} for b in session.query(EDBed).all()])
+        wb_df    = pd.DataFrame([{"ward_id": w.ward_id, "bed_id": w.bed_id} for w in session.query(WardBed).all()])
+        wards_df = pd.DataFrame([{"ward_id": w.ward_id, "ward_name": w.ward_name} for w in session.query(Ward).all()])
+        pd_df    = pd.DataFrame([{"patient_id": r.patient_id, "doctor_id": r.doctor_id} for r in session.query(PatientDoctor).all()])
+        pn_df    = pd.DataFrame([{"patient_id": r.patient_id, "nurse_id": r.nurse_id} for r in session.query(PatientNurse).all()])
+
+        docs_df = pd.DataFrame([{
+            "id": d.id, "name": d.name, "shift": d.shift, "work_days": d.work_days,
+            "intern_or_not": d.intern_or_not, "patientNb": d.patientNb,
+            "availabilityTimeStart": d.availabilityTimeStart, "absent": d.absent,
+        } for d in session.query(Doctor).all()])
+        nurses_df = pd.DataFrame([{
+            "id": n.id, "name": n.name, "shift": n.shift, "group": n.group,
+            "role": n.role, "patientNB": n.patientNB,
+            "availabilityTimeStart": n.availabilityTimeStart, "absent": n.absent,
+        } for n in session.query(Nurse).all()])
+
     if dp.empty or pb.empty:
         return {"patients": [], "current_shifts": active_shifts, "current_groups": active_groups,
                 "no_shift_match": no_shift_match, "no_group_match": no_group_match}
 
-    # Beds
-    beds_df  = pd.read_csv(_BED_FILE)        if os.path.exists(_BED_FILE)      else pd.DataFrame()
-    wb_df    = pd.read_csv(_WARD_BED_FILE)   if os.path.exists(_WARD_BED_FILE) else pd.DataFrame(columns=["ward_id","bed_id"])
-    wards_df = pd.read_csv(_WARDS_FILE)      if os.path.exists(_WARDS_FILE)    else pd.DataFrame()
     ward_names: dict = {}
     if not wards_df.empty and "ward_id" in wards_df.columns and "ward_name" in wards_df.columns:
         for _, r in wards_df.iterrows():
             ward_names[int(r["ward_id"])] = str(r["ward_name"])
-
-    # Staff assignment relations
-    pd_df = pd.read_csv(_PAT_DOC_FILE)   if os.path.exists(_PAT_DOC_FILE)   else pd.DataFrame(columns=["patient_id","doctor_id"])
-    pn_df = pd.read_csv(_PAT_NURSE_FILE) if os.path.exists(_PAT_NURSE_FILE) else pd.DataFrame(columns=["patient_id","nurse_id"])
-
-    # Staff records
-    docs_df   = pd.read_csv(_DOCTORS_FILE, dtype=object) if os.path.exists(_DOCTORS_FILE) else pd.DataFrame()
-    nurses_df = pd.read_csv(_NURSES_FILE,  dtype=object) if os.path.exists(_NURSES_FILE)  else pd.DataFrame()
 
     doc_lookup:   dict = {}
     if not docs_df.empty:

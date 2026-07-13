@@ -5,7 +5,7 @@
 // Overnight shifts are detected automatically: end_hour < start_hour means
 // the shift crosses midnight (e.g. Night: 22 → 6).
 
-const API_SHIFTS = 'http://localhost:8090/api/staff/shifts';
+const API_SHIFTS = '/api/staff/shifts';
 
 let allShiftsData = [];
 // 'add' | 'edit'

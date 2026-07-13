@@ -47,27 +47,16 @@
 #     discharged/released, unless another lane-1/2 patient is still waiting with
 #     no other bed free (see BedManager.cleanup_chariot_if_unneeded).
 
-import os
 import math
 import pandas as pd
 from datetime import datetime
 from typing import Optional
 
-# ── File paths ────────────────────────────────────────────────────────────────
-_DS              = os.path.join(os.path.dirname(__file__), "..", "..", "datasets")
-DAILY_FILE       = os.path.join(_DS, "DailyPatients.csv")
-PATIENT_BED_FILE = os.path.join(_DS, "patient_bed.csv")
-BEDS_FILE        = os.path.join(_DS, "EDbeds.csv")
-WARD_BED_FILE    = os.path.join(_DS, "ward_bed.csv")
-WARDS_FILE       = os.path.join(_DS, "Wards.csv")
-DOCTORS_FILE     = os.path.join(_DS, "Doctors.csv")
-NURSES_FILE      = os.path.join(_DS, "Nurses.csv")
+from db.session import SessionLocal
+from db.models import DailyPatient, PatientBed, EDBed, WardBed, Ward, Doctor, Nurse, Shift, Group
 
 # Ward 1 is the critical ward (Recovery Room). Only acuity 1/2 patients go here.
 CRITICAL_WARD_ID = 1
-
-_SHIFTS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", "Shifts.csv")
-_GROUPS_FILE = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", "Groups.csv")
 
 
 def _active_shift_name() -> str:
@@ -84,17 +73,18 @@ def _active_group_id() -> int:
 
 def _active_group_names() -> list:
     """
-    Return ALL group names from Groups.csv whose day-list includes today's weekday (0=Mon).
+    Return ALL group names whose day-list includes today's weekday (0=Mon).
     Returns an empty list when today falls inside no configured group.
     """
     try:
-        df  = pd.read_csv(_GROUPS_FILE, dtype={"days": str})
+        with SessionLocal() as session:
+            groups = session.query(Group).all()
         dow = datetime.now().weekday()
         matches = []
-        for _, row in df.iterrows():
-            nums = [int(d.strip()) for d in str(row["days"]).split(",") if d.strip().isdigit()]
+        for row in groups:
+            nums = [int(d.strip()) for d in str(row.days).split(",") if d.strip().isdigit()]
             if dow in nums:
-                matches.append(str(row["name"]).strip())
+                matches.append(str(row.name).strip())
         return matches
     except Exception:
         return []
@@ -108,22 +98,23 @@ def _active_group_name() -> str:
 
 def _active_shift_names() -> list:
     """
-    Return ALL shift names from Shifts.csv whose time window covers the current hour.
+    Return ALL shift names whose time window covers the current hour.
     Returns an empty list when the current hour falls inside no configured shift.
     Supports overnight shifts (start_hour > end_hour).
     """
     try:
-        df = pd.read_csv(_SHIFTS_FILE)
-        h  = datetime.now().hour
+        with SessionLocal() as session:
+            shifts = session.query(Shift).all()
+        h = datetime.now().hour
         matches = []
-        for _, row in df.iterrows():
-            s, e = int(row["start_hour"]), int(row["end_hour"])
+        for row in shifts:
+            s, e = row.start_hour, row.end_hour
             if s <= e:
                 if s <= h < e:
-                    matches.append(str(row["name"]).strip())
+                    matches.append(str(row.name).strip())
             else:                      # overnight: e.g. 22 → 06
                 if h >= s or h < e:
-                    matches.append(str(row["name"]).strip())
+                    matches.append(str(row.name).strip())
         return matches
     except Exception:
         return []
@@ -131,17 +122,18 @@ def _active_shift_names() -> list:
 
 def _active_group_ids() -> list:
     """
-    Return ALL group_ids from Groups.csv whose day-list includes today's weekday (0=Mon).
+    Return ALL group_ids whose day-list includes today's weekday (0=Mon).
     Returns an empty list when today falls inside no configured group.
     """
     try:
-        df  = pd.read_csv(_GROUPS_FILE, dtype={"days": str})
+        with SessionLocal() as session:
+            groups = session.query(Group).all()
         dow = datetime.now().weekday()
         matches = []
-        for _, row in df.iterrows():
-            nums = [int(d.strip()) for d in str(row["days"]).split(",") if d.strip().isdigit()]
+        for row in groups:
+            nums = [int(d.strip()) for d in str(row.days).split(",") if d.strip().isdigit()]
             if dow in nums:
-                matches.append(int(row["group_id"]))
+                matches.append(row.group_id)
         return matches
     except Exception:
         return []
@@ -233,52 +225,38 @@ class ORScheduler:
 
     def _load_unassigned_patients(self) -> list[dict]:
         """
-        Return patients in DailyPatients who have no row in patient_bed.csv.
+        Return patients in DailyPatients who have no row in patient_bed.
         Each dict carries all fields needed by the lane logic.
         """
-        if not os.path.exists(DAILY_FILE):
-            return []
-        dp = pd.read_csv(DAILY_FILE)
-        if dp.empty:
-            return []
+        with SessionLocal() as session:
+            dp_rows = session.query(DailyPatient).all()
+            if not dp_rows:
+                return []
+            assigned_ids = {pb.patient_id for pb in session.query(PatientBed).all()}
 
-        # Load existing bed assignments
-        if os.path.exists(PATIENT_BED_FILE):
-            pb = pd.read_csv(PATIENT_BED_FILE)
-            assigned_ids = set(pb["patient_id"].dropna().astype(int).tolist()) if not pb.empty else set()
-        else:
-            assigned_ids = set()
-
-        # Also exclude patients already routed to the unurgent path
-        if "unurgent" in dp.columns:
-            unurgent_ids = set(
-                dp[dp["unurgent"].astype(str).str.strip().str.lower() == "true"]["subject_id"]
-                .dropna().astype(int).tolist()
-            )
-        else:
-            unurgent_ids = set()
+        unurgent_ids = {r.subject_id for r in dp_rows if str(r.unurgent or "").strip().lower() == "true"}
 
         patients = []
-        for _, row in dp.iterrows():
-            pid = int(row["subject_id"])
+        for row in dp_rows:
+            pid = row.subject_id
             if pid in assigned_ids or pid in unurgent_ids:
                 continue  # already has a bed or is in unurgent path
-            raw_acuity = _safe(row.get("acuity"))
+            raw_acuity = _safe(row.acuity)
             eff        = _effective_acuity(raw_acuity)
-            wait       = _waiting_minutes(_safe(row.get("arrival_time")))
+            wait       = _waiting_minutes(_safe(row.arrival_time))
             patients.append({
                 "patient_id":        pid,
-                "stay_id":           int(row["stay_id"]),
-                "name":              _safe(row.get("name")),
-                "gender":            _safe(row.get("gender")),
-                "age":               _safe(row.get("age")),
+                "stay_id":           row.stay_id,
+                "name":              _safe(row.name),
+                "gender":            _safe(row.gender),
+                "age":               _safe(row.age),
                 "acuity":            raw_acuity,
                 "effective_acuity":  eff,
                 "acuity_lane":       _acuity_lane(eff),
                 "acuity_was_null":   raw_acuity is None,
                 "waiting_minutes":   wait,
-                "arrival_time":      _safe(row.get("arrival_time")),
-                "chiefcomplaint":    _safe(row.get("chiefcomplaint")),
+                "arrival_time":      _safe(row.arrival_time),
+                "chiefcomplaint":    _safe(row.chiefcomplaint),
             })
         return patients
 
@@ -288,53 +266,34 @@ class ORScheduler:
         Keys: ward_id (int) for known wards, 0 for unassigned beds.
         Values: list of {bed_id, bed_number, ward_id, ward_name}.
         """
-        if not os.path.exists(BEDS_FILE):
-            return {}
-
-        beds_df = pd.read_csv(BEDS_FILE)
-
-        # Occupied beds from patient_bed.csv
-        if os.path.exists(PATIENT_BED_FILE):
-            pb = pd.read_csv(PATIENT_BED_FILE)
-            occupied_ids = set(pb["bed_id"].dropna().astype(int).tolist()) if not pb.empty else set()
-        else:
-            occupied_ids = set()
-
-        # Ward assignments
-        if os.path.exists(WARD_BED_FILE):
-            wb = pd.read_csv(WARD_BED_FILE)
-        else:
-            wb = pd.DataFrame(columns=["ward_id", "bed_id"])
-
-        # Ward names
-        ward_names: dict[int, str] = {}
-        if os.path.exists(WARDS_FILE):
-            wards_df = pd.read_csv(WARDS_FILE)
-            for _, r in wards_df.iterrows():
-                ward_names[int(r["ward_id"])] = str(r["ward_name"])
+        with SessionLocal() as session:
+            beds = session.query(EDBed).all()
+            if not beds:
+                return {}
+            occupied_ids = {pb.bed_id for pb in session.query(PatientBed).all()}
+            ward_by_bed = {wb.bed_id: wb.ward_id for wb in session.query(WardBed).all()}
+            ward_names = {w.ward_id: w.ward_name for w in session.query(Ward).all()}
 
         grouped: dict[int, list] = {}
-        for _, row in beds_df.iterrows():
-            bid  = int(row["bed_id"])
-            cond = str(row.get("bed_status", "Available")).strip()
+        for row in beds:
+            bid  = row.bed_id
+            cond = str(row.bed_status or "Available").strip()
             if cond == "Under Repair" or bid in occupied_ids:
                 continue  # skip unavailable beds
 
-            # Look up ward
-            wb_rows = wb[wb["bed_id"] == bid] if not wb.empty else pd.DataFrame()
-            if not wb_rows.empty:
-                wid   = int(wb_rows.iloc[0]["ward_id"])
+            wid = ward_by_bed.get(bid)
+            if wid is not None:
                 wname = ward_names.get(wid, f"Ward {wid}")
             else:
                 wid   = 0   # unassigned to any ward
                 wname = "Unassigned"
 
-            raw_type  = str(row.get("type", "normal")).strip()
+            raw_type  = str(row.type or "normal").strip()
             bed_type  = raw_type if raw_type in ("normal", "monitor", "ICU", "chariot") else "normal"
 
             grouped.setdefault(wid, []).append({
                 "bed_id":     bid,
-                "bed_number": str(row["bed_number"]),
+                "bed_number": str(row.bed_number),
                 "bed_type":   bed_type,
                 "ward_id":    wid,
                 "ward_name":  wname,
@@ -347,57 +306,32 @@ class ORScheduler:
         free for a new critical patient — the frontend offers to reassign one of
         these occupants to a different bed, freeing their ICU bed.
         """
-        if not os.path.exists(BEDS_FILE) or not os.path.exists(PATIENT_BED_FILE):
-            return []
-        beds_df = pd.read_csv(BEDS_FILE)
-        if "type" not in beds_df.columns:
-            return []
-        icu_beds = beds_df[beds_df["type"].astype(str).str.strip() == "ICU"]
-        if icu_beds.empty:
-            return []
-        pb = pd.read_csv(PATIENT_BED_FILE)
-        if pb.empty:
-            return []
-
-        wb = pd.read_csv(WARD_BED_FILE) if os.path.exists(WARD_BED_FILE) else pd.DataFrame(columns=["ward_id", "bed_id"])
-        ward_names: dict[int, str] = {}
-        if os.path.exists(WARDS_FILE):
-            wards_df = pd.read_csv(WARDS_FILE)
-            for _, r in wards_df.iterrows():
-                ward_names[int(r["ward_id"])] = str(r["ward_name"])
-
-        # Build a name/gender/age lookup from DailyPatients
-        dp_info: dict[int, dict] = {}
-        if os.path.exists(DAILY_FILE):
-            try:
-                dp_df = pd.read_csv(DAILY_FILE)
-                for _, r in dp_df.iterrows():
-                    try:
-                        spid = int(r["subject_id"])
-                    except (TypeError, ValueError):
-                        continue
-                    dp_info[spid] = {
-                        "name":   _safe(r.get("name")),
-                        "gender": _safe(r.get("gender")),
-                        "age":    _safe(r.get("age")),
-                    }
-            except Exception:
-                pass
+        with SessionLocal() as session:
+            icu_beds = session.query(EDBed).filter(EDBed.type == "ICU").all()
+            if not icu_beds:
+                return []
+            patient_by_bed = {pb.bed_id: pb.patient_id for pb in session.query(PatientBed).all()}
+            if not patient_by_bed:
+                return []
+            ward_by_bed = {wb.bed_id: wb.ward_id for wb in session.query(WardBed).all()}
+            ward_names = {w.ward_id: w.ward_name for w in session.query(Ward).all()}
+            dp_info = {
+                p.subject_id: {"name": p.name, "gender": p.gender, "age": p.age}
+                for p in session.query(DailyPatient).all()
+            }
 
         occupants = []
-        for _, row in icu_beds.iterrows():
-            bid   = int(row["bed_id"])
-            match = pb[pb["bed_id"] == bid]
-            if match.empty:
+        for row in icu_beds:
+            bid = row.bed_id
+            pid = patient_by_bed.get(bid)
+            if pid is None:
                 continue
-            pid     = int(match.iloc[0]["patient_id"])
-            wb_rows = wb[wb["bed_id"] == bid] if not wb.empty else pd.DataFrame()
-            wid     = int(wb_rows.iloc[0]["ward_id"]) if not wb_rows.empty else None
-            info    = dp_info.get(pid, {})
+            wid  = ward_by_bed.get(bid)
+            info = dp_info.get(pid, {})
             occupants.append({
                 "patient_id":    pid,
                 "bed_id":        bid,
-                "bed_number":    str(row["bed_number"]),
+                "bed_number":    str(row.bed_number),
                 "ward_id":       wid,
                 "ward_name":     ward_names.get(wid, f"Ward {wid}") if wid is not None else "Unassigned",
                 "patient_name":  info.get("name"),
@@ -411,15 +345,21 @@ class ORScheduler:
         Doctors on ANY of the given shifts AND in ANY of the given groups, and not absent.
         shifts / groups may each be a single string or a list of strings.
         """
-        if not os.path.exists(DOCTORS_FILE):
+        with SessionLocal() as session:
+            doctors = session.query(Doctor).all()
+        if not doctors:
             return pd.DataFrame()
+        df = pd.DataFrame([{
+            "id": d.id, "intern_or_not": d.intern_or_not, "shift": d.shift,
+            "work_days": d.work_days, "patientNb": d.patientNb,
+            "availabilityTimeStart": d.availabilityTimeStart, "name": d.name, "absent": d.absent,
+        } for d in doctors])
         if isinstance(shifts, str):
             shifts = [shifts]
         if isinstance(groups, str):
             groups = [groups]
         shifts_lower = {s.lower() for s in shifts}
         groups_set   = {str(g).strip() for g in groups}
-        df = pd.read_csv(DOCTORS_FILE, dtype=object)
         df = df[df["shift"].astype(str).str.strip().str.lower().isin(shifts_lower)]
         df = df[df["work_days"].astype(str).str.strip().isin(groups_set)]
         if "absent" in df.columns:
@@ -431,15 +371,21 @@ class ORScheduler:
         Nurses on ANY of the given shifts AND in ANY of the given groups, and not absent.
         shifts / groups may each be a single string or a list of strings.
         """
-        if not os.path.exists(NURSES_FILE):
+        with SessionLocal() as session:
+            nurses = session.query(Nurse).all()
+        if not nurses:
             return pd.DataFrame()
+        df = pd.DataFrame([{
+            "id": n.id, "role": n.role, "shift": n.shift, "group": n.group,
+            "patientNB": n.patientNB, "availabilityTimeStart": n.availabilityTimeStart,
+            "name": n.name, "absent": n.absent,
+        } for n in nurses])
         if isinstance(shifts, str):
             shifts = [shifts]
         if isinstance(groups, str):
             groups = [groups]
         shifts_lower = {s.lower() for s in shifts}
         groups_set   = {str(g).strip() for g in groups}
-        df = pd.read_csv(NURSES_FILE, dtype=object)
         df = df[df["shift"].astype(str).str.strip().str.lower().isin(shifts_lower)]
         df = df[df["group"].astype(str).str.strip().isin(groups_set)]
         if "absent" in df.columns:

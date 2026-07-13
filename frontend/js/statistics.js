@@ -18,7 +18,7 @@
 //
 // Fetches all metrics from /api/statistics/* endpoints.
 
-const STATS_BASE = 'http://localhost:8090/api/statistics';
+const STATS_BASE = '/api/statistics';
 
 // Chart instances — kept so we can destroy & re-create on refresh
 let _waitChart = null;
@@ -713,7 +713,7 @@ function _renderSingleShiftDist(elId, dist) {
 // ── Staff Lookup ──────────────────────────────────────────────────────────────
 
 // STAFF_BASE is already declared in utils.js — reuse it here.
-const STATS_DETAIL_BASE = 'http://localhost:8090/api/statistics/staff-member';
+const STATS_DETAIL_BASE = '/api/statistics/staff-member';
 
 
 async function _populateStaffSelect(selectId, kind) {

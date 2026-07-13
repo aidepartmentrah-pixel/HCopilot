@@ -25,6 +25,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from db.session import SessionLocal
+from db.models import DailyPatient
 from features.data_management.daily_patients_manager import DailyPatientsManager
 from features.data_management.log_patients_manager   import LogPatientsManager
 from features.relations.relations_manager            import RelationsManager
@@ -81,48 +83,45 @@ async def discharge_unurgent(patient_id: int, req: UnurgentDischargeRequest):
     No bed to release — unurgent patients never had one.
     """
     try:
-        df = dp_mgr._read_df()
-        rows = df[df["subject_id"] == patient_id]
-        if rows.empty:
-            raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
+        with SessionLocal() as session:
+            rows = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).all()
+            if not rows:
+                raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
 
-        # Prefer the row that is marked unurgent and has no departure yet
-        unurgent_rows = rows[
-            rows.get("unurgent", "").astype(str).str.strip().str.lower() == "true"
-        ] if "unurgent" in rows.columns else rows
+            # Prefer the row that is marked unurgent and has no departure yet
+            unurgent_rows = [r for r in rows if str(r.unurgent or "").strip().lower() == "true"] or rows
+            active = [r for r in unurgent_rows if not (r.departure_time or "").strip()] or unurgent_rows
+            row = active[-1] if active else rows[-1]
+            stay_id = row.stay_id
 
-        active = unurgent_rows[
-            unurgent_rows["departure_time"].isna() |
-            (unurgent_rows["departure_time"].astype(str).str.strip().isin(["", "nan", "None"]))
-        ] if "departure_time" in unurgent_rows.columns else unurgent_rows
+            departure_time = req.departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
 
-        row     = active.iloc[-1] if not active.empty else rows.iloc[-1]
-        stay_id = int(row["stay_id"])
+            # Validate: departure must be after arrival
+            arrival = str(row.arrival_time or "").strip()
+            if arrival and arrival not in ("nan", "None", ""):
+                try:
+                    arr_dt = datetime.fromisoformat(arrival)
+                    dep_dt = datetime.fromisoformat(departure_time)
+                    if dep_dt < arr_dt:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Departure time cannot be before arrival time"
+                        )
+                except ValueError:
+                    pass   # unparseable timestamps — skip validation
 
-        departure_time = req.departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
+            archived = {
+                "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
+                "gender": row.gender, "age": row.age, "temperature": row.temperature,
+                "heartrate": row.heartrate, "resprate": row.resprate, "o2sat": row.o2sat,
+                "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
+                "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
+                "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
+            }
+            log_mgr.append(archived)
 
-        # Validate: departure must be after arrival
-        arrival = str(row.get("arrival_time") or "").strip()
-        if arrival and arrival not in ("nan", "None", ""):
-            try:
-                arr_dt = datetime.fromisoformat(arrival)
-                dep_dt = datetime.fromisoformat(departure_time)
-                if dep_dt < arr_dt:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Departure time cannot be before arrival time"
-                    )
-            except ValueError:
-                pass   # unparseable timestamps — skip validation
-
-        # Archive to log
-        archived = row.to_dict()
-        archived["departure_time"] = departure_time
-        log_mgr.append(archived)
-
-        # Remove from DailyPatients
-        df = df[df["stay_id"] != stay_id]
-        dp_mgr._write_df(df)
+            session.delete(row)
+            session.commit()
 
         # Release staff links
         doc_df = rel._read("patient_doctor")

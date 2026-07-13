@@ -53,8 +53,8 @@ async function loadWardsSettings() {
     try {
         // Fetch the ward list and aggregate stats in a single round-trip
         const [listRes, statsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/data/wards/list'),
-            fetch('http://localhost:8090/api/data/wards/stats')
+            fetch('/api/data/wards/list'),
+            fetch('/api/data/wards/stats')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -245,8 +245,8 @@ async function saveWardForm() {
     try {
         // Choose the correct URL and HTTP method based on the current form mode
         const url    = wardFormMode === 'add'
-            ? 'http://localhost:8090/api/data/wards/add'
-            : 'http://localhost:8090/api/data/wards/modify/' + wardCurrentId;
+            ? '/api/data/wards/add'
+            : '/api/data/wards/modify/' + wardCurrentId;
         const method = wardFormMode === 'add' ? 'POST' : 'PUT';
         const response = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const result   = await response.json();
@@ -300,7 +300,7 @@ async function deleteWard() {
     const btn = document.getElementById('delete-ward-confirm-btn');
     btn.disabled = true; btn.textContent = 'Deleting…';
     try {
-        const response = await fetch('http://localhost:8090/api/data/wards/delete/' + wardDeleteId, { method: 'DELETE' });
+        const response = await fetch('/api/data/wards/delete/' + wardDeleteId, { method: 'DELETE' });
         const result   = await response.json();
         if (!response.ok) throw new Error(result.detail || 'HTTP ' + response.status);
         closeWardDeleteModal();

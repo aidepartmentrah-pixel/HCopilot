@@ -3,7 +3,7 @@
 // Each doctor/nurse belongs to exactly one group; deleting a group does NOT
 // automatically update staff records — a warning is shown before deletion.
 
-const API_GROUPS = 'http://localhost:8090/api/staff/groups';
+const API_GROUPS = '/api/staff/groups';
 // Short labels used to render day chips in the table (0 = Monday)
 const DAY_SHORT  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_FULL   = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];

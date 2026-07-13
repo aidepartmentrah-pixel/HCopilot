@@ -35,28 +35,29 @@ import os
 import pandas as pd
 import numpy as np
 from .data_processor import FlowDataProcessor
+from db.session import SessionLocal
+from db.models import HistoricalEdStay
 
 router = APIRouter()
 
-# Paths to the model binary and the raw datasets folder
-MODEL_PATH      = os.path.join(os.path.dirname(__file__), "..", "..", "models", "AIModels", "Flow_prediction.pkl")
-DATASETS_FOLDER = os.path.join(os.path.dirname(__file__), "..", "..", "datasets")
+# Path to the model binary — still filesystem-based (see model_files/api.py's registry)
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "models", "AIModels", "Flow_prediction.pkl")
 
 # ── Module-level cache ────────────────────────────────────────────────────────
 # These four module-level variables persist across requests within the same
-# server process.  Each pair holds the cached object plus the mtime of the file
-# it was loaded from.  Any mtime mismatch triggers a reload.
+# server process.
 #
 # _model_data  : joblib dict {model: XGBRegressor, features: list[str]}
 # _model_mtime : float — mtime of Flow_prediction.pkl at load time
 # _ml_df       : pd.DataFrame — engineered feature DataFrame (date, y, lags, etc.)
-# _ml_df_mtime : float — mtime of edstays_with_synth.csv at load time
+# _ml_df_row_count : int — row count of HistoricalEdStays at build time; any
+#                    mismatch (e.g. a future incremental import) triggers a rebuild
 
 _model_data:  dict  = None
 _model_mtime: float = 0.0
 
-_ml_df        = None
-_ml_df_mtime: float = 0.0
+_ml_df            = None
+_ml_df_row_count: int = -1
 
 
 def _get_model_data() -> dict:
@@ -85,30 +86,30 @@ def _get_model_data() -> dict:
 
 def _get_ml_df():
     """
-    Return the cached feature DataFrame, rebuilding only when edstays CSV changes.
+    Return the cached feature DataFrame, rebuilding only when HistoricalEdStays changes.
 
-    Building the DataFrame requires reading ~61 MB from disk and engineering
+    Building the DataFrame requires reading ~425k rows and engineering
     lag/rolling features, which takes a few seconds.  The result is cached until
-    the source file (edstays_with_synth.csv) is modified.
+    the row count of HistoricalEdStays changes (e.g. a future incremental import).
 
     Returns:
         pd.DataFrame with columns: date, y, temperature_2m_mean, dayofweek,
         month, weekofyear, y_lag_1, y_lag_7, y_roll_7.
 
     Raises:
-        HTTPException(404) : If the edstays CSV does not exist.
+        HTTPException(404) : If HistoricalEdStays has no rows.
     """
-    global _ml_df, _ml_df_mtime
-    edstays_path = os.path.join(DATASETS_FOLDER, "edstays_with_synth.csv")
-    if not os.path.exists(edstays_path):
-        raise HTTPException(status_code=404, detail="edstays dataset not found")
-    mtime = os.path.getmtime(edstays_path)
-    # Rebuild the feature DataFrame only if the source file has changed
-    if _ml_df is None or _ml_df_mtime != mtime:
-        processor    = FlowDataProcessor(DATASETS_FOLDER)
+    global _ml_df, _ml_df_row_count
+    with SessionLocal() as session:
+        row_count = session.query(HistoricalEdStay).count()
+    if row_count == 0:
+        raise HTTPException(status_code=404, detail="HistoricalEdStays dataset is empty")
+    # Rebuild the feature DataFrame only if the row count has changed
+    if _ml_df is None or _ml_df_row_count != row_count:
+        processor    = FlowDataProcessor()
         master_df    = processor.load_and_prepare_data()
         _ml_df       = processor.create_features(master_df)
-        _ml_df_mtime = mtime
+        _ml_df_row_count = row_count
     return _ml_df
 
 

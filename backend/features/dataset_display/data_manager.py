@@ -37,7 +37,16 @@ import logging
 import os
 from typing import List, Dict, Any, Tuple, Optional
 
+from db.session import SessionLocal
+from db.models import Ward, DailyPatient
+
 logger = logging.getLogger(__name__)
+
+# "Wards" and "DailyPatients" are ORM-backed (see db/models.py) — Wards.csv /
+# DailyPatients.csv are dead files that nothing writes to anymore. Every other
+# dataset in DATASETS below is genuinely external/historical data (MIMIC-like
+# CSVs fetched from the companion server) and stays file-based.
+_ORM_DATASETS = {"Wards": Ward, "DailyPatients": DailyPatient}
 
 
 class DataManager:
@@ -143,6 +152,21 @@ class DataManager:
             Tuple of (list_of_row_dicts, total_row_count).
             Returns ([], 0) if the file does not exist or an error occurs.
         """
+        if dataset in _ORM_DATASETS:
+            model = _ORM_DATASETS[dataset]
+            with SessionLocal() as session:
+                total_rows = session.query(model).count()
+                start_idx = (page - 1) * page_size
+                if start_idx >= total_rows:
+                    return [], total_rows
+                cols = [c.name for c in model.__table__.columns]
+                pk_col = list(model.__table__.primary_key.columns)[0]
+                rows = session.query(model).order_by(pk_col).offset(start_idx).limit(page_size).all()
+                records = [{c: getattr(r, c) for c in cols} for r in rows]
+                df = pd.DataFrame(records, columns=cols)
+                df.replace([np.nan, np.inf, -np.inf], None, inplace=True)
+                return df.to_dict('records'), total_rows
+
         csv_path = os.path.join(self.DATABASE_FOLDER, f"{dataset}.csv")
 
         if not os.path.exists(csv_path):
@@ -188,6 +212,18 @@ class DataManager:
         datasets_info = {}
 
         for dataset in self.DATASETS:
+            if dataset in _ORM_DATASETS:
+                model = _ORM_DATASETS[dataset]
+                with SessionLocal() as session:
+                    row_count = session.query(model).count()
+                datasets_info[dataset] = {
+                    "records_count": row_count,
+                    "file_exists":   True,
+                    "file_size":     0,
+                    "columns":       [c.name for c in model.__table__.columns],
+                }
+                continue
+
             csv_path = os.path.join(self.DATABASE_FOLDER, f"{dataset}.csv")
             exists = os.path.exists(csv_path)
 

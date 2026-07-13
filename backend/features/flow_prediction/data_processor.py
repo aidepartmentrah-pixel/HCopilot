@@ -6,9 +6,9 @@
 # patient-flow model in two steps:
 #
 #   Step 1 — load_and_prepare_data()
-#     Reads ED stay records (edstays_with_synth.csv) and resamples them to a
+#     Reads ED stay records (HistoricalEdStays table) and resamples them to a
 #     daily count of patient arrivals (column "y").  Merges with daily average
-#     temperature data (meteo.csv) so the model can learn weather-related patterns.
+#     temperature data (DailyWeather table) so the model can learn weather-related patterns.
 #
 #   Step 2 — create_features()
 #     Engineers the time-series features the XGBoost model expects:
@@ -27,41 +27,43 @@
 #
 # prepare_prediction_data() is a helper kept for reference; the actual
 # prediction logic lives in api.py's auto-regressive loop.
+#
+# DATA SOURCE: HistoricalEdStays / DailyWeather (SQL Server, see db/models.py) —
+# originally edstays_with_synth.csv / meteo.csv, migrated in Stage 2.
 # =============================================================================
 
 import pandas as pd
 import numpy as np
-import os
 from datetime import datetime, timedelta
+
+from db.session import SessionLocal
+from db.models import HistoricalEdStay, DailyWeather
 
 
 class FlowDataProcessor:
     """
-    Reads raw ED data CSVs and produces the feature-engineered DataFrame
-    consumed by the XGBoost patient-flow model.
+    Reads historical ED stay data from SQL Server and produces the
+    feature-engineered DataFrame consumed by the XGBoost patient-flow model.
 
-    The processor is stateless between calls — each method reads from disk
-    and returns a new DataFrame without caching.  Caching is handled at the
-    api.py level via the _ml_df / _ml_df_mtime module variables.
+    The processor is stateless between calls — each method reads from the
+    database and returns a new DataFrame without caching.  Caching is handled
+    at the api.py level via the _ml_df module variable.
     """
 
-    def __init__(self, datasets_folder):
-        """
-        Args:
-            datasets_folder : Absolute path to the directory containing
-                              edstays_with_synth.csv and meteo.csv.
-        """
-        self.datasets_folder = datasets_folder
+    def __init__(self, datasets_folder=None):
+        # datasets_folder kept for backward-compatible construction
+        # (FlowDataProcessor(DATASETS_FOLDER)); unused now that data lives in SQL Server.
+        pass
 
     def load_and_prepare_data(self):
         """
         Load ED stay records, resample to daily counts, and merge with weather.
 
-        The ED stay CSV records individual patient visits.  This method groups
+        The ED stay table records individual patient visits.  This method groups
         them by arrival date (intime_synth truncated to the day) and counts
         the arrivals per day, producing the target variable "y".
 
-        Weather data from meteo.csv is averaged to a daily temperature and
+        Weather data from DailyWeather is averaged to a daily temperature and
         left-joined onto the daily arrivals so days without weather data are
         still included (with NaN temperature, which the model handles).
 
@@ -69,12 +71,12 @@ class FlowDataProcessor:
             pd.DataFrame with columns: ds (date), y (daily arrival count),
             temperature_2m_mean (average temperature for that day).
         """
-        edstays_path = os.path.join(self.datasets_folder, "edstays_with_synth.csv")
-        meteo_path   = os.path.join(self.datasets_folder, "meteo.csv")
+        with SessionLocal() as session:
+            intimes = [r[0] for r in session.query(HistoricalEdStay.intime_synth).all()]
+            weather_rows = session.query(DailyWeather.time, DailyWeather.temperature_2m_mean).all()
 
-        df = pd.read_csv(edstays_path)
-        df["visitdate"]       = pd.to_datetime(df["intime_synth"])
-        df["finishvisitdate"] = pd.to_datetime(df["outtime_synth"])
+        df = pd.DataFrame({"intime_synth": intimes})
+        df["visitdate"] = pd.to_datetime(df["intime_synth"])
 
         # Count arrivals per calendar day and rename for Prophet-style ds/y convention
         daily_arrivals = (
@@ -85,7 +87,7 @@ class FlowDataProcessor:
               .rename(columns={"visitdate": "ds"})
         )
 
-        dfWeather = pd.read_csv(meteo_path)
+        dfWeather = pd.DataFrame(weather_rows, columns=["time", "temperature_2m_mean"])
         dfWeather["date"] = pd.to_datetime(dfWeather["time"])
 
         # Compute a single average temperature per day (meteo may have sub-daily records)

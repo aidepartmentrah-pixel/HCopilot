@@ -15,7 +15,7 @@ async function loadModelFiles() {
     const container = document.getElementById('models-container');
 
     try {
-        const response = await fetch('http://localhost:8090/api/models/list');
+        const response = await fetch('/api/models/list');
         const result   = await response.json();
 
         if (!response.ok) {

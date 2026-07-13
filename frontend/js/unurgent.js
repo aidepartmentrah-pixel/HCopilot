@@ -11,7 +11,7 @@
 // The data-change bus is NOT subscribed here because the unurgent section
 // does not need to auto-refresh (initUnurgent() is called fresh on entry).
 
-const UNURGENT_BASE = 'http://localhost:8090/api/unurgent';
+const UNURGENT_BASE = '/api/unurgent';
 
 // In-memory list of unurgent patients — populated by loadUnurgentSection()
 let _unurgentPatients = [];

@@ -94,8 +94,8 @@ function _shiftIcon(name) {
 async function _loadShiftsGroupsForDoctorForm(currentShift, currentGroup) {
     try {
         const [sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         _doctorShifts = (await sRes.json()).shifts || [];
         _doctorGroups = (await gRes.json()).groups || [];
@@ -189,10 +189,10 @@ async function loadDoctorsSettings() {
     try {
         // Fetch all four endpoints in parallel to minimise total wait time
         const [listRes, statsRes, sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/doctors/list'),
-            fetch('http://localhost:8090/api/staff/doctors/stats'),
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/doctors/list'),
+            fetch('/api/staff/doctors/stats'),
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -349,7 +349,7 @@ function renderDoctorsTable(doctors) {
  */
 async function toggleDoctorAbsent(id) {
     try {
-        const res  = await fetch('http://localhost:8090/api/staff/doctors/toggle-absent/' + id, { method: 'PUT' });
+        const res  = await fetch('/api/staff/doctors/toggle-absent/' + id, { method: 'PUT' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
         showMessage(data.absent ? 'Doctor marked absent' : 'Doctor marked present', 'success');
@@ -497,8 +497,8 @@ async function saveDoctorForm() {
 
     try {
         const url    = doctorFormMode === 'add'
-            ? 'http://localhost:8090/api/staff/doctors/add'
-            : 'http://localhost:8090/api/staff/doctors/modify/' + doctorCurrentId;
+            ? '/api/staff/doctors/add'
+            : '/api/staff/doctors/modify/' + doctorCurrentId;
         const method = doctorFormMode === 'add' ? 'POST' : 'PUT';
         const response = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const result   = await response.json();
@@ -551,7 +551,7 @@ async function deleteDoctor() {
     btn.disabled = true;
     btn.textContent = 'Deleting…';
     try {
-        const response = await fetch('http://localhost:8090/api/staff/doctors/delete/' + doctorDeleteId, { method: 'DELETE' });
+        const response = await fetch('/api/staff/doctors/delete/' + doctorDeleteId, { method: 'DELETE' });
         const result   = await response.json();
         if (!response.ok) throw new Error(result.detail || 'HTTP ' + response.status);
         closeDoctorDeleteModal();

@@ -72,7 +72,7 @@ function peditAutoOccupation() {
 
 async function loadNextPatientIds() {
     try {
-        const res  = await fetch('http://localhost:8090/api/patients/next-ids');
+        const res  = await fetch('/api/patients/next-ids');
         const data = await res.json();
         if (!res.ok) return;
         document.getElementById('pat-patient-id').value = data.next_patient_id;
@@ -91,8 +91,8 @@ async function _loadPatientBedMap() {
     // Join patient_bed relations with the beds list to know each patient's current bed
     try {
         const [pbRes, bedsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/relations/patient_bed'),
-            fetch('http://localhost:8090/api/beds/list'),
+            fetch('/api/relations/patient_bed'),
+            fetch('/api/beds/list'),
         ]);
         const pb   = await pbRes.json();
         const beds = await bedsRes.json();
@@ -117,8 +117,8 @@ async function loadPatients() {
 
     try {
         const [listRes, statsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/patients/list'),
-            fetch('http://localhost:8090/api/patients/stats')
+            fetch('/api/patients/list'),
+            fetch('/api/patients/stats')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -173,8 +173,8 @@ async function loadPatientLog() {
     document.getElementById('pat-filter-bar').style.display = 'none';
     try {
         const [listRes, statsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/data/log-patients/list'),
-            fetch('http://localhost:8090/api/data/log-patients/stats')
+            fetch('/api/data/log-patients/list'),
+            fetch('/api/data/log-patients/stats')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -495,7 +495,7 @@ async function submitPatientForm() {
     btn.disabled = true; btn.textContent = 'Adding…';
 
     try {
-        const response = await fetch('http://localhost:8090/api/patients/add', {
+        const response = await fetch('/api/patients/add', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify(payload)
@@ -606,8 +606,8 @@ async function saveEditPatient() {
     btn.disabled = true; btn.textContent = 'Saving…';
 
     const url = patEditSource === 'log'
-        ? 'http://localhost:8090/api/data/log-patients/modify/' + patEditStayId
-        : 'http://localhost:8090/api/patients/modify/' + patEditStayId;
+        ? '/api/data/log-patients/modify/' + patEditStayId
+        : '/api/patients/modify/' + patEditStayId;
 
     try {
         const response = await fetch(url, {
@@ -659,8 +659,8 @@ async function deletePatient() {
     btn.disabled = true; btn.textContent = 'Deleting…';
 
     const url = patDeleteSource === 'log'
-        ? 'http://localhost:8090/api/data/log-patients/delete/' + patDeleteStayId
-        : 'http://localhost:8090/api/patients/delete/' + patDeleteStayId;
+        ? '/api/data/log-patients/delete/' + patDeleteStayId
+        : '/api/patients/delete/' + patDeleteStayId;
 
     try {
         const response = await fetch(url, { method: 'DELETE' });

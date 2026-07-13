@@ -37,7 +37,7 @@ async function loadRelationsTable(table) {
     container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
 
     try {
-        const res = await fetch('http://localhost:8090/api/relations/' + table);
+        const res = await fetch('/api/relations/' + table);
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
 
@@ -92,7 +92,7 @@ async function addRelation() {
     }
 
     try {
-        const res = await fetch('http://localhost:8090/api/relations/' + table, {
+        const res = await fetch('/api/relations/' + table, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ col_a: colAVal, col_b: colBVal })
@@ -114,7 +114,7 @@ async function addRelation() {
 
 async function deleteRelation(table, colA, colB) {
     try {
-        const res = await fetch(`http://localhost:8090/api/relations/${table}/${colA}/${colB}`, { method: 'DELETE' });
+        const res = await fetch(`/api/relations/${table}/${colA}/${colB}`, { method: 'DELETE' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
         showMessage(data.message, 'success');

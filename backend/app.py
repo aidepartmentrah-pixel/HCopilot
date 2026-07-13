@@ -6,17 +6,20 @@
 #   1. Creating the FastAPI application instance.
 #   2. Configuring CORS so the browser-served frontend can call the API.
 #   3. Importing each feature's APIRouter and mounting it under its own URL prefix.
-#   4. Serving the compiled frontend (HTML/CSS/JS) as static files from the same
-#      HTTP server so no separate web server is needed in development.
+#   4. In local dev, also serving the frontend (HTML/CSS/JS) as static files from
+#      the same HTTP server so no separate web server is needed. In the Docker
+#      deployment, the frontend is served by its own nginx container instead
+#      (see frontend/Dockerfile) and this backend image ships API-only — the
+#      static mount below is skipped automatically when frontend/ isn't present.
 #
-# HOW REQUESTS FLOW:
+# HOW REQUESTS FLOW (local dev, one process):
 #   Browser → GET /           → StaticFiles serves frontend/index.html
 #   Browser → GET /api/beds/list → FastAPI routes to beds_display.api router
 #   Browser → POST /api/auth/login → FastAPI routes to auth.api router
 #
 # DATA STORAGE:
-#   There is no database. Every feature reads/writes CSV files stored in
-#   backend/datasets/.  All manager classes handle their own CSV I/O.
+#   Microsoft SQL Server (see db/session.py, db/models.py). Every manager class
+#   talks to the database via SQLAlchemy — see the Stage 1 migration.
 #
 # RUNNING:
 #   cd backend && python app.py
@@ -82,15 +85,28 @@ app.include_router(reset_router,      prefix="/api/reset")           # POST /api
 app.include_router(unurgent_router,   prefix="/api/unurgent")        # GET /api/unurgent/list
 app.include_router(auth_router,       prefix="/api/auth")            # POST /api/auth/login
 
-# ── Static frontend serving ────────────────────────────────────────────────────
+
+@app.get("/health")
+async def health():
+    """Lightweight liveness check for the Docker/Compose healthcheck — no DB access."""
+    return {"status": "ok"}
+
+
+# ── Static frontend serving (local dev only) ───────────────────────────────────
 # Mount the entire frontend/ directory as static HTML.  The `html=True` flag
 # makes FastAPI serve index.html for any path that doesn't match an API route,
 # which is the standard "catch-all" configuration for single-page apps.
 # This must be mounted LAST — StaticFiles is a catch-all and would intercept
 # API requests if mounted before the routers.
+#
+# The backend Docker image is API-only and has no frontend/ directory (nginx
+# serves the frontend in its own container instead) — StaticFiles would raise
+# at startup if pointed at a missing directory, so this mount is skipped
+# entirely when the folder isn't present.
 
 FRONTEND_FOLDER = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/", StaticFiles(directory=FRONTEND_FOLDER, html=True), name="frontend")
+if os.path.isdir(FRONTEND_FOLDER):
+    app.mount("/", StaticFiles(directory=FRONTEND_FOLDER, html=True), name="frontend")
 
 # ── Development server ────────────────────────────────────────────────────────
 # Only executed when this file is run directly (`python app.py`).

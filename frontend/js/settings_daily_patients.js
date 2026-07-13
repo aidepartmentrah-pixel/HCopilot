@@ -44,8 +44,8 @@ let dpBedMap = {};
 async function _loadDpBedMap() {
     try {
         const [pbRes, bedsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/relations/patient_bed'),
-            fetch('http://localhost:8090/api/beds/list'),
+            fetch('/api/relations/patient_bed'),
+            fetch('/api/beds/list'),
         ]);
         const pb   = await pbRes.json();
         const beds = await bedsRes.json();
@@ -86,8 +86,8 @@ async function loadDailyPatientsSettings() {
 
     try {
         const [listRes, statsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/data/daily-patients/list'),
-            fetch('http://localhost:8090/api/data/daily-patients/stats')
+            fetch('/api/data/daily-patients/list'),
+            fetch('/api/data/daily-patients/stats')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -478,8 +478,8 @@ async function saveDpForm() {
 
     try {
         const url    = dpFormMode === 'add'
-            ? 'http://localhost:8090/api/data/daily-patients/add'
-            : 'http://localhost:8090/api/data/daily-patients/modify/' + dpCurrentStayId;
+            ? '/api/data/daily-patients/add'
+            : '/api/data/daily-patients/modify/' + dpCurrentStayId;
         const method = dpFormMode === 'add' ? 'POST' : 'PUT';
         const response = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const result   = await response.json();
@@ -527,7 +527,7 @@ async function deleteDp() {
     const btn = document.getElementById('delete-dp-confirm-btn');
     btn.disabled = true; btn.textContent = 'Deleting…';
     try {
-        const response = await fetch('http://localhost:8090/api/data/daily-patients/delete/' + dpDeleteId, { method: 'DELETE' });
+        const response = await fetch('/api/data/daily-patients/delete/' + dpDeleteId, { method: 'DELETE' });
         const result   = await response.json();
         if (!response.ok) throw new Error(result.detail || 'HTTP ' + response.status);
         closeDpDeleteModal();

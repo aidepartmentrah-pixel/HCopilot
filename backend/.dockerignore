@@ -1,0 +1,24 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+tests/
+.env
+.env.*
+!.env.example
+
+# The operational CSVs (Users, Doctors, Nurses, Wards, EDbeds, Shifts, Groups,
+# DailyPatients, LogPatients, relation tables) AND the ML historical training
+# data (edstays_with_synth.csv, meteo.csv) ARE all shipped in the image —
+# they are this hospital's real existing lookup/configuration/historical data
+# and db-init transports them into SQL Server on first install via
+# migrate_csv_to_mssql.py and import_ml_historical_data.py, per the RAH
+# Operator Manual's "first installation must include lookup data, must not
+# recreate it" rule. Only Patients.csv (the ~38MB historical patient-intake
+# sampler dataset for the Simulation feature) is excluded — it was never
+# present in this environment to begin with and isn't part of Stage 1/2.
+datasets/Patients.csv
+
+scratch_download/

@@ -30,8 +30,8 @@ async function loadBeds() {
 
     try {
         const [statsResponse, bedsResponse] = await Promise.all([
-            fetch('http://localhost:8090/api/beds/stats'),
-            fetch('http://localhost:8090/api/beds/list')
+            fetch('/api/beds/stats'),
+            fetch('/api/beds/list')
         ]);
         const stats    = await statsResponse.json();
         const bedsData = await bedsResponse.json();
@@ -230,7 +230,7 @@ async function assignPatientToBed() {
     if (arrivalEl && arrivalEl.value) body.bed_occupation_time = arrivalEl.value;
 
     try {
-        const response = await fetch(`http://localhost:8090/api/beds/assign/${currentBedId}`, {
+        const response = await fetch(`/api/beds/assign/${currentBedId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
@@ -288,7 +288,7 @@ async function confirmBedDischarge() {
     btn.disabled    = true;
     btn.textContent = 'Discharging…';
     try {
-        const res  = await fetch(`http://localhost:8090/api/beds/discharge/${currentBedId}`, {
+        const res  = await fetch(`/api/beds/discharge/${currentBedId}`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ departure_time: departureTime }),
@@ -320,7 +320,7 @@ async function setBedCondition(condition) {
     // Toggle the bed between Available and Under Repair
     if (!currentBedId) return;
     try {
-        const response = await fetch(`http://localhost:8090/api/beds/condition/${currentBedId}`, {
+        const response = await fetch(`/api/beds/condition/${currentBedId}`, {
             method:  'PUT',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ condition }),

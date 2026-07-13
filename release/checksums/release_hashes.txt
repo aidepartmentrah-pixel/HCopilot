@@ -1,0 +1,3 @@
+ef6e5ef8f7c3b3bef91b672b8e5124b94807feb16902a290f5d44dd1b9e7ad1e *docker-images/backend.tar
+4cee3d511a513f64805bf31f27eefeeafae92bd99d09c4aef8c3cc7ab9ed8752 *docker-images/frontend.tar
+731218215a9d65560092c3ce1de39b07a6fc844d50927a9efecaf1942f024893 *docker-images/sqlserver.tar

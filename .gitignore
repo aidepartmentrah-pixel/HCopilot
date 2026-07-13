@@ -4,3 +4,16 @@ backend/datasets/*.csv
 __pycache__/
 *.pyc
 *.pyo
+
+# Local virtual environment and environment-specific secrets
+backend/.venv/
+.env
+.env.*
+!.env.example
+!.env.offline.template
+
+# Docker image tarballs and generated release output — rebuilt on demand,
+# too large to commit
+release/docker-images/*.tar
+release/compose/.env
+release/compose/backups/

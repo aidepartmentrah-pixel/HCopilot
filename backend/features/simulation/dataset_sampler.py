@@ -23,10 +23,15 @@ import math
 import pandas as pd
 from fastapi import HTTPException
 
+from db.session import SessionLocal
+from db.models import DailyPatient
+
 # ── File paths ────────────────────────────────────────────────────────────────
+# Patients.csv (~38MB historical MIMIC-like sampler source) intentionally stays
+# a flat file — it is explicitly out of scope for the SQL Server migration
+# (see Stage 1 plan). DailyPatients is ORM-backed (see db/models.py).
 _DS             = os.path.join(os.path.dirname(__file__), "..", "..", "datasets")
 PATIENTS_FILE   = os.path.join(_DS, "Patients.csv")
-DAILY_FILE      = os.path.join(_DS, "DailyPatients.csv")
 
 
 def _safe(v):
@@ -48,10 +53,8 @@ class DatasetSampler:
 
     def _active_subject_ids(self) -> set:
         """Return the set of subject_ids currently in DailyPatients."""
-        if not os.path.exists(DAILY_FILE):
-            return set()
-        df = pd.read_csv(DAILY_FILE, usecols=["subject_id"])
-        return set(df["subject_id"].dropna().astype(int).tolist())
+        with SessionLocal() as session:
+            return {p.subject_id for p in session.query(DailyPatient.subject_id).all()}
 
     def _next_ids(self) -> tuple[int, int]:
         """
@@ -59,14 +62,12 @@ class DatasetSampler:
         Seeds at 10 000 001 / 30 000 001 to avoid collisions with historic data
         (mirrors the logic in PatientManager.get_next_ids).
         """
-        if not os.path.exists(DAILY_FILE):
-            return 10_000_001, 30_000_001
-        df = pd.read_csv(DAILY_FILE)
-        if df.empty:
-            return 10_000_001, 30_000_001
-        next_patient = int(df["subject_id"].max()) + 1
-        next_stay    = int(df["stay_id"].max())    + 1
-        return next_patient, next_stay
+        with SessionLocal() as session:
+            max_subject = session.query(DailyPatient.subject_id).order_by(DailyPatient.subject_id.desc()).first()
+            max_stay = session.query(DailyPatient.stay_id).order_by(DailyPatient.stay_id.desc()).first()
+            if max_subject is None:
+                return 10_000_001, 30_000_001
+            return max_subject[0] + 1, max_stay[0] + 1
 
     # ── Public API ────────────────────────────────────────────────────────────
 

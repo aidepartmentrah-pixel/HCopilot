@@ -94,8 +94,8 @@ function _nurseShiftIcon(name) {
 async function _loadShiftsGroupsForNurseForm(currentShift, currentGroup) {
     try {
         const [sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         _nurseShifts = (await sRes.json()).shifts || [];
         _nurseGroups = (await gRes.json()).groups || [];
@@ -183,10 +183,10 @@ async function loadNursesSettings() {
 
     try {
         const [listRes, statsRes, sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/nurses/list'),
-            fetch('http://localhost:8090/api/staff/nurses/stats'),
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/nurses/list'),
+            fetch('/api/staff/nurses/stats'),
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();
@@ -337,7 +337,7 @@ function renderNursesTable(nurses) {
  */
 async function toggleNurseAbsent(id) {
     try {
-        const res  = await fetch('http://localhost:8090/api/staff/nurses/toggle-absent/' + id, { method: 'PUT' });
+        const res  = await fetch('/api/staff/nurses/toggle-absent/' + id, { method: 'PUT' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
         showMessage(data.absent ? 'Nurse marked absent' : 'Nurse marked present', 'success');
@@ -480,8 +480,8 @@ async function saveNurseForm() {
 
     try {
         const url    = nurseFormMode === 'add'
-            ? 'http://localhost:8090/api/staff/nurses/add'
-            : 'http://localhost:8090/api/staff/nurses/modify/' + nurseCurrentId;
+            ? '/api/staff/nurses/add'
+            : '/api/staff/nurses/modify/' + nurseCurrentId;
         const method = nurseFormMode === 'add' ? 'POST' : 'PUT';
         const response = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const result   = await response.json();
@@ -534,7 +534,7 @@ async function deleteNurse() {
     btn.disabled = true;
     btn.textContent = 'Deleting…';
     try {
-        const response = await fetch('http://localhost:8090/api/staff/nurses/delete/' + nurseDeleteId, { method: 'DELETE' });
+        const response = await fetch('/api/staff/nurses/delete/' + nurseDeleteId, { method: 'DELETE' });
         const result   = await response.json();
         if (!response.ok) throw new Error(result.detail || 'HTTP ' + response.status);
         closeNurseDeleteModal();

@@ -12,23 +12,66 @@
 # These caps prevent a handful of bogus rows from skewing averages while still
 # preserving the vast majority of real clinical observations.
 
-import os
 import math
 import pandas as pd
 from datetime import datetime
 
-_DS = os.path.join(os.path.dirname(__file__), "..", "..", "datasets")
+from db.session import SessionLocal
+from db.models import (
+    DailyPatient, LogPatient, EDBed, PatientBed, Nurse, Doctor,
+    PatientNurse, PatientDoctor, Ward, WardBed,
+)
 
-DAILY_FILE   = os.path.join(_DS, "DailyPatients.csv")
-LOG_FILE     = os.path.join(_DS, "LogPatients.csv")
-BEDS_FILE    = os.path.join(_DS, "EDbeds.csv")
-PB_FILE      = os.path.join(_DS, "patient_bed.csv")
-NURSES_FILE  = os.path.join(_DS, "Nurses.csv")
-DOCTORS_FILE = os.path.join(_DS, "Doctors.csv")
-PN_FILE      = os.path.join(_DS, "patient_nurse.csv")
-PD_FILE      = os.path.join(_DS, "patient_doctor.csv")
-WARDS_FILE   = os.path.join(_DS, "Wards.csv")
-WARD_BED_FILE = os.path.join(_DS, "ward_bed.csv")
+
+def _df_from(model, columns):
+    with SessionLocal() as session:
+        rows = session.query(model).all()
+    return pd.DataFrame([{c: getattr(r, c) for c in columns} for r in rows], columns=columns)
+
+
+def _load_beds_df():
+    return _df_from(EDBed, ["bed_id", "bed_number", "bed_status", "type"])
+
+
+def _load_pb_df():
+    return _df_from(PatientBed, ["patient_id", "bed_id"])
+
+
+def _coerce_absent_bool(df):
+    # pandas' CSV reader auto-inferred "absent" as a bool column (the file only
+    # ever contained the literal text "True"/"False"), so downstream code sums
+    # it directly to count absences. Replicate that inferred dtype here.
+    if "absent" in df.columns:
+        df["absent"] = df["absent"].astype(str).str.strip().str.lower() == "true"
+    return df
+
+
+def _load_nurses_df():
+    return _coerce_absent_bool(
+        _df_from(Nurse, ["id", "role", "shift", "group", "patientNB", "availabilityTimeStart", "name", "absent"])
+    )
+
+
+def _load_doctors_df():
+    return _coerce_absent_bool(
+        _df_from(Doctor, ["id", "intern_or_not", "shift", "work_days", "patientNb", "availabilityTimeStart", "name", "absent"])
+    )
+
+
+def _load_pn_df():
+    return _df_from(PatientNurse, ["patient_id", "nurse_id"])
+
+
+def _load_pd_df():
+    return _df_from(PatientDoctor, ["patient_id", "doctor_id"])
+
+
+def _load_wards_df():
+    return _df_from(Ward, ["ward_id", "ward_name", "department_id"])
+
+
+def _load_wb_df():
+    return _df_from(WardBed, ["ward_id", "bed_id"])
 
 
 def _parse_minutes(start, end):
@@ -70,37 +113,22 @@ def _safe_float(v):
         return None
 
 
-def _read_daily():
-    """
-    Load DailyPatients.csv into a DataFrame, coercing timestamp columns to object
-    dtype to prevent pandas from silently converting them to NaT.
+_DAILY_COLS = ["subject_id", "stay_id", "name", "gender", "age", "temperature", "heartrate",
+               "resprate", "o2sat", "sbp", "dbp", "pain", "acuity", "chiefcomplaint",
+               "arrival_time", "departure_time", "bed_occupation_time", "unurgent"]
+_LOG_COLS = ["subject_id", "stay_id", "name", "gender", "age", "temperature", "heartrate",
+             "resprate", "o2sat", "sbp", "dbp", "pain", "acuity", "chiefcomplaint",
+             "arrival_time", "departure_time", "bed_occupation_time"]
 
-    Returns an empty DataFrame (no columns) when the file does not exist.
-    """
-    if not os.path.exists(DAILY_FILE):
-        return pd.DataFrame()
-    df = pd.read_csv(DAILY_FILE)
-    for col in ("arrival_time", "departure_time", "bed_occupation_time"):
-        if col in df.columns:
-            df[col] = df[col].astype(object)
-    return df
+
+def _read_daily():
+    """Load DailyPatients from SQL Server into a DataFrame shaped like the CSV-era file."""
+    return _df_from(DailyPatient, _DAILY_COLS)
 
 
 def _read_log():
-    """
-    Load LogPatients.csv into a DataFrame, coercing timestamp columns to object
-    dtype.  The log holds discharged patients and is the source of truth for LOS
-    calculations.
-
-    Returns an empty DataFrame (no columns) when the file does not exist.
-    """
-    if not os.path.exists(LOG_FILE):
-        return pd.DataFrame()
-    df = pd.read_csv(LOG_FILE)
-    for col in ("arrival_time", "departure_time", "bed_occupation_time"):
-        if col in df.columns:
-            df[col] = df[col].astype(object)
-    return df
+    """Load LogPatients from SQL Server into a DataFrame shaped like the CSV-era file."""
+    return _df_from(LogPatient, _LOG_COLS)
 
 
 def _collect_wait_minutes(df):
@@ -342,13 +370,12 @@ class StatsManager:
 
         # Occupancy rate from beds + patient_bed relation
         occupancy_rate = None
-        if os.path.exists(BEDS_FILE):
-            beds = pd.read_csv(BEDS_FILE)
-            total_beds = len(beds)
-            if total_beds > 0 and os.path.exists(PB_FILE):
-                pb = pd.read_csv(PB_FILE)
-                occupied = len(pb["bed_id"].unique()) if "bed_id" in pb.columns else 0
-                occupancy_rate = round(min(occupied, total_beds) / total_beds * 100, 1)
+        beds = _load_beds_df()
+        total_beds = len(beds)
+        if total_beds > 0:
+            pb = _load_pb_df()
+            occupied = len(pb["bed_id"].unique()) if "bed_id" in pb.columns else 0
+            occupancy_rate = round(min(occupied, total_beds) / total_beds * 100, 1)
 
         # Average acuity of current patients
         avg_acuity = None
@@ -645,10 +672,10 @@ class StatsManager:
                 total_patient_assignments,
                 unique_patients_covered.
         """
-        nurses  = pd.read_csv(NURSES_FILE)  if os.path.exists(NURSES_FILE)  else pd.DataFrame()
-        doctors = pd.read_csv(DOCTORS_FILE) if os.path.exists(DOCTORS_FILE) else pd.DataFrame()
-        pn      = pd.read_csv(PN_FILE)      if os.path.exists(PN_FILE)      else pd.DataFrame()
-        pd_rel  = pd.read_csv(PD_FILE)      if os.path.exists(PD_FILE)      else pd.DataFrame()
+        nurses  = _load_nurses_df()
+        doctors = _load_doctors_df()
+        pn      = _load_pn_df()
+        pd_rel  = _load_pd_df()
 
         def _load_dist(staff_df, relation_df, id_col):
             """Bucket staff members by how many patients are assigned to them."""
@@ -732,17 +759,15 @@ class StatsManager:
                 ward_distribution — {ward_name: count} across assigned beds
         """
         is_nurse = kind == "nurse"
-        staff_file  = NURSES_FILE  if is_nurse else DOCTORS_FILE
-        rel_file    = PN_FILE      if is_nurse else PD_FILE
         id_col      = "nurse_id"   if is_nurse else "doctor_id"
 
-        staff_df = pd.read_csv(staff_file) if os.path.exists(staff_file) else pd.DataFrame()
-        rel_df   = pd.read_csv(rel_file)   if os.path.exists(rel_file)   else pd.DataFrame()
+        staff_df = _load_nurses_df() if is_nurse else _load_doctors_df()
+        rel_df   = _load_pn_df()     if is_nurse else _load_pd_df()
         daily    = _read_daily()
-        beds_df  = pd.read_csv(BEDS_FILE)     if os.path.exists(BEDS_FILE)     else pd.DataFrame()
-        pb_df    = pd.read_csv(PB_FILE)       if os.path.exists(PB_FILE)       else pd.DataFrame()
-        wb_df    = pd.read_csv(WARD_BED_FILE) if os.path.exists(WARD_BED_FILE) else pd.DataFrame()
-        wards_df = pd.read_csv(WARDS_FILE)    if os.path.exists(WARDS_FILE)    else pd.DataFrame()
+        beds_df  = _load_beds_df()
+        pb_df    = _load_pb_df()
+        wb_df    = _load_wb_df()
+        wards_df = _load_wards_df()
 
         # ── Member profile ──────────────────────────────────────────────────
         if len(staff_df) == 0 or "id" not in staff_df.columns:

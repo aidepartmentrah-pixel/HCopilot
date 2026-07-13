@@ -27,9 +27,9 @@
 // Base URLs for the three most-used API namespaces.
 // All three point to the same local FastAPI server but different router prefixes.
 // Keeping them as named constants makes it easy to update the host/port in one place.
-const API_BASE   = 'http://localhost:8090/api/patient-flow';
-const STAFF_BASE = 'http://localhost:8090/api/staff';
-const BEDS_BASE  = 'http://localhost:8090/api/beds';
+const API_BASE   = '/api/patient-flow';
+const STAFF_BASE = '/api/staff';
+const BEDS_BASE  = '/api/beds';
 
 // ── Dataset registry ──────────────────────────────────────────────────────────
 

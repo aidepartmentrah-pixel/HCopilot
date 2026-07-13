@@ -95,8 +95,8 @@ function initSimulation() {
 async function simLoadShiftsGroups() {
     try {
         const [sRes, gRes] = await Promise.all([
-            fetch('http://localhost:8090/api/staff/shifts/list'),
-            fetch('http://localhost:8090/api/staff/groups/list')
+            fetch('/api/staff/shifts/list'),
+            fetch('/api/staff/groups/list')
         ]);
         _simShifts = (await sRes.json()).shifts || [];
         _simGroups = (await gRes.json()).groups || [];
@@ -891,9 +891,9 @@ async function _simLoadEditData() {
     _simEditDataLoaded = true;
     try {
         const [bRes, dRes, nRes] = await Promise.all([
-            fetch('http://localhost:8090/api/beds/list'),
-            fetch('http://localhost:8090/api/staff/doctors/list'),
-            fetch('http://localhost:8090/api/staff/nurses/list'),
+            fetch('/api/beds/list'),
+            fetch('/api/staff/doctors/list'),
+            fetch('/api/staff/nurses/list'),
         ]);
         _simEditBeds    = ((await bRes.json()).beds    || []).filter(b => b.bed_status === 'Available');
         _simEditDoctors = (await dRes.json()).doctors  || [];

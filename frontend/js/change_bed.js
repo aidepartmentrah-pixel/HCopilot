@@ -22,7 +22,7 @@ async function openChangeBedModal(patientId, oldBedId, oldBedLabel) {
     document.getElementById('change-bed-modal').style.display = 'block';
 
     try {
-        const res  = await fetch('http://localhost:8090/api/beds/list');
+        const res  = await fetch('/api/beds/list');
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to load beds');
 
@@ -64,7 +64,7 @@ async function confirmChangeBed() {
     btn.textContent = 'Moving…';
 
     try {
-        const res = await fetch(`http://localhost:8090/api/beds/move/${cbPatientId}`, {
+        const res = await fetch(`/api/beds/move/${cbPatientId}`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ new_bed_id: newBedId }),

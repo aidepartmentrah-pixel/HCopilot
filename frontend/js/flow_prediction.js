@@ -21,7 +21,7 @@ let flowChart = null;  // reference kept so the chart can be destroyed before re
 async function loadFlowStats() {
     // Fetch and display summary statistics (avg / max / min / total records) in stat cards
     try {
-        const response = await fetch('http://localhost:8090/api/flow-prediction/stats');
+        const response = await fetch('/api/flow-prediction/stats');
         const stats = await response.json();
 
         document.getElementById('flow-stats').innerHTML = `
@@ -64,8 +64,8 @@ async function loadFlowPrediction(days) {
 
     try {
         const [predResponse, histResponse] = await Promise.all([
-            fetch(`http://localhost:8090/api/flow-prediction/predict?days=${days}`),
-            fetch('http://localhost:8090/api/flow-prediction/historical?days=90')
+            fetch(`/api/flow-prediction/predict?days=${days}`),
+            fetch('/api/flow-prediction/historical?days=90')
         ]);
 
         const predData = await predResponse.json();

@@ -58,7 +58,7 @@ async function loadSettingsBeds() {
     document.getElementById('s-stats-bar').style.display  = 'none';
     document.getElementById('s-filter-bar').style.display = 'none';
     try {
-        const response = await fetch('http://localhost:8090/api/beds/list');
+        const response = await fetch('/api/beds/list');
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail || 'HTTP ' + response.status);
 
@@ -257,8 +257,8 @@ async function saveBed() {
 
     try {
         const url    = settingsBedMode === 'add'
-            ? 'http://localhost:8090/api/beds/add'
-            : 'http://localhost:8090/api/beds/modify/' + settingsCurrentBedId;
+            ? '/api/beds/add'
+            : '/api/beds/modify/' + settingsCurrentBedId;
         const method = settingsBedMode === 'add' ? 'POST' : 'PUT';
         const response = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const result   = await response.json();
@@ -293,7 +293,7 @@ async function deleteBed() {
     btn.disabled = true;
     btn.textContent = 'Deleting…';
     try {
-        const response = await fetch('http://localhost:8090/api/beds/delete/' + settingsDeleteBedId, { method: 'DELETE' });
+        const response = await fetch('/api/beds/delete/' + settingsDeleteBedId, { method: 'DELETE' });
         const result   = await response.json();
         if (!response.ok) throw new Error(result.detail || 'HTTP ' + response.status);
         closeBedDeleteModal();

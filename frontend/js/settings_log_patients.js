@@ -14,8 +14,8 @@ async function loadLogPatientsSettings() {
 
     try {
         const [listRes, statsRes] = await Promise.all([
-            fetch('http://localhost:8090/api/data/log-patients/list'),
-            fetch('http://localhost:8090/api/data/log-patients/stats')
+            fetch('/api/data/log-patients/list'),
+            fetch('/api/data/log-patients/stats')
         ]);
         const listData  = await listRes.json();
         const statsData = await statsRes.json();

@@ -8,23 +8,65 @@ HCopilot is a hospital Emergency Department (ED) management system built for the
 |-------|-----------|
 | Backend runtime | Python 3.11+ |
 | Web framework | FastAPI |
-| Data layer | pandas (CSV flat files — no database) |
-| ML model | XGBoost (via joblib) |
+| Data layer | Microsoft SQL Server, via SQLAlchemy ORM + Alembic migrations |
+| ML model | XGBoost (via joblib), trained from SQL Server historical data |
 | Frontend | Vanilla JavaScript, HTML5, CSS3 (no framework) |
+| Deployment | Docker (backend + frontend + SQL Server containers, see `docker-compose.yml`) |
 
-## How to Run
+> **Note for anyone who worked on the original CSV-based version**: the data
+> layer was migrated from CSV/pandas to Microsoft SQL Server. Every manager
+> class now talks to SQL Server through the ORM models in `backend/db/`
+> instead of reading/writing `backend/datasets/*.csv` directly. The public
+> API (routes, request/response shapes, business logic/algorithms) is
+> unchanged — only the storage layer underneath it moved.
+
+## How to Run (local development)
+
+You need a running SQL Server instance. The quickest way is a standalone
+Docker container (you don't need the full `docker-compose.yml` stack for
+day-to-day backend development):
 
 ```bash
-cd backend
-pip install fastapi uvicorn pandas numpy joblib xgboost requests
+docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=Str0ng!Passw0rd" \
+  -p 1433:1433 --name hcopilot-dev-sqlserver \
+  -v hcopilot_dev_data:/var/opt/mssql \
+  -d mcr.microsoft.com/mssql/server:2022-latest
+```
+
+Then, from `backend/`:
+
+```bash
+python -m venv .venv
+.venv/Scripts/activate        # Windows; use .venv/bin/activate on Linux/Mac
+pip install -r requirements.txt
+
+cp .env.example .env          # fill in the password you used above
+alembic upgrade head          # creates the schema (safe to re-run)
+
 uvicorn app:app --port 8090
 ```
 
-Then open **http://localhost:8090** in a browser. The FastAPI server serves both the API and the frontend static files from the same port.
+Then open **http://localhost:8090** in a browser.
 
-Alternatively: `python app.py` starts the dev server directly.
+**Default login:** username `admin` / password `admin` (auto-created on first run, same as before — change it after logging in).
 
-**Default login:** username `admin` / password `admin` (auto-created on first run).
+The database starts empty except for a few auto-seeded defaults (admin
+user, default Shifts/Groups). Add wards, beds, and staff through the
+Settings UI, or write your own seed script — this repo intentionally does
+not ship real hospital data (see `backend/scripts/migrate_csv_to_mssql.py`
+and `import_ml_historical_data.py` for the shape of a one-time data-loading
+script, if you need to import a CSV export of your own test data).
+
+## How to Run (full Docker stack)
+
+```bash
+cp .env.example .env   # fill in real values
+docker compose up -d
+```
+
+This builds/starts SQL Server, runs the database migrations automatically
+(`db-init` service), then starts the backend and frontend containers.
+Frontend at `http://localhost:8082` (or whatever `FRONTEND_PORT` you set).
 
 ## Main Features
 
@@ -46,30 +88,40 @@ Alternatively: `python app.py` starts the dev server directly.
 
 ```
 backend/
-  app.py                    FastAPI entry point; mounts all routers + static files
-  datasets/                 All CSV runtime data (the "database")
+  app.py                    FastAPI entry point; mounts all routers (+ static files if frontend/ is present)
+  db/
+    session.py               SQLAlchemy engine/session factory, reads connection info from .env
+    models.py                 ORM model for every table
+  alembic/                   Schema migrations — source of truth for the database structure
+  scripts/
+    migrate_csv_to_mssql.py         One-time CSV -> SQL Server data loader (operational data)
+    import_ml_historical_data.py    One-time loader for the flow-prediction training data
+    ensure_database_exists.py       Creates the database if it doesn't exist yet
+  datasets/                 Legacy CSV files — no longer read by the running app; kept only as
+                             input for the one-time migration scripts above
   features/                 One sub-package per feature; each exposes a FastAPI router
     auth/                   Login + user management (SHA-256 passwords)
     beds_display/           Bed CRUD, occupancy, assign/move/discharge
     data_management/        Wards, DailyPatients, LogPatients CRUD
-    dataset_display/        Paginated CSV browser + remote dataset refresh
-    flow_prediction/        XGBoost patient-flow forecasting
+    dataset_display/        Paginated dataset browser + remote dataset refresh
+    flow_prediction/        XGBoost patient-flow forecasting (trained from SQL Server data)
     patient_management/     Patient CRUD (extends data_management)
-    relations/              Generic many-to-many table CRUD (6 link tables)
-    reset/                  Destructive data-clear endpoints
-    scheduling/             Assignment create/edit/discharge
-    simulation/             Patient intake simulator + OR scheduler + staff audit
-    staff_management/       Doctors, nurses, shifts, groups CRUD
-    statistics/             Aggregate KPI endpoints
-    timestamp_utils.py      Shared CSV-read and timestamp-validation helpers
-    unurgent/               Acuity-5 patient path
+    relations/               Generic many-to-many table CRUD (6 link tables)
+    reset/                   Destructive data-clear endpoints
+    scheduling/              Assignment create/edit/discharge
+    simulation/              Patient intake simulator + OR scheduler + staff audit
+    staff_management/        Doctors, nurses, shifts, groups CRUD
+    statistics/              Aggregate KPI endpoints
+    timestamp_utils.py       Shared timestamp-validation helpers
+    unurgent/                Acuity-5 patient path
 frontend/
   index.html                Single-page shell; all content rendered by JS
   css/                      One CSS file per feature section
   js/                       One JS module per feature/settings tab
+  Dockerfile, nginx.conf    Serves the frontend + reverse-proxies /api/* to the backend container
 ```
 
-Data storage is entirely CSV-based. There is no database. Each manager class in a feature folder handles its own CSV reads and writes through `pandas`. Relation tables (patient↔bed, patient↔doctor, etc.) are stored as two-column CSV files managed by a single `RelationsManager`.
+Data storage is Microsoft SQL Server, accessed through the SQLAlchemy ORM models in `backend/db/models.py`. Every manager class in a feature folder opens its own session per call (see any `*_manager.py` file for the pattern) rather than reading/writing files. Relation tables (patient↔bed, patient↔doctor, etc.) are still six separate tables under the hood, but are exposed through one generic `RelationsManager` — same public API as before the migration, just backed by SQL Server instead of CSV.
 
 ## Documentation
 
