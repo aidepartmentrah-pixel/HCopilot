@@ -166,6 +166,7 @@ async def or_confirm(body: ORConfirmRequest):
 
         # Link patient → bed
         rel.add("patient_bed", body.patient_id, bed_id)
+        bed_mgr.add_bed_to_history(body.patient_id, bed_id)
 
         # Link patient → doctor (optional)
         if body.doctor_id:

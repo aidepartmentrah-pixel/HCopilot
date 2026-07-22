@@ -25,8 +25,9 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from db.session import SessionLocal
-from db.models import Nurse
+from db.models import Nurse, NurseLog
 from features.relations.relations_manager import RelationsManager
+from features.staff_logs.link_archiver import archive_nurse_links
 
 VALID_ROLES = ["PN", "RN", "Bed_Admission"]
 
@@ -142,9 +143,27 @@ class NursesManager:
             nurse = session.query(Nurse).filter(Nurse.id == id_).first()
             if nurse is None:
                 raise HTTPException(status_code=404, detail=f"Nurse ID {id_} not found")
-            session.delete(nurse)
+            # Archive the nurse's identity permanently before removing anything,
+            # so historical statistics keep working after this delete.
+            session.add(NurseLog(
+                nurse_id=nurse.id, name=nurse.name, role=nurse.role,
+                shift=nurse.shift, group=nurse.group, patientNB=nurse.patientNB,
+                availabilityTimeStart=nurse.availabilityTimeStart, absent=nurse.absent,
+                archived_at=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            ))
             session.commit()
+
+        # Archive every patient<->nurse link this nurse still has, THEN clear
+        # patient_nurse/ward_nurse — both FK-reference Nurses.id, so they must
+        # be cleared before the Nurses row itself is deleted below, or SQL
+        # Server rejects the delete with a FK constraint violation.
+        archive_nurse_links(id_)
         rel = RelationsManager()
         rel.delete_by_right("patient_nurse", id_)
         rel.delete_by_right("ward_nurse",    id_)
+
+        with SessionLocal() as session:
+            nurse = session.query(Nurse).filter(Nurse.id == id_).first()
+            session.delete(nurse)
+            session.commit()
         return {"success": True, "message": f"Nurse {id_} deleted successfully"}

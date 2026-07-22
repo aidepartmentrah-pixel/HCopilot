@@ -28,8 +28,9 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
 from db.session import SessionLocal
-from db.models import Doctor
+from db.models import Doctor, DoctorLog
 from features.relations.relations_manager import RelationsManager
+from features.staff_logs.link_archiver import archive_doctor_links
 
 VALID_TYPES = ["doctor", "intern"]
 
@@ -147,9 +148,27 @@ class DoctorsManager:
             doctor = session.query(Doctor).filter(Doctor.id == id_).first()
             if doctor is None:
                 raise HTTPException(status_code=404, detail=f"Doctor ID {id_} not found")
-            session.delete(doctor)
+            # Archive the doctor's identity permanently before removing anything,
+            # so historical statistics keep working after this delete.
+            session.add(DoctorLog(
+                doctor_id=doctor.id, name=doctor.name, intern_or_not=doctor.intern_or_not,
+                shift=doctor.shift, work_days=doctor.work_days, patientNb=doctor.patientNb,
+                availabilityTimeStart=doctor.availabilityTimeStart, absent=doctor.absent,
+                archived_at=datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            ))
             session.commit()
+
+        # Archive every patient<->doctor link this doctor still has, THEN clear
+        # patient_doctor/ward_doctor — both FK-reference Doctors.id, so they must
+        # be cleared before the Doctors row itself is deleted below, or SQL
+        # Server rejects the delete with a FK constraint violation.
+        archive_doctor_links(id_)
         rel = RelationsManager()
         rel.delete_by_right("patient_doctor", id_)
         rel.delete_by_right("ward_doctor",    id_)
+
+        with SessionLocal() as session:
+            doctor = session.query(Doctor).filter(Doctor.id == id_).first()
+            session.delete(doctor)
+            session.commit()
         return {"success": True, "message": f"Doctor {id_} deleted successfully"}

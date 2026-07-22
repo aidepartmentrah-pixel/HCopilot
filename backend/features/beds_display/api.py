@@ -13,7 +13,8 @@ from features.data_management.log_patients_manager import LogPatientsManager
 from features.relations.relations_manager import RelationsManager
 from features.staff_management.doctors_manager import DoctorsManager
 from features.staff_management.nurses_manager import NursesManager
-from features.timestamp_utils import validate_timestamp_order, validate_discharge_time
+from features.timestamp_utils import validate_timestamp_order, validate_discharge_time, validate_destination
+from features.staff_logs.link_archiver import archive_patient_doctor_links, archive_patient_nurse_links
 
 router      = APIRouter()
 bed_manager = BedManager()
@@ -90,6 +91,12 @@ class BedMove(BaseModel):
 
 class BedDischarge(BaseModel):
     departure_time: Optional[str] = None  # defaults to now if omitted
+    destination: Optional[str] = None     # "Home" or "Hospital Department[: <name>]"
+
+    @field_validator('destination')
+    @classmethod
+    def check_destination(cls, v: Optional[str]) -> Optional[str]:
+        return validate_destination(v)
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -178,6 +185,7 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
             patient_id = link.patient_id
 
         departure_time = body.departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
+        stay_id = None
 
         with SessionLocal() as session:
             patient_rows = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).all()
@@ -189,6 +197,8 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
 
                 validate_discharge_time(row.arrival_time, row.bed_occupation_time, departure_time)
 
+                row.destination = body.destination
+
                 archived = {
                     "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
                     "gender": row.gender, "age": row.age, "temperature": row.temperature,
@@ -196,6 +206,8 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
                     "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
                     "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
                     "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
+                    "destination": row.destination, "bed_history": row.bed_history,
+                    "admission_ward_id": row.admission_ward_id, "admission_ward_name": row.admission_ward_name,
                 }
                 log_mgr.append(archived)
 
@@ -207,6 +219,8 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
         pn_rows    = rel.list("patient_nurse")["rows"]
         linked_docs = [r["doctor_id"] for r in pd_rows if r["patient_id"] == patient_id]
         linked_nurs = [r["nurse_id"]  for r in pn_rows  if r["patient_id"] == patient_id]
+        archive_patient_doctor_links(patient_id, stay_id)
+        archive_patient_nurse_links(patient_id, stay_id)
         rel.delete_by_left("patient_bed",    patient_id)
         rel.delete_by_left("patient_doctor", patient_id)
         rel.delete_by_left("patient_nurse",  patient_id)

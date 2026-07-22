@@ -10,7 +10,7 @@
 // Key globals exported for use by other scripts:
 //   HCOPILOT_SECTIONS          — ordered list of all navigation sections
 //   HCOPILOT_SETTINGS_TABS     — ordered list of all settings sub-tabs (with groups)
-//   HCOPILOT_STATISTICS_TABS   — ordered list of the 3 statistics sub-tabs
+//   HCOPILOT_STATISTICS_TABS   — ordered list of the statistics sub-tabs
 //   userSections()             — returns allowed section IDs for the current user
 //   userSettingsTabs()         — returns allowed settings tab IDs
 //   userStatisticsTabs()       — returns allowed statistics tab IDs
@@ -47,6 +47,8 @@ var HCOPILOT_STATISTICS_TABS = [
     { id: 'patients', label: '🏥 Patients' },
     { id: 'nurses',   label: '👩‍⚕️ Nurses'  },
     { id: 'doctors',  label: '🩺 Doctors'  },
+    { id: 'wards',    label: '🏢 Wards'    },
+    { id: 'daily',    label: '📅 Daily Analysis' },
 ];
 
 // Ordered list used for nav filtering and the section-picker in user management.

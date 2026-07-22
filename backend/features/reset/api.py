@@ -81,7 +81,10 @@ async def reset_beds():
     """Wipe EDbeds and all bed-relation rows (patient_bed, ward_bed)."""
     try:
         with SessionLocal() as session:
-            for f in ["EDbeds", "patient_bed", "ward_bed"]:
+            # Relation tables first — patient_bed/ward_bed.bed_id FK-reference
+            # EDbeds.bed_id, so EDbeds must be cleared last or SQL Server
+            # rejects the delete with a FK constraint violation.
+            for f in ["patient_bed", "ward_bed", "EDbeds"]:
                 _clear(session, f)
             session.commit()
         return {"ok": True, "message": "All bed data and bed relations cleared"}
@@ -94,7 +97,8 @@ async def reset_doctors():
     """Wipe Doctors and all doctor-relation rows (patient_doctor, ward_doctor)."""
     try:
         with SessionLocal() as session:
-            for f in ["Doctors", "patient_doctor", "ward_doctor"]:
+            # Relation tables first — see reset_beds for why order matters.
+            for f in ["patient_doctor", "ward_doctor", "Doctors"]:
                 _clear(session, f)
             session.commit()
         return {"ok": True, "message": "All doctor data and doctor relations cleared"}
@@ -107,7 +111,8 @@ async def reset_nurses():
     """Wipe Nurses and all nurse-relation rows (patient_nurse, ward_nurse)."""
     try:
         with SessionLocal() as session:
-            for f in ["Nurses", "patient_nurse", "ward_nurse"]:
+            # Relation tables first — see reset_beds for why order matters.
+            for f in ["patient_nurse", "ward_nurse", "Nurses"]:
                 _clear(session, f)
             session.commit()
         return {"ok": True, "message": "All nurse data and nurse relations cleared"}
@@ -120,7 +125,8 @@ async def reset_wards():
     """Wipe Wards and all ward-relation rows (ward_bed, ward_doctor, ward_nurse)."""
     try:
         with SessionLocal() as session:
-            for f in ["Wards", "ward_bed", "ward_doctor", "ward_nurse"]:
+            # Relation tables first — see reset_beds for why order matters.
+            for f in ["ward_bed", "ward_doctor", "ward_nurse", "Wards"]:
                 _clear(session, f)
             session.commit()
         return {"ok": True, "message": "All ward data and ward relations cleared"}

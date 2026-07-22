@@ -281,8 +281,8 @@ Provides login and full CRUD for user accounts backed by `Users.csv`.
 `beds`, `doctors`, `nurses`, `wards`, `daily-patients`, `log-patients`, `shifts`, `groups`, `datasets`, `relations`, `models`, `features`, `reset`
 
 **Available statistics tab keys:**
-`patients`, `nurses`, `doctors`
-(If `statistics_tabs` is empty for a non-admin user who has `statistics` in `sections`, all three tabs default to accessible for backward compatibility.)
+`patients`, `nurses`, `doctors`, `wards`, `daily`
+(If `statistics_tabs` is empty for a non-admin user who has `statistics` in `sections`, all tabs default to accessible for backward compatibility.)
 
 ---
 
@@ -388,9 +388,9 @@ Powered by `GET /api/simulation/current-context`. Shift and group override dropd
 Draws a random record from the historical `Patients.csv` dataset and presents it to the user for confirmation before adding it to `DailyPatients.csv`.
 
 **Flow:**
-1. `GET /sample-patient` — draws a random row from `Patients.csv`, filtering out subjects already active in `DailyPatients`. Returns clinical data pre-loaded with new patient_id/stay_id.
+1. `GET /sample-patient` — draws a random row straight from `Patients.csv`, no database access. Returns clinical data pre-loaded with a suggested new patient_id/stay_id (an in-process counter, not a DB-checked value).
 2. User reviews the record in a confirmation modal.
-3. `POST /confirm-patient` — adds the confirmed patient to `DailyPatients` with the current timestamp as `arrival_time`.
+3. `POST /confirm-patient` — adds the confirmed patient to `DailyPatients` via SQL Server, with the current timestamp as `arrival_time`. `PatientManager.add()` rejects it here if the suggested ID collides with an already-active patient — the user just samples again in that case.
 
 #### OR Scheduler
 
@@ -1202,9 +1202,9 @@ shifts, groups, datasets, relations, models, features, reset
 
 **`statistics_tabs`** — which sub-tabs within the Statistics section are shown:
 ```
-patients, nurses, doctors
+patients, nurses, doctors, wards, daily
 ```
-If this field is empty for a non-admin user who has `statistics` access, all three tabs default to accessible (backward compatibility). When the Statistics section opens, inaccessible tabs are hidden and the section activates the first tab the user is permitted to see.
+If this field is empty for a non-admin user who has `statistics` access, all tabs default to accessible (backward compatibility). When the Statistics section opens, inaccessible tabs are hidden and the section activates the first tab the user is permitted to see.
 
 ### Important Notes
 

@@ -30,7 +30,7 @@
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, ForeignKey, ForeignKeyConstraint,
-    CheckConstraint, Float, DateTime,
+    CheckConstraint, UniqueConstraint, Float, DateTime,
 )
 
 from db.session import Base
@@ -157,6 +157,22 @@ class DailyPatient(Base):
     departure_time      = Column(String(30), nullable=True)
     bed_occupation_time = Column(String(30), nullable=True)
     unurgent            = Column(String(10), nullable=True)
+    # Where the patient went on discharge: "Home" or "Hospital Department".
+    # Set by the discharge endpoints right before the row is archived to
+    # LogPatients and removed from here.
+    destination         = Column(String(50), nullable=True)
+    # Comma-separated trail of every bed_number this stay has occupied, in
+    # order (e.g. "12, 5, 8"). Appended to by BedManager on every assign/move;
+    # copied verbatim into LogPatients.bed_history on discharge.
+    bed_history         = Column(String(500), nullable=True)
+    # Ward of the FIRST bed assigned this stay (admission ward), captured once
+    # by BedManager.add_bed_to_history() and never overwritten by later moves.
+    # Used to attribute a same-day discharge to a ward for the daily census —
+    # see features/ward_census. ward_name is denormalized (like destination/
+    # bed_history) so census rows stay accurate even if the Ward row is later
+    # renamed or deleted.
+    admission_ward_id   = Column(Integer, nullable=True)
+    admission_ward_name = Column(String(200), nullable=True)
 
 
 class LogPatient(Base):
@@ -184,6 +200,127 @@ class LogPatient(Base):
     arrival_time        = Column(String(30), nullable=True)
     departure_time      = Column(String(30), nullable=True)
     bed_occupation_time = Column(String(30), nullable=True)
+    destination         = Column(String(50), nullable=True)
+    bed_history         = Column(String(500), nullable=True)
+    admission_ward_id   = Column(Integer, nullable=True)
+    admission_ward_name = Column(String(200), nullable=True)
+
+
+class WardDailyCensus(Base):
+    """
+    One row per (census_date, ward) — a permanent daily snapshot of how many
+    patients were associated with each ward that day, so historical ward
+    census survives even though DailyPatients only reflects live/current state.
+
+    active_patients     — patients currently occupying a bed in this ward at
+                           the moment this row was (re)computed (from patient_bed
+                           + ward_bed; always "live" for today, frozen for past
+                           dates once no longer recomputed).
+    discharged_patients — patients discharged (moved to LogPatients) on
+                           census_date whose admission_ward_name matches.
+    total_patients       — active_patients + discharged_patients.
+
+    ward_name is denormalized (not just ward_id) so a later ward rename/delete
+    doesn't corrupt historical rows — see DailyPatient.admission_ward_name.
+    A ward_name of "Unassigned" buckets patients with no resolvable ward
+    (e.g. a bed with no ward_bed link, or unurgent patients who never had a bed).
+    """
+    __tablename__ = "WardDailyCensus"
+    __table_args__ = (
+        CheckConstraint(
+            "active_patients >= 0 AND discharged_patients >= 0 AND total_patients >= 0",
+            name="ck_ward_census_nonnegative",
+        ),
+        UniqueConstraint("census_date", "ward_name", name="uq_ward_census_date_ward"),
+    )
+
+    id                  = Column(Integer, primary_key=True, autoincrement=True)
+    census_date         = Column(String(10), nullable=False, index=True)   # "YYYY-MM-DD"
+    ward_id             = Column(Integer, nullable=True)
+    ward_name           = Column(String(200), nullable=False)
+    active_patients     = Column(Integer, nullable=False, default=0)
+    discharged_patients = Column(Integer, nullable=False, default=0)
+    total_patients      = Column(Integer, nullable=False, default=0)
+    computed_at         = Column(String(30), nullable=False)   # ISO datetime string of last (re)computation
+
+
+class DoctorLog(Base):
+    """
+    Permanent archive of Doctor rows. A copy is inserted here right before a
+    doctor is deleted from Doctors (DoctorsManager.delete()) — the live row is
+    still removed as before, but the doctor's identity/attributes survive here
+    forever, so historical statistics (e.g. "who treated patients on day X")
+    keep working even after that doctor is later removed from the roster.
+    Plain denormalized text columns, no FK/CHECK constraints — this is a frozen
+    snapshot of what was true at deletion time, not a live-editable record.
+    """
+    __tablename__ = "DoctorLog"
+
+    log_id                = Column(BigInteger, primary_key=True, autoincrement=True)
+    doctor_id             = Column(Integer, nullable=False, index=True)
+    name                  = Column(String(200), nullable=True)
+    intern_or_not         = Column(String(20), nullable=True)
+    shift                 = Column(String(50), nullable=True)
+    work_days             = Column(String(50), nullable=True)
+    patientNb             = Column(String(20), nullable=True)
+    availabilityTimeStart = Column(String(30), nullable=True)
+    absent                = Column(String(10), nullable=True)
+    archived_at           = Column(String(30), nullable=False)   # when this doctor was deleted
+
+
+class NurseLog(Base):
+    """Permanent archive of Nurse rows — see DoctorLog docstring; same pattern."""
+    __tablename__ = "NurseLog"
+
+    log_id                = Column(BigInteger, primary_key=True, autoincrement=True)
+    nurse_id              = Column(Integer, nullable=False, index=True)
+    name                  = Column(String(200), nullable=True)
+    role                  = Column(String(20), nullable=True)
+    shift                 = Column(String(50), nullable=True)
+    group                 = Column(String(50), nullable=True)
+    patientNB             = Column(String(20), nullable=True)
+    availabilityTimeStart = Column(String(30), nullable=True)
+    absent                = Column(String(10), nullable=True)
+    archived_at           = Column(String(30), nullable=False)   # when this nurse was deleted
+
+
+class PatientDoctorLog(Base):
+    """
+    Permanent archive of every patient<->doctor link that has ever existed.
+    A row is inserted here whenever a live patient_doctor row is about to be
+    removed — on discharge, manual unassignment, reassignment to a different
+    doctor, or the doctor being deleted — so "which doctor treated which
+    patient" survives independently of both the patient's DailyPatients row
+    and the doctor's own Doctors row being deleted later.
+
+    doctor_name is denormalized (captured at archive time) so this table
+    never depends on Doctors/DoctorLog still containing a matching row.
+    stay_id is best-effort — the active stay's ID at archive time, letting
+    statistics join back to DailyPatients/LogPatients for arrival/departure
+    dates; it can be null if no active stay could be resolved.
+    archived_at is the one timestamp always guaranteed to be accurate: the
+    moment the link was severed, which is what daily statistics filter on.
+    """
+    __tablename__ = "PatientDoctorLog"
+
+    log_id      = Column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id  = Column(Integer, nullable=False, index=True)
+    stay_id     = Column(Integer, nullable=True, index=True)
+    doctor_id   = Column(Integer, nullable=False, index=True)
+    doctor_name = Column(String(200), nullable=True)
+    archived_at = Column(String(30), nullable=False, index=True)
+
+
+class PatientNurseLog(Base):
+    """Permanent archive of every patient<->nurse link — see PatientDoctorLog docstring; same pattern."""
+    __tablename__ = "PatientNurseLog"
+
+    log_id      = Column(BigInteger, primary_key=True, autoincrement=True)
+    patient_id  = Column(Integer, nullable=False, index=True)
+    stay_id     = Column(Integer, nullable=True, index=True)
+    nurse_id    = Column(Integer, nullable=False, index=True)
+    nurse_name  = Column(String(200), nullable=True)
+    archived_at = Column(String(30), nullable=False, index=True)
 
 
 # ── Relation ("link") tables ────────────────────────────────────────────────

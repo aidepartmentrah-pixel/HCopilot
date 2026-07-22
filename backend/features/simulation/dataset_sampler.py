@@ -6,11 +6,17 @@
 # maps them to the DailyPatients schema so the user can review and confirm
 # each one before it enters the active patient list.
 #
-# DEDUPLICATION:
-#   The sampler filters out any subject_id that already appears in
-#   DailyPatients.csv to prevent double-admitting the same patient.
-#   Filtered records are not permanently excluded — they re-enter the pool
-#   on the next sample call once the active stay is discharged.
+# NO SQL SERVER ROUND TRIP: sampling is a testing/demo helper, so it reads
+# only Patients.csv and never touches the database. Two consequences of that:
+#   - It can no longer filter out subjects who are already active in
+#     DailyPatients (that would require a live query), so it may occasionally
+#     resurface a patient who's already admitted.
+#   - new_patient_id/new_stay_id are a best-effort suggestion from an
+#     in-process counter, not a guaranteed-unique value from the database.
+# Neither is a correctness problem: PatientManager.add() (called by
+# POST /confirm-patient) is what actually enforces uniqueness against the
+# live DailyPatients table. A stale/colliding suggestion here just surfaces
+# as a clear "already exists" error at confirm time — the user samples again.
 #
 # FIELD MAPPING:
 #   Source columns from Patients.csv are renamed/formatted to match the
@@ -22,9 +28,6 @@ import os
 import math
 import pandas as pd
 from fastapi import HTTPException
-
-from db.session import SessionLocal
-from db.models import DailyPatient
 
 # ── File paths ────────────────────────────────────────────────────────────────
 # Patients.csv (~38MB historical MIMIC-like sampler source) intentionally stays
@@ -47,55 +50,44 @@ def _safe(v):
 
 
 class DatasetSampler:
-    """Reads Patients.csv and returns one random row per call."""
+    """Reads Patients.csv and returns one random row per call. No SQL Server access."""
+
+    def __init__(self):
+        # In-process only — resets on backend restart. See module docstring:
+        # this is a best-effort suggestion, not a uniqueness guarantee.
+        self._next_seq = 0
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
-    def _active_subject_ids(self) -> set:
-        """Return the set of subject_ids currently in DailyPatients."""
-        with SessionLocal() as session:
-            return {p.subject_id for p in session.query(DailyPatient.subject_id).all()}
-
     def _next_ids(self) -> tuple[int, int]:
         """
-        Compute the next available patient_id and stay_id.
-        Seeds at 10 000 001 / 30 000 001 to avoid collisions with historic data
-        (mirrors the logic in PatientManager.get_next_ids).
+        Suggest the next patient_id / stay_id from an in-process counter,
+        seeded at 10 000 001 / 30 000 001 to avoid colliding with historic
+        Patients.csv data (mirrors the seeding scheme in PatientManager.get_next_ids,
+        but without querying DailyPatients).
         """
-        with SessionLocal() as session:
-            max_subject = session.query(DailyPatient.subject_id).order_by(DailyPatient.subject_id.desc()).first()
-            max_stay = session.query(DailyPatient.stay_id).order_by(DailyPatient.stay_id.desc()).first()
-            if max_subject is None:
-                return 10_000_001, 30_000_001
-            return max_subject[0] + 1, max_stay[0] + 1
+        self._next_seq += 1
+        return 10_000_000 + self._next_seq, 30_000_000 + self._next_seq
 
     # ── Public API ────────────────────────────────────────────────────────────
 
     def sample(self) -> dict:
         """
-        Draw one random row from Patients.csv, skipping subjects already active
-        in DailyPatients.  Returns a dict ready for the frontend confirmation modal,
-        pre-loaded with new patient_id / stay_id from the next-ID sequence.
+        Draw one random row from Patients.csv. Returns a dict ready for the
+        frontend confirmation modal, pre-loaded with a suggested new
+        patient_id / stay_id.
         """
         if not os.path.exists(PATIENTS_FILE):
             raise HTTPException(status_code=404, detail="Patients.csv not found in datasets folder")
 
-        active_ids = self._active_subject_ids()
-
         # Load the full dataset — ~38 MB fits comfortably in memory
         df = pd.read_csv(PATIENTS_FILE)
+        if df.empty:
+            raise HTTPException(status_code=409, detail="Patients.csv has no rows to sample")
 
-        # Filter out already-active subjects
-        available = df[~df["subject_id"].isin(active_ids)]
-        if available.empty:
-            raise HTTPException(
-                status_code=409,
-                detail="No more patients available — all dataset subjects are currently active"
-            )
+        row = df.sample(1).iloc[0]
 
-        row = available.sample(1).iloc[0]
-
-        # Resolve new IDs for the confirmed patient
+        # Suggest new IDs for the confirmed patient (not guaranteed-unique — see module docstring)
         new_patient_id, new_stay_id = self._next_ids()
 
         raw_acuity      = _safe(row.get("acuity"))

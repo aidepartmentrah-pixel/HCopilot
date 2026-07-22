@@ -9,6 +9,16 @@
 # Idempotent: each entity group is skipped if its target table already has
 # rows, so this script can be re-run safely during Stage 1 iteration.
 #
+# Row-count parity (verify_row_counts) only checks tables that were actually
+# empty — and therefore freshly seeded — on THIS run. It deliberately does
+# NOT check tables that were already populated and skipped: those (DailyPatients,
+# LogPatients, EDbeds, patient_bed/doctor/nurse, ward_bed, ...) are live
+# operational data that the app is expected to keep changing after go-live
+# (admissions, discharges, bed assignments), so their row counts will
+# legitimately diverge from the build-time CSV snapshot. Treating that
+# divergence as a failure would make db-init fail on every restart once the
+# app has seen real use — this file exists to prevent that.
+#
 # Run from backend/:  .venv\Scripts\python.exe scripts\migrate_csv_to_mssql.py
 # =============================================================================
 
@@ -63,23 +73,30 @@ def _raw_str(v, default=""):
 
 
 def _import(session, model, rows_exist_check, build_fn, rows):
+    """Returns True if the table was empty and got freshly seeded this run,
+    False if it already had data and was skipped."""
     existing = session.query(rows_exist_check).first()
     if existing is not None:
         print(f"  {model.__tablename__}: already populated, skipping")
-        return 0
+        return False
     objects = [build_fn(r) for r in rows]
     if objects:
         session.bulk_save_objects(objects)
         session.commit()
     print(f"  {model.__tablename__}: inserted {len(objects)} rows (CSV had {len(rows)})")
-    return len(objects)
+    return True
 
 
 def migrate():
+    """Returns {csv_filename: freshly_seeded} — see _import()'s docstring.
+    Consumed by verify_row_counts() to know which tables it may legitimately
+    compare against their CSV, and which are live operational data it must
+    leave alone."""
+    seeded = {}
     session = SessionLocal()
     try:
         print("Users:")
-        _import(session, User, User, lambda r: User(
+        seeded["Users.csv"] = _import(session, User, User, lambda r: User(
             user_id=_int(r["user_id"]),
             username=r["username"],
             password_hash=r["password_hash"],
@@ -91,7 +108,7 @@ def migrate():
         ), _read_rows("Users.csv"))
 
         print("Shifts:")
-        _import(session, Shift, Shift, lambda r: Shift(
+        seeded["Shifts.csv"] = _import(session, Shift, Shift, lambda r: Shift(
             shift_id=_int(r["shift_id"]),
             name=r["name"],
             start_hour=_int(r["start_hour"]),
@@ -99,14 +116,14 @@ def migrate():
         ), _read_rows("Shifts.csv"))
 
         print("Groups:")
-        _import(session, Group, Group, lambda r: Group(
+        seeded["Groups.csv"] = _import(session, Group, Group, lambda r: Group(
             group_id=_int(r["group_id"]),
             name=r["name"],
             days=r["days"],
         ), _read_rows("Groups.csv"))
 
         print("Wards:")
-        _import(session, Ward, Ward, lambda r: Ward(
+        seeded["Wards.csv"] = _import(session, Ward, Ward, lambda r: Ward(
             ward_id=_int(r["ward_id"]),
             ward_name=r["ward_name"],
             department_id=_int(r.get("department_id")),
@@ -118,7 +135,7 @@ def migrate():
         # normalized to "Available" by bed_manager._condition() on every read —
         # replicate that same normalization here rather than relax the CHECK
         # constraint to accept a value the app never treats as meaningful.
-        _import(session, EDBed, EDBed, lambda r: EDBed(
+        seeded["EDbeds.csv"] = _import(session, EDBed, EDBed, lambda r: EDBed(
             bed_id=_int(r["bed_id"]),
             bed_number=str(r["bed_number"]),
             bed_status="Under Repair" if _str_or_none(r.get("bed_status")) == "Under Repair" else "Available",
@@ -126,7 +143,7 @@ def migrate():
         ), _read_rows("EDbeds.csv"))
 
         print("Doctors:")
-        _import(session, Doctor, Doctor, lambda r: Doctor(
+        seeded["Doctors.csv"] = _import(session, Doctor, Doctor, lambda r: Doctor(
             id=_int(r["id"]),
             intern_or_not=r["intern_or_not"],
             shift=_str_or_none(r.get("shift")),
@@ -138,7 +155,7 @@ def migrate():
         ), _read_rows("Doctors.csv"))
 
         print("Nurses:")
-        _import(session, Nurse, Nurse, lambda r: Nurse(
+        seeded["Nurses.csv"] = _import(session, Nurse, Nurse, lambda r: Nurse(
             id=_int(r["id"]),
             role=r["role"],
             shift=_str_or_none(r.get("shift")),
@@ -150,7 +167,7 @@ def migrate():
         ), _read_rows("Nurses.csv"))
 
         print("DailyPatients:")
-        _import(session, DailyPatient, DailyPatient, lambda r: DailyPatient(
+        seeded["DailyPatients.csv"] = _import(session, DailyPatient, DailyPatient, lambda r: DailyPatient(
             stay_id=_int(r["stay_id"]),
             subject_id=_int(r["subject_id"]),
             name=_str_or_none(r.get("name")),
@@ -172,7 +189,7 @@ def migrate():
         ), _read_rows("DailyPatients.csv"))
 
         print("LogPatients:")
-        _import(session, LogPatient, LogPatient, lambda r: LogPatient(
+        seeded["LogPatients.csv"] = _import(session, LogPatient, LogPatient, lambda r: LogPatient(
             subject_id=_int(r["subject_id"]),
             stay_id=_int(r["stay_id"]),
             name=_str_or_none(r.get("name")),
@@ -193,31 +210,38 @@ def migrate():
         ), _read_rows("LogPatients.csv"))
 
         print("Relation tables:")
-        _import(session, PatientBed, PatientBed, lambda r: PatientBed(
+        seeded["patient_bed.csv"] = _import(session, PatientBed, PatientBed, lambda r: PatientBed(
             patient_id=_int(r["patient_id"]), bed_id=_int(r["bed_id"]),
         ), _read_rows("patient_bed.csv"))
-        _import(session, PatientDoctor, PatientDoctor, lambda r: PatientDoctor(
+        seeded["patient_doctor.csv"] = _import(session, PatientDoctor, PatientDoctor, lambda r: PatientDoctor(
             patient_id=_int(r["patient_id"]), doctor_id=_int(r["doctor_id"]),
         ), _read_rows("patient_doctor.csv"))
-        _import(session, PatientNurse, PatientNurse, lambda r: PatientNurse(
+        seeded["patient_nurse.csv"] = _import(session, PatientNurse, PatientNurse, lambda r: PatientNurse(
             patient_id=_int(r["patient_id"]), nurse_id=_int(r["nurse_id"]),
         ), _read_rows("patient_nurse.csv"))
-        _import(session, WardBed, WardBed, lambda r: WardBed(
+        seeded["ward_bed.csv"] = _import(session, WardBed, WardBed, lambda r: WardBed(
             ward_id=_int(r["ward_id"]), bed_id=_int(r["bed_id"]),
         ), _read_rows("ward_bed.csv"))
-        _import(session, WardDoctor, WardDoctor, lambda r: WardDoctor(
+        seeded["ward_doctor.csv"] = _import(session, WardDoctor, WardDoctor, lambda r: WardDoctor(
             ward_id=_int(r["ward_id"]), doctor_id=_int(r["doctor_id"]),
         ), _read_rows("ward_doctor.csv"))
-        _import(session, WardNurse, WardNurse, lambda r: WardNurse(
+        seeded["ward_nurse.csv"] = _import(session, WardNurse, WardNurse, lambda r: WardNurse(
             ward_id=_int(r["ward_id"]), nurse_id=_int(r["nurse_id"]),
         ), _read_rows("ward_nurse.csv"))
 
+        return seeded
     finally:
         session.close()
 
 
-def verify_row_counts():
-    print("\nRow-count parity check (CSV vs. table):")
+def verify_row_counts(seeded):
+    # Only checks tables migrate() actually seeded fresh this run (empty ->
+    # imported). Tables that were already populated and skipped are live
+    # operational data now — the app is expected to keep changing their row
+    # counts (admissions, discharges, bed assignments), so comparing them
+    # against the build-time CSV would produce a false failure on every
+    # restart after go-live. See module docstring.
+    print("\nRow-count parity check (CSV vs. table, freshly-seeded tables only):")
     checks = [
         ("Users.csv", User),
         ("Shifts.csv", Shift),
@@ -239,6 +263,9 @@ def verify_row_counts():
     try:
         all_ok = True
         for filename, model in checks:
+            if not seeded.get(filename):
+                print(f"  {filename:<22} already populated — skipping (live operational data)")
+                continue
             csv_count = len(_read_rows(filename))
             db_count = session.query(model).count()
             status = "OK" if csv_count == db_count else "MISMATCH"
@@ -251,6 +278,6 @@ def verify_row_counts():
 
 
 if __name__ == "__main__":
-    migrate()
-    ok = verify_row_counts()
+    seeded_tables = migrate()
+    ok = verify_row_counts(seeded_tables)
     sys.exit(0 if ok else 1)

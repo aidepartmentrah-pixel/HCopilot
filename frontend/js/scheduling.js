@@ -800,6 +800,8 @@ function openDischargeModal(patientId, bedId) {
 
     const now = nowLocalIso();
     document.getElementById('discharge-departure-time').value = now;
+    document.getElementById('discharge-destination').value = '';
+    toggleDestinationDetail('discharge-destination', 'discharge-destination-detail');
     document.getElementById('discharge-modal-info').innerHTML =
         `You are about to discharge <strong>Patient #${patientId}</strong> from <strong>Bed #${bedId}</strong>.<br>
          The patient record will be saved to the log and removed from daily patients.`;
@@ -823,10 +825,16 @@ function closeDischargeModal() {
 async function confirmDischarge() {
     // POST the departure time to the scheduling/discharge endpoint
     const departureTime = document.getElementById('discharge-departure-time').value;
+    const destination   = composeDestination('discharge-destination', 'discharge-destination-detail');
     const errEl = document.getElementById('discharge-error');
 
     if (!departureTime) {
         errEl.textContent  = 'Please set a departure time.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!destination) {
+        errEl.textContent  = 'Please select a destination.';
         errEl.style.display = 'block';
         return;
     }
@@ -841,7 +849,7 @@ async function confirmDischarge() {
         const res = await fetch(`${SCHED_BASE}/discharge/${_dischargePatientId}/${_dischargeBedId}`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ departure_time: departureTime }),
+            body:    JSON.stringify({ departure_time: departureTime, destination }),
         });
         const data = await res.json();
         if (!res.ok) {

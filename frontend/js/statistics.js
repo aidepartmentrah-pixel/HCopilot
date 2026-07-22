@@ -515,6 +515,8 @@ function switchStatsTab(tab, btn) {
         if (tab === 'nurses')  _renderNurseRoleChart(_staffData.nurses);
         if (tab === 'doctors') _renderDoctorTypeChart(_staffData.doctors);
     }
+    if (tab === 'wards') loadWardCensus();
+    if (tab === 'daily') loadDailyAnalysis();
 }
 
 function _renderStaffStats(data) {
@@ -873,9 +875,253 @@ async function _initStaffSelectors() {
     }
 }
 
+// ── Wards pane: daily ward census ───────────────────────────────────────────
+// Today = always live (GET /today, computed fresh from current bed/ward state
+// plus today's discharges). Any other date = read back from the permanent
+// WardDailyCensus snapshot table (GET /history) saved by the backend
+// scheduler — see backend/scheduler.py.
+
+const WARD_CENSUS_BASE = '/api/ward-census';
+
+function _todayLocalDate() {
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function setWardCensusToday() {
+    const input = document.getElementById('ward-census-date');
+    if (input) input.value = _todayLocalDate();
+    loadWardCensus();
+}
+
+async function loadWardCensus() {
+    const container = document.getElementById('ward-census-table');
+    if (!container) return;
+    const dateInput = document.getElementById('ward-census-date');
+    if (dateInput && !dateInput.value) dateInput.value = _todayLocalDate();
+    const selectedDate = dateInput ? dateInput.value : _todayLocalDate();
+    const isToday = selectedDate === _todayLocalDate();
+
+    container.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
+    try {
+        let wards, computedAt = null;
+        if (isToday) {
+            const res  = await fetch(`${WARD_CENSUS_BASE}/today`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to load today’s census');
+            wards = data.wards;
+        } else {
+            const res  = await fetch(`${WARD_CENSUS_BASE}/history?start=${selectedDate}&end=${selectedDate}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Failed to load census history');
+            wards = data.rows.map(r => ({
+                ward_name: r.ward_name, active_patients: r.active_patients,
+                discharged_patients: r.discharged_patients, total_patients: r.total_patients,
+            }));
+            computedAt = data.rows.length ? data.rows[0].computed_at : null;
+        }
+        _renderWardCensusTable(container, wards, isToday, computedAt);
+    } catch (err) {
+        container.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><p>${err.message}</p></div>`;
+    }
+}
+
+function _renderWardCensusTable(container, wards, isToday, computedAt) {
+    if (!wards || wards.length === 0) {
+        container.innerHTML = '<div class="s-no-results"><p>' +
+            (isToday ? 'No census data yet for today.' : 'No census was saved for this date.') + '</p></div>';
+        return;
+    }
+    const totals = wards.reduce((acc, w) => {
+        acc.active     += w.active_patients;
+        acc.discharged += w.discharged_patients;
+        acc.total      += w.total_patients;
+        return acc;
+    }, { active: 0, discharged: 0, total: 0 });
+
+    const rows = wards.map(w =>
+        '<tr>' +
+        '<td>' + w.ward_name + '</td>' +
+        '<td>' + w.active_patients + '</td>' +
+        '<td>' + w.discharged_patients + '</td>' +
+        '<td><strong>' + w.total_patients + '</strong></td>' +
+        '</tr>'
+    ).join('');
+
+    container.innerHTML =
+        '<div class="s-table-wrap"><table class="s-table">' +
+        '<thead><tr><th>Ward</th><th>Active</th><th>Discharged</th><th>Total</th></tr></thead>' +
+        '<tbody>' + rows +
+        '<tr style="font-weight:600;border-top:2px solid #e5e7eb">' +
+            '<td>Total</td><td>' + totals.active + '</td><td>' + totals.discharged + '</td><td>' + totals.total + '</td>' +
+        '</tr>' +
+        '</tbody></table></div>' +
+        (isToday
+            ? '<div class="s-table-footer">Live — recalculated every time this tab opens</div>'
+            : (computedAt ? '<div class="s-table-footer">Saved snapshot — last computed ' + computedAt + '</div>' : ''));
+}
+
+// ── Daily Analysis pane: combined patients/wards/doctors/nurses for one date ──
+
+const DAILY_ANALYSIS_BASE = '/api/daily-analysis';
+
+function setDailyAnalysisToday() {
+    const input = document.getElementById('daily-analysis-date');
+    if (input) input.value = _todayLocalDate();
+    loadDailyAnalysis();
+}
+
+async function loadDailyAnalysis() {
+    const container = document.getElementById('daily-analysis-body');
+    if (!container) return;
+    const dateInput = document.getElementById('daily-analysis-date');
+    if (dateInput && !dateInput.value) dateInput.value = _todayLocalDate();
+    const selectedDate = dateInput ? dateInput.value : _todayLocalDate();
+
+    container.innerHTML = '<div class="loading"><div class="spinner"></div> Loading...</div>';
+    try {
+        const res  = await fetch(`${DAILY_ANALYSIS_BASE}/report?date=${selectedDate}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to load daily analysis');
+        _renderDailyAnalysis(container, data);
+    } catch (err) {
+        container.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><p>${err.message}</p></div>`;
+    }
+}
+
+function _staffLoadTable(title, rows, colLabel) {
+    if (!rows || rows.length === 0) {
+        return '<div class="stats-chart-card"><div class="stats-chart-title">' + title + '</div>' +
+               '<div class="s-no-results"><p>No data for this date.</p></div></div>';
+    }
+    const body = rows.map(r =>
+        '<tr><td>' + r.name + '</td><td>' + r.active_patients + '</td><td>' + r.ended_patients + '</td><td><strong>' + r.total_patients + '</strong></td></tr>'
+    ).join('');
+    return '<div class="stats-chart-card">' +
+        '<div class="stats-chart-title">' + title + '</div>' +
+        '<div class="s-table-wrap"><table class="s-table">' +
+        '<thead><tr><th>' + colLabel + '</th><th>Active</th><th>Ended</th><th>Total</th></tr></thead>' +
+        '<tbody>' + body + '</tbody></table></div>' +
+        '</div>';
+}
+
+// Small "vs yesterday" trend line shown under an arrived/discharged KPI value.
+// Not colored good/bad — a rise in arrivals or discharges isn't inherently
+// positive or negative, so it's shown as a neutral fact.
+function _trendSub(delta) {
+    if (delta > 0) return '▲ +' + delta + ' vs yesterday';
+    if (delta < 0) return '▼ ' + delta + ' vs yesterday';
+    return '– no change vs yesterday';
+}
+
+function _esiTable(breakdown) {
+    const total = (breakdown || []).reduce((s, b) => s + b.count, 0);
+    if (total === 0) {
+        return '<div class="s-no-results"><p>No acuity data for this date.</p></div>';
+    }
+    const rows = breakdown.map(b =>
+        '<tr><td><span class="acuity-badge acuity-' + b.level + '">ESI ' + b.level + '</span></td>' +
+        '<td>' + b.label.replace(/^ESI \d — /, '') + '</td>' +
+        '<td style="text-align:right;font-weight:600">' + b.count + '</td></tr>'
+    ).join('');
+    return '<table class="stats-complaints-table"><thead><tr><th>Level</th><th>Category</th><th style="text-align:right">Count</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function _pillBreakdown(obj) {
+    const entries = Object.entries(obj || {});
+    if (entries.length === 0) return '<div class="s-no-results"><p>No data for this date.</p></div>';
+    return '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+        entries.map(([label, count]) =>
+            '<span style="background:#f0f2fa;border-radius:14px;padding:5px 12px;font-size:13px;color:#444">' +
+            '<strong>' + label + '</strong> · ' + count + '</span>'
+        ).join('') +
+        '</div>';
+}
+
+function _topComplaintsBlock(list) {
+    if (!list || list.length === 0) return '<div class="s-no-results"><p>No chief complaints recorded for this date.</p></div>';
+    const maxCount = list[0].count;
+    const rows = list.map(c => {
+        const barW = Math.max(4, Math.round((c.count / maxCount) * 100));
+        return '<tr><td><div class="complaint-bar-wrap"><div class="complaint-bar" style="width:' + barW + 'px"></div><span>' + c.complaint + '</span></div></td>' +
+               '<td style="text-align:right;font-weight:600">' + c.count + '</td></tr>';
+    }).join('');
+    return '<table class="stats-complaints-table"><thead><tr><th>Complaint</th><th style="text-align:right">Count</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function _renderDailyAnalysis(container, data) {
+    const p = data.patients;
+    const cmp = data.comparison || {};
+    const wardRows = (data.wards || []).map(w =>
+        '<tr><td>' + w.ward_name + '</td><td>' + w.active_patients + '</td><td>' + w.discharged_patients + '</td><td><strong>' + w.total_patients + '</strong></td></tr>'
+    ).join('');
+    const netClass = p.net_change > 0 ? 'good' : (p.net_change < 0 ? 'danger' : '');
+    const netLabel = (p.net_change > 0 ? '+' : '') + p.net_change;
+
+    container.innerHTML =
+        '<div class="stats-kpi-grid" style="margin-bottom:20px">' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">🚑</div><div class="stats-kpi-value">' + p.arrived + '</div>' +
+                '<div class="stats-kpi-label">Patients Arrived</div><div class="stats-kpi-sub">' + _trendSub(cmp.arrived_delta || 0) + '</div></div>' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">📋</div><div class="stats-kpi-value">' + p.discharged + '</div>' +
+                '<div class="stats-kpi-label">Patients Discharged</div><div class="stats-kpi-sub">' + _trendSub(cmp.discharged_delta || 0) + '</div></div>' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">⚖️</div><div class="stats-kpi-value ' + netClass + '">' + netLabel + '</div>' +
+                '<div class="stats-kpi-label">Net Change</div><div class="stats-kpi-sub">arrived − discharged</div></div>' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">🎂</div><div class="stats-kpi-value">' + _fmt(p.avg_age, '', 1) + '</div>' +
+                '<div class="stats-kpi-label">Avg Age</div><div class="stats-kpi-sub">of arrivals</div></div>' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">⏱️</div><div class="stats-kpi-value">' + _fmt(p.avg_wait_to_bed_min, ' min') + '</div>' +
+                '<div class="stats-kpi-label">Avg Wait to Bed</div><div class="stats-kpi-sub">' + p.wait_sample_count + ' samples</div></div>' +
+            '<div class="stats-kpi-card"><div class="stats-kpi-icon">🕐</div><div class="stats-kpi-value">' + _fmt(p.avg_los_hours, ' h', 1) + '</div>' +
+                '<div class="stats-kpi-label">Avg Length of Stay</div><div class="stats-kpi-sub">' + p.los_sample_count + ' discharged</div></div>' +
+        '</div>' +
+        '<div class="stats-charts-row" style="margin-bottom:20px">' +
+            '<div class="stats-chart-card"><div class="stats-chart-title">Acuity Mix (Arrivals)</div>' + _esiTable(p.acuity_breakdown) + '</div>' +
+            '<div class="stats-chart-card">' +
+                '<div class="stats-chart-title">Gender (Arrivals)</div>' + _pillBreakdown(p.gender_breakdown) +
+                '<div class="stats-chart-title" style="margin-top:16px">Discharge Destination</div>' + _pillBreakdown(p.destination_breakdown) +
+            '</div>' +
+        '</div>' +
+        '<div class="stats-chart-card" style="margin-bottom:20px">' +
+            '<div class="stats-chart-title">Top Chief Complaints (Arrivals)</div>' + _topComplaintsBlock(p.top_complaints) +
+        '</div>' +
+        '<div class="stats-chart-card" style="margin-bottom:20px">' +
+            '<div class="stats-chart-title">Wards</div>' +
+            (wardRows
+                ? '<div class="s-table-wrap"><table class="s-table"><thead><tr><th>Ward</th><th>Active</th><th>Discharged</th><th>Total</th></tr></thead><tbody>' + wardRows + '</tbody></table></div>'
+                : '<div class="s-no-results"><p>No data for this date.</p></div>') +
+        '</div>' +
+        '<div class="stats-charts-row">' +
+            _staffLoadTable('Doctors', data.doctors, 'Doctor') +
+            _staffLoadTable('Nurses',  data.nurses,  'Nurse') +
+        '</div>';
+}
+
+// ── Refresh (manual button + automatic on-data-change) ─────────────────────
+//
+// loadStatistics() alone only covers the Patients/Nurses/Doctors panes (one
+// combined fetch) plus the quality banner, which is always visible above the
+// tab bar regardless of which tab is open. Wards and Daily Analysis fetch on
+// demand instead, so they only need to reload when they are the tab actually
+// being looked at. Register any future on-demand tab here — both the manual
+// Refresh button and the automatic data-change listener read from this same
+// table, so a new tab only needs to be added in one place.
+const STATS_ON_DEMAND_TABS = {
+    wards: loadWardCensus,
+    daily: loadDailyAnalysis,
+};
+
+// Refreshes whatever the user is actually looking at right now: the shared
+// Patients/Nurses/Doctors data (and banner) always, plus the active tab's
+// on-demand loader if it has one.
+function refreshActiveStatsTab() {
+    loadStatistics();
+    const activeTab = document.querySelector('.stats-main-tab.active')?.dataset.statsTab;
+    if (activeTab && STATS_ON_DEMAND_TABS[activeTab]) STATS_ON_DEMAND_TABS[activeTab]();
+}
+
 // Refresh statistics automatically whenever any data changes and this section is open
 onDataChange(function() {
     if (document.getElementById('statistics')?.classList.contains('active')) {
-        loadStatistics();
+        refreshActiveStatsTab();
     }
 });

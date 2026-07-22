@@ -277,3 +277,63 @@ function formatValue(value) {
     }
     return value;
 }
+
+// ── Destination select + detail-text helpers ───────────────────────────────
+// Every departure/discharge popup (beds, scheduling, unurgent, log-patient
+// edit) pairs a "Home" / "Hospital Department" <select> with a free-text
+// <input> for naming the department. These three helpers keep that select+
+// text pairing and its "Hospital Department: <name>" storage format
+// consistent across all of them.
+
+const _DEST_DETAIL_PREFIX = 'Hospital Department:';
+
+/**
+ * Show/hide the detail text input next to a destination <select>, based on
+ * whether "Hospital Department" is currently selected. Clears the detail
+ * input whenever it is hidden so a stale value can't be saved silently.
+ */
+function toggleDestinationDetail(selectId, detailId) {
+    const select = document.getElementById(selectId);
+    const detail = document.getElementById(detailId);
+    if (!select || !detail) return;
+    const showDetail = select.value === 'Hospital Department';
+    detail.style.display = showDetail ? '' : 'none';
+    if (!showDetail) detail.value = '';
+}
+
+/**
+ * Combine a destination <select> + detail <input> pair into the single
+ * string stored in the `destination` column, e.g. "Hospital Department: Cardiology".
+ * Falls back to the bare select value when no detail was entered.
+ * Returns null when nothing is selected.
+ */
+function composeDestination(selectId, detailId) {
+    const select = document.getElementById(selectId);
+    const detail = document.getElementById(detailId);
+    if (!select || !select.value) return null;
+    const base = select.value;
+    const detailText = detail ? detail.value.trim() : '';
+    if (base === 'Hospital Department' && detailText) {
+        return (base + ': ' + detailText).slice(0, 50);
+    }
+    return base;
+}
+
+/**
+ * Reverse of composeDestination(): split a stored destination string back
+ * into the <select> value and the detail <input> text, and sync the detail
+ * input's visibility to match.
+ */
+function splitDestination(selectId, detailId, value) {
+    const select = document.getElementById(selectId);
+    const detail = document.getElementById(detailId);
+    if (!select) return;
+    if (value && value.indexOf(_DEST_DETAIL_PREFIX) === 0) {
+        select.value = 'Hospital Department';
+        if (detail) detail.value = value.slice(_DEST_DETAIL_PREFIX.length).trim();
+    } else {
+        select.value = value || '';
+        if (detail) detail.value = '';
+    }
+    toggleDestinationDetail(selectId, detailId);
+}
