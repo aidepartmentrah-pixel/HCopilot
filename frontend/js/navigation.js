@@ -71,6 +71,10 @@ function showSection(sectionId) {
         return;
     }
 
+    // Exit Beds Display's "Fit to Screen" kiosk mode before switching away —
+    // it's a fixed full-viewport overlay and must not linger over another page.
+    if (typeof exitBedsFitScreen === 'function') exitBedsFitScreen();
+
     // Deactivate every section and nav button before activating the target
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     document.querySelectorAll('[data-section]').forEach(btn => btn.classList.remove('active'));

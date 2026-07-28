@@ -64,6 +64,8 @@ from features.statistics.api import router as statistics_router      # Aggregate
 from features.reset.api import router as reset_router                # Destructive data-clear endpoints
 from features.unurgent.api import router as unurgent_router          # Unurgent (acuity-5) patient path
 from features.auth.api import router as auth_router                  # Login + user account management
+from features.ward_census.api import router as ward_census_router    # Daily per-ward patient census
+from features.daily_analysis.api import router as daily_analysis_router  # Date-filterable combined daily report
 
 # ── Router registration ────────────────────────────────────────────────────────
 # Each router is mounted under its own URL prefix.  All API endpoints therefore
@@ -84,12 +86,28 @@ app.include_router(statistics_router, prefix="/api/statistics")      # GET /api/
 app.include_router(reset_router,      prefix="/api/reset")           # POST /api/reset/all
 app.include_router(unurgent_router,   prefix="/api/unurgent")        # GET /api/unurgent/list
 app.include_router(auth_router,       prefix="/api/auth")            # POST /api/auth/login
+app.include_router(ward_census_router, prefix="/api/ward-census")    # GET /api/ward-census/today
+app.include_router(daily_analysis_router, prefix="/api/daily-analysis")  # GET /api/daily-analysis/report
 
 
 @app.get("/health")
 async def health():
     """Lightweight liveness check for the Docker/Compose healthcheck — no DB access."""
     return {"status": "ok"}
+
+
+@app.on_event("startup")
+def _start_background_jobs():
+    # Saves today's ward census immediately, then keeps it refreshed hourly —
+    # see scheduler.py. Deliberately swallows errors: the DB may not be fully
+    # migrated yet on a cold start (db-init races backend in some deploy
+    # orders), and a failed census snapshot must never block the API itself
+    # from serving requests.
+    try:
+        from scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"⚠️  ward census scheduler failed to start: {e}")
 
 
 # ── Static frontend serving (local dev only) ───────────────────────────────────

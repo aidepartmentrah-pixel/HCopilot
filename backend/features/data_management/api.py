@@ -23,7 +23,7 @@ from typing import Optional
 from .wards_manager import WardsManager
 from .daily_patients_manager import DailyPatientsManager
 from .log_patients_manager import LogPatientsManager
-from features.timestamp_utils import validate_timestamp_order
+from features.timestamp_utils import validate_timestamp_order, validate_destination
 
 router    = APIRouter()
 wards_mgr = WardsManager()
@@ -172,8 +172,17 @@ class DailyPatientModify(_DailyPatientBase):
 
     stay_id is taken from the URL path parameter, so only patient/vitals fields
     appear in the request body.
+
+    destination is only meaningful for a discharged (log) stay — it is defined
+    here rather than on _DailyPatientBase so the still-active DailyPatients
+    create/modify endpoints don't expose it.
     """
-    pass
+    destination: Optional[str] = None
+
+    @field_validator('destination')
+    @classmethod
+    def check_destination(cls, v: Optional[str]) -> Optional[str]:
+        return validate_destination(v)
 
 
 # ── Wards ────────────────────────────────────────────────────────────────────
@@ -490,7 +499,7 @@ async def modify_log_patient(stay_id: int, p: DailyPatientModify):
             stay_id, p.subject_id, p.arrival_time, p.departure_time, p.bed_occupation_time,
             p.temperature, p.heartrate, p.resprate,
             p.o2sat, p.sbp, p.dbp, p.pain, p.acuity, p.chiefcomplaint,
-            name=p.name, gender=p.gender, age=p.age
+            name=p.name, gender=p.gender, age=p.age, destination=p.destination
         )
     except HTTPException:
         raise

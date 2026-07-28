@@ -198,6 +198,7 @@ class BedManager:
             session.query(PatientBed).filter(PatientBed.patient_id == patient_id).delete(synchronize_session=False)
             session.add(PatientBed(patient_id=patient_id, bed_id=new_bed_id))
             session.commit()
+        self.add_bed_to_history(patient_id, new_bed_id)
         self.cleanup_chariot_if_unneeded(old_bed_id)
         return {
             "success": True,
@@ -205,6 +206,38 @@ class BedManager:
             "old_bed_id": old_bed_id,
             "new_bed_id": new_bed_id,
         }
+
+    def add_bed_to_history(self, patient_id, bed_id):
+        """
+        Append a bed's display number to the patient's bed_history trail, and
+        — the first time this is called for a stay — record the ward of that
+        first bed as the stay's admission_ward (used to attribute a same-day
+        discharge to a ward for the daily census; see features/ward_census).
+
+        Called on every assignment and move (from this class and from
+        scheduling/api.py and simulation/api.py, which link patient_bed
+        directly rather than through assign_patient/move_patient) so
+        bed_history accumulates a chronological, comma-separated record of
+        every bed_number occupied during the current stay. Carried into
+        LogPatients verbatim when the stay is archived on discharge.
+        """
+        with SessionLocal() as session:
+            bed = session.query(EDBed).filter(EDBed.bed_id == bed_id).first()
+            if bed is None:
+                return
+            patient = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).first()
+            if patient is None:
+                return
+            existing = (patient.bed_history or "").strip()
+            first_bed = not existing
+            patient.bed_history = f"{existing}, {bed.bed_number}" if existing else str(bed.bed_number)
+            if first_bed:
+                ward_bed = session.query(WardBed).filter(WardBed.bed_id == bed_id).first()
+                ward = session.query(Ward).filter(Ward.ward_id == ward_bed.ward_id).first() if ward_bed else None
+                if ward is not None:
+                    patient.admission_ward_id = ward.ward_id
+                    patient.admission_ward_name = ward.ward_name
+            session.commit()
 
     def release_bed(self, bed_id):
         with SessionLocal() as session:
@@ -301,6 +334,7 @@ class BedManager:
 
             session.commit()
 
+        self.add_bed_to_history(patient_id, bed_id)
         return {"success": True, "message": f"Patient {patient_id} assigned to bed {bed_id}"}
 
     def add_bed(self, bed_number, ward_id=None, bed_type=None):

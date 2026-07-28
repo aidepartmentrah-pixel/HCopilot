@@ -16,28 +16,44 @@ mgr    = PatientManager()
 
 class _PatientBase(BaseModel):
     patient_id: int
-    name:        Optional[str]   = None
-    gender:      Optional[str]   = None
-    age:         Optional[int]   = None
-    arrival_time: Optional[str] = None
+    # Demographics, arrival, and vitals are required — the only fields that stay
+    # optional are bed_occupation_time and departure_time, since an active stay
+    # legitimately has neither until those events actually happen.
+    name:        str
+    gender:      str
+    age:         int
+    arrival_time: str
     departure_time: Optional[str] = None
     bed_occupation_time: Optional[str] = None
-    # Vital signs — all optional; validated against medically reasonable ranges
-    temperature: Optional[float] = None
-    heartrate:   Optional[float] = None
-    resprate:    Optional[float] = None
-    o2sat:       Optional[float] = None
-    sbp:         Optional[float] = None
-    dbp:         Optional[float] = None
-    pain:        Optional[str]   = None
-    acuity:      Optional[float] = None
-    chiefcomplaint: Optional[str] = None
+    temperature: float
+    heartrate:   float
+    resprate:    float
+    o2sat:       float
+    sbp:         float
+    dbp:         float
+    pain:        str
+    acuity:      float
+    chiefcomplaint: str
 
     @field_validator('patient_id')
     @classmethod
     def check_patient_id(cls, v: int) -> int:
         if v < 1:
             raise ValueError('must be a positive integer')
+        return v
+
+    @field_validator('name', 'gender', 'arrival_time', 'pain', 'chiefcomplaint')
+    @classmethod
+    def check_required_str(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError('is required')
+        return v
+
+    @field_validator('age')
+    @classmethod
+    def check_age(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError('must be a positive number')
         return v
 
     @field_validator('temperature')

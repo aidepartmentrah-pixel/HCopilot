@@ -9,7 +9,7 @@
 // The form renders checkboxes for every section defined in HCOPILOT_SECTIONS
 // (auth.js).  Two sections have inline sub-pickers that appear when ticked:
 //   - "Settings"    → HCOPILOT_SETTINGS_TABS sub-picker (grouped by category)
-//   - "Statistics"  → HCOPILOT_STATISTICS_TABS sub-picker (Patients / Nurses / Doctors)
+//   - "Statistics"  → HCOPILOT_STATISTICS_TABS sub-picker (Patients / Nurses / Doctors / Wards / Daily Analysis)
 // All sub-tabs are auto-checked when the parent section is first enabled.
 //
 // The accounts table shows section chips, and — when applicable — separate rows
@@ -273,7 +273,7 @@ function _accRenderSections(sectionsStr, settingsTabsStr, statisticsTabsStr) {
             </div>`;
         }
         if (s.id === 'statistics') {
-            // Inline sub-picker for the 3 statistics tabs (Patients / Nurses / Doctors)
+            // Inline sub-picker for the statistics tabs (Patients / Nurses / Doctors / Wards / Daily Analysis)
             const statsTabsHtml = _accRenderStatisticsTabsPicker(checkedStatsTabs);
             return `
             <label class="acc-sec-check-item">

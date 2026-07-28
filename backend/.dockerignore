@@ -16,9 +16,8 @@ tests/
 # and db-init transports them into SQL Server on first install via
 # migrate_csv_to_mssql.py and import_ml_historical_data.py, per the RAH
 # Operator Manual's "first installation must include lookup data, must not
-# recreate it" rule. Only Patients.csv (the ~38MB historical patient-intake
-# sampler dataset for the Simulation feature) is excluded — it was never
-# present in this environment to begin with and isn't part of Stage 1/2.
-datasets/Patients.csv
+# recreate it" rule. Patients.csv (~38MB historical patient-intake sampler
+# dataset for the Simulation feature) is shipped too — the sampler reads it
+# directly, no SQL Server round trip (see dataset_sampler.py).
 
 scratch_download/

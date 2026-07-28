@@ -236,6 +236,7 @@ function renderDpTable(patients) {
         '<td>' + fmtDt(p.departure_time) + '</td>' +
         '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : '<span class="s-null-dash">–</span>') + '</td>' +
         '<td>' + bedCell(p) + '</td>' +
+        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
         '<td>' + tempCell(p.temperature) + '</td>' +
         '<td>' + hrCell(p.heartrate) + '</td>' +
         '<td>' + fmt(p.resprate) + '</td>' +
@@ -266,7 +267,7 @@ function renderDpTable(patients) {
         '<thead><tr>' +
         '<th>Subject ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
         '<th>Arrival Time</th><th>Departure Time</th><th>Bed Occupation</th>' +
-        '<th>Bed</th>' +
+        '<th>Bed</th><th>Bed History</th>' +
         '<th>Temp</th><th>HR</th><th>RR</th>' +
         '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
         '<th style="width:220px">Actions</th>' +

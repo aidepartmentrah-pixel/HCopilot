@@ -54,7 +54,8 @@ COLUMNS = [
     'subject_id', 'stay_id', 'name', 'gender', 'age',
     'temperature', 'heartrate', 'resprate',
     'o2sat', 'sbp', 'dbp', 'pain', 'acuity', 'chiefcomplaint',
-    'arrival_time', 'departure_time', 'bed_occupation_time',
+    'arrival_time', 'departure_time', 'bed_occupation_time', 'destination', 'bed_history',
+    'admission_ward_id', 'admission_ward_name',
 ]
 
 
@@ -71,6 +72,10 @@ class LogPatientsManager:
             "arrival_time":        p.arrival_time,
             "departure_time":      p.departure_time,
             "bed_occupation_time": p.bed_occupation_time,
+            "destination":         p.destination,
+            "bed_history":         p.bed_history,
+            "admission_ward_id":   p.admission_ward_id,
+            "admission_ward_name": p.admission_ward_name,
             "temperature":         p.temperature,
             "heartrate":           p.heartrate,
             "resprate":            p.resprate,
@@ -97,6 +102,10 @@ class LogPatientsManager:
                     acuity=data.get("acuity"), chiefcomplaint=data.get("chiefcomplaint"),
                     arrival_time=data.get("arrival_time"), departure_time=data.get("departure_time"),
                     bed_occupation_time=data.get("bed_occupation_time"),
+                    destination=data.get("destination"),
+                    bed_history=data.get("bed_history"),
+                    admission_ward_id=data.get("admission_ward_id"),
+                    admission_ward_name=data.get("admission_ward_name"),
                 ))
                 session.commit()
             except OperationalError:
@@ -147,11 +156,12 @@ class LogPatientsManager:
     def modify(self, stay_id, subject_id, arrival_time, departure_time,
                bed_occupation_time, temperature, heartrate, resprate,
                o2sat, sbp, dbp, pain, acuity, chiefcomplaint,
-               name=None, gender=None, age=None):
+               name=None, gender=None, age=None, destination=None, bed_history=None):
         updates = {
             'subject_id': subject_id, 'name': name, 'gender': gender, 'age': age,
             'arrival_time': arrival_time, 'departure_time': departure_time,
-            'bed_occupation_time': bed_occupation_time,
+            'bed_occupation_time': bed_occupation_time, 'destination': destination,
+            'bed_history': bed_history,
             'temperature': temperature, 'heartrate': heartrate, 'resprate': resprate,
             'o2sat': o2sat, 'sbp': sbp, 'dbp': dbp,
             'pain': str(pain) if pain is not None else None,

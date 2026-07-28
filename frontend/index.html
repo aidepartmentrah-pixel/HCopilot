@@ -169,21 +169,29 @@
 
         <section id="beds-display" class="section">
             <div class="section-header">
-                <h2>🛏️ Beds Display</h2>
-                <p class="section-description">Hospital beds status and information</p>
-            </div>
-
-            <div class="beds-stats" id="beds-stats">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading statistics...
+                <div>
+                    <h2>🛏️ Beds Display</h2>
+                    <p class="section-description">Hospital beds status and information</p>
                 </div>
+                <button class="beds-fit-btn" id="beds-fit-btn" onclick="toggleBedsFitScreen()"
+                        title="Shrink or grow the whole display to fit the screen with no scrolling — handy for a wall monitor">⛶ Fit to Screen</button>
             </div>
 
-            <div class="beds-grid" id="beds-grid">
-                <div class="loading">
-                    <div class="spinner"></div>
-                    Loading beds...
+            <div class="beds-fit-scale" id="beds-fit-scale">
+                <div class="beds-fit-inner" id="beds-fit-inner">
+                    <div class="beds-stats" id="beds-stats">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading statistics...
+                        </div>
+                    </div>
+
+                    <div class="beds-grid" id="beds-grid">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading beds...
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -677,12 +685,12 @@
                     <!-- Patient info row -->
                     <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:0 16px">
                         <div class="form-group">
-                            <label class="form-label">Name <span class="form-hint">(optional)</span></label>
-                            <input class="form-input" type="text" id="pedit-name" placeholder="e.g. Jane Doe">
+                            <label class="form-label">Name <span class="form-hint">(required)</span></label>
+                            <input class="form-input" type="text" id="pedit-name" placeholder="e.g. Jane Doe" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Gender <span class="form-hint">(optional)</span></label>
-                            <select class="form-input" id="pedit-gender">
+                            <label class="form-label">Gender <span class="form-hint">(required)</span></label>
+                            <select class="form-input" id="pedit-gender" required>
                                 <option value="">— Select —</option>
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
@@ -690,16 +698,16 @@
                             </select>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Age <span class="form-hint">(optional)</span></label>
-                            <input class="form-input" type="number" id="pedit-age" placeholder="e.g. 45" min="0">
+                            <label class="form-label">Age <span class="form-hint">(required)</span></label>
+                            <input class="form-input" type="number" id="pedit-age" placeholder="e.g. 45" min="0" required>
                         </div>
                     </div>
 
                     <!-- Timestamps row -->
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
                         <div class="form-group">
-                            <label class="form-label">Arrival Time</label>
-                            <input class="form-input" type="datetime-local" id="pedit-arrival-time" oninput="peditAutoOccupation()">
+                            <label class="form-label">Arrival Time <span class="form-hint">(required)</span></label>
+                            <input class="form-input" type="datetime-local" id="pedit-arrival-time" oninput="peditAutoOccupation()" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Departure Time <span class="form-hint">(optional)</span></label>
@@ -713,47 +721,60 @@
                         <input class="form-input" type="datetime-local" id="pedit-bed-occupation-time">
                     </div>
 
+                    <!-- Destination — log stays only -->
+                    <div class="form-group" id="pedit-destination-group" style="display:none">
+                        <label class="form-label">Destination <span class="form-hint">(optional)</span></label>
+                        <div style="display:flex;gap:8px">
+                            <select class="form-input" id="pedit-destination" onchange="toggleDestinationDetail('pedit-destination', 'pedit-destination-detail')" style="flex:1">
+                                <option value="">— Select —</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Hospital Department">🏥 Hospital Department</option>
+                            </select>
+                            <input class="form-input" type="text" id="pedit-destination-detail" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
+                        </div>
+                    </div>
+
                     <!-- Vitals 2-column grid -->
                     <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 4px">Vital Signs</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
                         <div class="form-group">
-                            <label class="form-label">Temperature <span class="form-hint">(°C)</span></label>
-                            <input class="form-input" type="number" step="0.1" id="pedit-temperature" placeholder="e.g. 37.0">
+                            <label class="form-label">Temperature <span class="form-hint">(required, °C)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-temperature" placeholder="e.g. 37.0" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Heart Rate <span class="form-hint">(bpm)</span></label>
-                            <input class="form-input" type="number" id="pedit-heartrate" placeholder="e.g. 80">
+                            <label class="form-label">Heart Rate <span class="form-hint">(required, bpm)</span></label>
+                            <input class="form-input" type="number" id="pedit-heartrate" placeholder="e.g. 80" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Resp. Rate</label>
-                            <input class="form-input" type="number" id="pedit-resprate" placeholder="e.g. 16">
+                            <label class="form-label">Resp. Rate <span class="form-hint">(required)</span></label>
+                            <input class="form-input" type="number" id="pedit-resprate" placeholder="e.g. 16" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">O₂ Saturation <span class="form-hint">(%)</span></label>
-                            <input class="form-input" type="number" step="0.1" id="pedit-o2sat" placeholder="e.g. 98">
+                            <label class="form-label">O₂ Saturation <span class="form-hint">(required, %)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-o2sat" placeholder="e.g. 98" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">SBP <span class="form-hint">(mmHg)</span></label>
-                            <input class="form-input" type="number" id="pedit-sbp" placeholder="e.g. 120">
+                            <label class="form-label">SBP <span class="form-hint">(required, mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-sbp" placeholder="e.g. 120" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">DBP <span class="form-hint">(mmHg)</span></label>
-                            <input class="form-input" type="number" id="pedit-dbp" placeholder="e.g. 80">
+                            <label class="form-label">DBP <span class="form-hint">(required, mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-dbp" placeholder="e.g. 80" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Pain</label>
-                            <input class="form-input" type="text" id="pedit-pain" placeholder="e.g. 5">
+                            <label class="form-label">Pain <span class="form-hint">(required)</span></label>
+                            <input class="form-input" type="text" id="pedit-pain" placeholder="e.g. 5" required>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Acuity <span class="form-hint">(1–5)</span></label>
-                            <input class="form-input" type="number" step="0.1" id="pedit-acuity" placeholder="e.g. 2">
+                            <label class="form-label">Acuity <span class="form-hint">(required, 1–5)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-acuity" placeholder="e.g. 2" required>
                         </div>
                     </div>
 
                     <!-- Chief complaint spans full width -->
                     <div class="form-group">
-                        <label class="form-label">Chief Complaint <span class="form-hint">(optional)</span></label>
-                        <input class="form-input" type="text" id="pedit-chiefcomplaint" placeholder="e.g. Chest pain">
+                        <label class="form-label">Chief Complaint <span class="form-hint">(required)</span></label>
+                        <input class="form-input" type="text" id="pedit-chiefcomplaint" placeholder="e.g. Chest pain" required>
                     </div>
                 </div>
                 <div class="bfm-footer">
@@ -826,24 +847,24 @@
                                 <input type="number" id="pat-stay-id" placeholder="Auto-generated">
                             </div>
                             <div class="pat-field pat-field-wide">
-                                <label>Name <span class="pat-hint">(optional)</span></label>
-                                <input type="text" id="pat-name" placeholder="e.g. Jane Doe">
+                                <label>Name <span class="pat-hint">(required)</span></label>
+                                <input type="text" id="pat-name" placeholder="e.g. Jane Doe" required>
                             </div>
                             <div class="pat-field">
-                                <label>Gender <span class="pat-hint">(optional)</span></label>
-                                <select id="pat-gender">
+                                <label>Gender <span class="pat-hint">(required)</span></label>
+                                <select id="pat-gender" required>
                                     <option value="">— Select —</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
                             <div class="pat-field">
-                                <label>Age <span class="pat-hint">(optional)</span></label>
-                                <input type="number" id="pat-age" placeholder="e.g. 45" min="0">
+                                <label>Age <span class="pat-hint">(required)</span></label>
+                                <input type="number" id="pat-age" placeholder="e.g. 45" min="0" required>
                             </div>
                             <div class="pat-field">
-                                <label>Arrival Time <span class="pat-hint">(auto)</span></label>
-                                <input type="datetime-local" id="pat-arrival-time" oninput="patAutoOccupation()">
+                                <label>Arrival Time <span class="pat-hint">(auto, required)</span></label>
+                                <input type="datetime-local" id="pat-arrival-time" oninput="patAutoOccupation()" required>
                             </div>
                             <div class="pat-field">
                                 <label>Departure Time <span class="pat-hint">(optional)</span></label>
@@ -854,40 +875,40 @@
                                 <input type="datetime-local" id="pat-bed-occupation-time">
                             </div>
                             <div class="pat-field">
-                                <label>Temperature <span class="pat-hint">(optional, °C)</span></label>
-                                <input type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0">
+                                <label>Temperature <span class="pat-hint">(required, °C)</span></label>
+                                <input type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0" required>
                             </div>
                             <div class="pat-field">
-                                <label>Heart Rate <span class="pat-hint">(optional, bpm)</span></label>
-                                <input type="number" id="pat-heartrate" placeholder="e.g. 80">
+                                <label>Heart Rate <span class="pat-hint">(required, bpm)</span></label>
+                                <input type="number" id="pat-heartrate" placeholder="e.g. 80" required>
                             </div>
                             <div class="pat-field">
-                                <label>Respiratory Rate <span class="pat-hint">(optional)</span></label>
-                                <input type="number" id="pat-resprate" placeholder="e.g. 16">
+                                <label>Respiratory Rate <span class="pat-hint">(required)</span></label>
+                                <input type="number" id="pat-resprate" placeholder="e.g. 16" required>
                             </div>
                             <div class="pat-field">
-                                <label>O₂ Saturation <span class="pat-hint">(optional, %)</span></label>
-                                <input type="number" step="0.1" id="pat-o2sat" placeholder="e.g. 98">
+                                <label>O₂ Saturation <span class="pat-hint">(required, %)</span></label>
+                                <input type="number" step="0.1" id="pat-o2sat" placeholder="e.g. 98" required>
                             </div>
                             <div class="pat-field">
-                                <label>SBP <span class="pat-hint">(optional, mmHg)</span></label>
-                                <input type="number" id="pat-sbp" placeholder="e.g. 120">
+                                <label>SBP <span class="pat-hint">(required, mmHg)</span></label>
+                                <input type="number" id="pat-sbp" placeholder="e.g. 120" required>
                             </div>
                             <div class="pat-field">
-                                <label>DBP <span class="pat-hint">(optional, mmHg)</span></label>
-                                <input type="number" id="pat-dbp" placeholder="e.g. 80">
+                                <label>DBP <span class="pat-hint">(required, mmHg)</span></label>
+                                <input type="number" id="pat-dbp" placeholder="e.g. 80" required>
                             </div>
                             <div class="pat-field">
-                                <label>Pain <span class="pat-hint">(optional)</span></label>
-                                <input type="text" id="pat-pain" placeholder="e.g. 5">
+                                <label>Pain <span class="pat-hint">(required)</span></label>
+                                <input type="text" id="pat-pain" placeholder="e.g. 5" required>
                             </div>
                             <div class="pat-field">
-                                <label>Acuity <span class="pat-hint">(optional, 1–5)</span></label>
-                                <input type="number" step="0.1" id="pat-acuity" placeholder="e.g. 2">
+                                <label>Acuity <span class="pat-hint">(required, 1–5)</span></label>
+                                <input type="number" step="0.1" id="pat-acuity" placeholder="e.g. 2" required>
                             </div>
                             <div class="pat-field pat-field-wide">
-                                <label>Chief Complaint <span class="pat-hint">(optional)</span></label>
-                                <input type="text" id="pat-chiefcomplaint" placeholder="e.g. Chest pain">
+                                <label>Chief Complaint <span class="pat-hint">(required)</span></label>
+                                <input type="text" id="pat-chiefcomplaint" placeholder="e.g. Chest pain" required>
                             </div>
                         </div>
                         <div class="pat-add-footer">
@@ -971,6 +992,18 @@
                         <input class="form-input" type="datetime-local" id="bed-discharge-departure-time">
                         <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Destination</label>
+                        <div style="display:flex;gap:8px">
+                            <select class="form-input" id="bed-discharge-destination" onchange="toggleDestinationDetail('bed-discharge-destination', 'bed-discharge-destination-detail')" style="flex:1">
+                                <option value="">Select destination…</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Hospital Department">🏥 Hospital Department</option>
+                            </select>
+                            <input class="form-input" type="text" id="bed-discharge-destination-detail" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
+                        </div>
+                        <span class="form-hint">Where did the patient go after discharge?</span>
+                    </div>
                     <div id="bed-discharge-error" class="form-error-box"></div>
                 </div>
                 <div class="bfm-footer">
@@ -996,6 +1029,18 @@
                         <label class="form-label">Departure Time</label>
                         <input class="form-input" type="datetime-local" id="discharge-departure-time">
                         <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Destination</label>
+                        <div style="display:flex;gap:8px">
+                            <select class="form-input" id="discharge-destination" onchange="toggleDestinationDetail('discharge-destination', 'discharge-destination-detail')" style="flex:1">
+                                <option value="">Select destination…</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Hospital Department">🏥 Hospital Department</option>
+                            </select>
+                            <input class="form-input" type="text" id="discharge-destination-detail" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
+                        </div>
+                        <span class="form-hint">Where did the patient go after discharge?</span>
                     </div>
                     <div id="discharge-error" class="form-error-box"></div>
                 </div>
@@ -1551,6 +1596,17 @@
                     <div class="uu-dm-field">
                         <label class="uu-dm-label">🕐 Departure Time</label>
                         <input type="datetime-local" id="uu-discharge-time" class="uu-dm-time-input">
+                    </div>
+                    <div class="uu-dm-field">
+                        <label class="uu-dm-label">📍 Destination</label>
+                        <div style="display:flex;gap:8px">
+                            <select id="uu-discharge-destination" class="uu-dm-time-input" onchange="toggleDestinationDetail('uu-discharge-destination', 'uu-discharge-destination-detail')" style="flex:1">
+                                <option value="">Select destination…</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Hospital Department">🏥 Hospital Department</option>
+                            </select>
+                            <input type="text" id="uu-discharge-destination-detail" class="uu-dm-time-input" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
+                        </div>
                     </div>
                 </div>
                 <div class="uu-dm-footer">
@@ -2451,7 +2507,7 @@
                     <h2>📊 Statistics &amp; Evaluation</h2>
                     <p class="section-description">Patient experience metrics and urgency department performance</p>
                 </div>
-                <button class="stats-refresh-btn" onclick="loadStatistics()">↻ Refresh</button>
+                <button class="stats-refresh-btn" onclick="refreshActiveStatsTab()">↻ Refresh</button>
             </div>
 
             <!-- Data Quality Banner (hidden when quality is good) -->
@@ -2462,6 +2518,8 @@
                 <button class="stats-main-tab active" data-stats-tab="patients" onclick="switchStatsTab('patients', this)">🏥 Patients</button>
                 <button class="stats-main-tab" data-stats-tab="nurses" onclick="switchStatsTab('nurses', this)">👩‍⚕️ Nurses</button>
                 <button class="stats-main-tab" data-stats-tab="doctors" onclick="switchStatsTab('doctors', this)">🩺 Doctors</button>
+                <button class="stats-main-tab" data-stats-tab="wards" onclick="switchStatsTab('wards', this)">🏢 Wards</button>
+                <button class="stats-main-tab" data-stats-tab="daily" onclick="switchStatsTab('daily', this)">📅 Daily Analysis</button>
             </div>
 
             <!-- ── Patients pane ───────────────────────────────────────── -->
@@ -2582,6 +2640,42 @@
                         </select>
                     </div>
                     <div id="doctor-staff-profile"></div>
+                </div>
+            </div>
+
+            <!-- ── Wards pane ──────────────────────────────────────────── -->
+            <div class="stats-main-tab-pane" id="stats-tab-wards">
+                <div class="stats-chart-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <span>Daily Ward Census</span>
+                        <span style="display:flex;align-items:center;gap:8px">
+                            <input type="date" id="ward-census-date" class="form-input" style="width:auto" onchange="loadWardCensus()">
+                            <button class="s-btn s-btn-outline" onclick="setWardCensusToday()">Today</button>
+                        </span>
+                    </div>
+                    <p class="stats-chart-meta" style="margin:0 0 10px">
+                        Active = currently occupying a bed in that ward right now. Discharged = left that ward's care on the selected date.
+                        Today's numbers update live; past dates show what was saved for that day.
+                    </p>
+                    <div id="ward-census-table"><div class="loading"><div class="spinner"></div> Loading...</div></div>
+                </div>
+            </div>
+
+            <!-- ── Daily Analysis pane ─────────────────────────────────── -->
+            <div class="stats-main-tab-pane" id="stats-tab-daily">
+                <div class="stats-chart-card" style="margin-bottom:20px">
+                    <div class="stats-chart-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                        <span>Daily Analysis</span>
+                        <span style="display:flex;align-items:center;gap:8px">
+                            <input type="date" id="daily-analysis-date" class="form-input" style="width:auto" onchange="loadDailyAnalysis()">
+                            <button class="s-btn s-btn-outline" onclick="setDailyAnalysisToday()">Today</button>
+                        </span>
+                    </div>
+                    <p class="stats-chart-meta" style="margin:0 0 10px">
+                        A combined snapshot for the selected date: patients seen, ward census, and patient load per doctor/nurse.
+                        "Active" columns are only meaningful for today; past dates show what was recorded as ended that day.
+                    </p>
+                    <div id="daily-analysis-body"><div class="loading"><div class="spinner"></div> Loading...</div></div>
                 </div>
             </div>
         </section>

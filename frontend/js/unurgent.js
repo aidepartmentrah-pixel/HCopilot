@@ -159,6 +159,10 @@ function openUnurgentDischargeModal(patientId) {
     const dtInput = document.getElementById('uu-discharge-time');
     if (dtInput) dtInput.value = localNow;
 
+    const destInput = document.getElementById('uu-discharge-destination');
+    if (destInput) destInput.value = '';
+    toggleDestinationDetail('uu-discharge-destination', 'uu-discharge-destination-detail');
+
     const modal = document.getElementById('uu-discharge-modal');
     if (modal) modal.style.display = 'flex';
 }
@@ -176,6 +180,12 @@ async function confirmUnurgentDischarge() {
     const dtInput = document.getElementById('uu-discharge-time');
     const departure_time = dtInput?.value || null;
 
+    const destination = composeDestination('uu-discharge-destination', 'uu-discharge-destination-detail');
+    if (!destination) {
+        showMessage('Please select a destination.', 'error');
+        return;
+    }
+
     const btn = document.getElementById('uu-discharge-confirm-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Discharging…'; }
 
@@ -183,7 +193,7 @@ async function confirmUnurgentDischarge() {
         const res = await fetch(`${UNURGENT_BASE}/discharge/${pid}`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ departure_time }),
+            body:    JSON.stringify({ departure_time, destination }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Discharge failed');

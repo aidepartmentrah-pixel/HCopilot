@@ -23,6 +23,9 @@
 let currentBedId     = null;  // bed currently open in the detail modal
 let currentPatientId = null;  // patient currently on that bed (null if empty)
 
+let bedsFitActive       = false;  // whether "Fit to Screen" kiosk mode is on
+let bedsFitResizeHandler = null;  // bound resize listener, so it can be removed on exit
+
 async function loadBeds() {
     // Fetch bed stats and full bed list in parallel, then render the visual grid grouped by ward
     const statsContainer = document.getElementById('beds-stats');
@@ -151,11 +154,71 @@ async function loadBeds() {
         if (unassigned.length > 0) html += renderWardSection('Unassigned', unassigned);
         bedsContainer.innerHTML = html;
 
+        if (bedsFitActive) applyBedsFitScale();  // re-fit after live data changes the content height
+
     } catch (error) {
         statsContainer.innerHTML = `<div class="error-state"><p>Error loading bed statistics: ${error.message}</p></div>`;
         bedsContainer.innerHTML  = `<div class="error-state"><div class="error-icon">❌</div><h3>Error Loading Beds</h3><p>${error.message}</p></div>`;
         showMessage(`Error loading beds: ${error.message}`, 'error');
     }
+}
+
+// ── "Fit to Screen" kiosk mode ─────────────────────────────────────────────────
+
+function toggleBedsFitScreen() {
+    // Turns the whole Beds Display section into a fixed, full-viewport overlay
+    // scaled to exactly fill the available height — no scrolling — for showing
+    // live bed status on a wall-mounted monitor.
+    bedsFitActive = !bedsFitActive;
+    const section = document.getElementById('beds-display');
+    const btn     = document.getElementById('beds-fit-btn');
+
+    if (bedsFitActive) {
+        section.classList.add('beds-fit-active');
+        document.body.classList.add('beds-fit-locked');
+        if (btn) { btn.classList.add('active'); btn.innerHTML = '✕ Exit Fit Screen'; }
+        applyBedsFitScale();
+        bedsFitResizeHandler = () => applyBedsFitScale();
+        window.addEventListener('resize', bedsFitResizeHandler);
+    } else {
+        section.classList.remove('beds-fit-active');
+        document.body.classList.remove('beds-fit-locked');
+        if (btn) { btn.classList.remove('active'); btn.innerHTML = '⛶ Fit to Screen'; }
+        const inner = document.getElementById('beds-fit-inner');
+        if (inner) { inner.style.transform = ''; inner.style.width = ''; }
+        if (bedsFitResizeHandler) {
+            window.removeEventListener('resize', bedsFitResizeHandler);
+            bedsFitResizeHandler = null;
+        }
+    }
+}
+
+function applyBedsFitScale() {
+    // Scales #beds-fit-inner (stats + every ward's bed grid) up or down so its
+    // rendered height exactly matches the space available in #beds-fit-scale.
+    const outer = document.getElementById('beds-fit-scale');
+    const inner = document.getElementById('beds-fit-inner');
+    if (!outer || !inner) return;
+
+    inner.style.transform = 'none';
+    inner.style.width     = '100%';
+
+    const availableHeight = outer.clientHeight;
+    const naturalHeight   = inner.scrollHeight;
+    if (!availableHeight || !naturalHeight) return;
+
+    // Clamp so a near-empty ward list doesn't blow up absurdly large, and a
+    // huge one doesn't shrink to illegible text.
+    const scale = Math.max(0.3, Math.min(availableHeight / naturalHeight, 2));
+
+    inner.style.width     = (100 / scale) + '%';
+    inner.style.transform = `scale(${scale})`;
+}
+
+function exitBedsFitScreen() {
+    // Called from navigation.js when the user leaves this section, so kiosk
+    // mode never lingers over a different page.
+    if (bedsFitActive) toggleBedsFitScreen();
 }
 
 // ── Bed detail modal ──────────────────────────────────────────────────────────
@@ -256,6 +319,8 @@ function openBedDischargeModal() {
     if (!currentBedId) return;
     const now = nowLocalIso();
     document.getElementById('bed-discharge-departure-time').value = now;
+    document.getElementById('bed-discharge-destination').value = '';
+    toggleDestinationDetail('bed-discharge-destination', 'bed-discharge-destination-detail');
     const patLabel = currentPatientId != null ? `Patient <strong>#${currentPatientId}</strong>` : 'the patient';
     document.getElementById('bed-discharge-info').innerHTML =
         `You are about to discharge ${patLabel} from bed <strong>#${currentBedId}</strong>.<br>
@@ -276,9 +341,15 @@ function closeBedDischargeModal() {
 async function confirmBedDischarge() {
     // POST the departure time to the beds/discharge endpoint then refresh the grid
     const departureTime = document.getElementById('bed-discharge-departure-time').value;
+    const destination   = composeDestination('bed-discharge-destination', 'bed-discharge-destination-detail');
     const errEl = document.getElementById('bed-discharge-error');
     if (!departureTime) {
         errEl.textContent  = 'Please set a departure time.';
+        errEl.style.display = 'block';
+        return;
+    }
+    if (!destination) {
+        errEl.textContent  = 'Please select a destination.';
         errEl.style.display = 'block';
         return;
     }
@@ -291,7 +362,7 @@ async function confirmBedDischarge() {
         const res  = await fetch(`/api/beds/discharge/${currentBedId}`, {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ departure_time: departureTime }),
+            body:    JSON.stringify({ departure_time: departureTime, destination }),
         });
         const data = await res.json();
         if (!res.ok) {

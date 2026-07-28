@@ -34,11 +34,12 @@ from features.staff_management.nurses_manager import NursesManager
 
 _COLS = ["subject_id", "stay_id", "name", "gender", "age", "temperature", "heartrate", "resprate",
          "o2sat", "sbp", "dbp", "pain", "acuity", "chiefcomplaint",
-         "arrival_time", "departure_time", "bed_occupation_time", "unurgent"]
+         "arrival_time", "departure_time", "bed_occupation_time", "unurgent", "bed_history",
+         "admission_ward_id", "admission_ward_name"]
 
 _FLOAT_COLS = ["age", "temperature", "heartrate", "resprate", "o2sat", "sbp", "dbp", "acuity"]
 _STR_COLS   = ["name", "gender", "pain", "chiefcomplaint", "arrival_time", "departure_time",
-               "bed_occupation_time", "unurgent"]
+               "bed_occupation_time", "unurgent", "bed_history", "admission_ward_name"]
 
 
 def _clean_float(v):
@@ -46,6 +47,15 @@ def _clean_float(v):
         return None
     try:
         return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _clean_int(v):
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return None
+    try:
+        return int(v)
     except (TypeError, ValueError):
         return None
 
@@ -69,6 +79,9 @@ class DailyPatientsManager:
             "arrival_time":        p.arrival_time,
             "departure_time":      p.departure_time,
             "bed_occupation_time": p.bed_occupation_time,
+            "bed_history":         p.bed_history,
+            "admission_ward_id":   p.admission_ward_id,
+            "admission_ward_name": p.admission_ward_name,
             "temperature":         p.temperature,
             "heartrate":           p.heartrate,
             "resprate":            p.resprate,
@@ -186,13 +199,15 @@ class DailyPatientsManager:
                 "pain": p.pain, "acuity": p.acuity, "chiefcomplaint": p.chiefcomplaint,
                 "arrival_time": p.arrival_time, "departure_time": p.departure_time,
                 "bed_occupation_time": p.bed_occupation_time, "unurgent": p.unurgent,
+                "bed_history": p.bed_history,
+                "admission_ward_id": p.admission_ward_id, "admission_ward_name": p.admission_ward_name,
             } for p in patients]
         df = pd.DataFrame(records, columns=_COLS)
         if df.empty:
             return df
         df["subject_id"] = df["subject_id"].astype(int)
         df["stay_id"]    = df["stay_id"].astype(int)
-        for col in ("arrival_time", "departure_time", "bed_occupation_time", "unurgent", "pain"):
+        for col in ("arrival_time", "departure_time", "bed_occupation_time", "unurgent", "pain", "bed_history", "admission_ward_name"):
             df[col] = df[col].astype(object)
         return df
 
@@ -214,5 +229,8 @@ class DailyPatientsManager:
                     departure_time=_clean_str(row.get("departure_time")),
                     bed_occupation_time=_clean_str(row.get("bed_occupation_time")),
                     unurgent=_clean_str(row.get("unurgent")) if "unurgent" in df.columns else None,
+                    bed_history=_clean_str(row.get("bed_history")) if "bed_history" in df.columns else None,
+                    admission_ward_id=_clean_int(row.get("admission_ward_id")) if "admission_ward_id" in df.columns else None,
+                    admission_ward_name=_clean_str(row.get("admission_ward_name")) if "admission_ward_name" in df.columns else None,
                 ))
             session.commit()

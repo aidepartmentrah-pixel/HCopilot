@@ -23,7 +23,7 @@
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from db.session import SessionLocal
 from db.models import DailyPatient
@@ -32,6 +32,8 @@ from features.data_management.log_patients_manager   import LogPatientsManager
 from features.relations.relations_manager            import RelationsManager
 from features.staff_management.doctors_manager       import DoctorsManager
 from features.staff_management.nurses_manager        import NursesManager
+from features.timestamp_utils                         import validate_destination
+from features.staff_logs.link_archiver                import archive_patient_doctor_links, archive_patient_nurse_links
 
 router     = APIRouter()
 dp_mgr     = DailyPatientsManager()
@@ -43,6 +45,12 @@ nurses_mgr  = NursesManager()
 
 class UnurgentDischargeRequest(BaseModel):
     departure_time: Optional[str] = None   # ISO datetime; defaults to now
+    destination: Optional[str] = None      # "Home" or "Hospital Department[: <name>]"
+
+    @field_validator('destination')
+    @classmethod
+    def check_destination(cls, v: Optional[str]) -> Optional[str]:
+        return validate_destination(v)
 
 
 @router.get("/list")
@@ -110,6 +118,8 @@ async def discharge_unurgent(patient_id: int, req: UnurgentDischargeRequest):
                 except ValueError:
                     pass   # unparseable timestamps — skip validation
 
+            row.destination = req.destination
+
             archived = {
                 "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
                 "gender": row.gender, "age": row.age, "temperature": row.temperature,
@@ -117,6 +127,8 @@ async def discharge_unurgent(patient_id: int, req: UnurgentDischargeRequest):
                 "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
                 "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
                 "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
+                "destination": row.destination, "bed_history": row.bed_history,
+                "admission_ward_id": row.admission_ward_id, "admission_ward_name": row.admission_ward_name,
             }
             log_mgr.append(archived)
 
@@ -134,6 +146,8 @@ async def discharge_unurgent(patient_id: int, req: UnurgentDischargeRequest):
             [int(x) for x in nur_df[nur_df["patient_id"] == patient_id]["nurse_id"].tolist()]
             if len(nur_df) else []
         )
+        archive_patient_doctor_links(patient_id, stay_id)
+        archive_patient_nurse_links(patient_id, stay_id)
         rel.delete_by_left("patient_doctor", patient_id)
         rel.delete_by_left("patient_nurse",  patient_id)
         for did in doc_ids:

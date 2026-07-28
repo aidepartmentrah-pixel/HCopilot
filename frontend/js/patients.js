@@ -234,6 +234,15 @@ function renderLogPatientsTable(patients) {
         return '<span class="pat-gender-badge ' + cls + '">' + v + '</span>';
     };
 
+    const destinationBadge = v => {
+        if (!v) return dash;
+        const isHome = v === 'Home';
+        const bg = isHome ? '#dcfce7' : '#dbeafe';
+        const fg = isHome ? '#166534' : '#1e40af';
+        const icon = isHome ? '🏠' : '🏥';
+        return '<span style="background:' + bg + ';color:' + fg + ';border-radius:6px;padding:2px 8px;font-size:12px;white-space:nowrap">' + icon + ' ' + v + '</span>';
+    };
+
     const rows = patients.map(p =>
         '<tr>' +
         '<td class="s-td-id">' + p.subject_id + '</td>' +
@@ -243,7 +252,9 @@ function renderLogPatientsTable(patients) {
         '<td>' + fmt(p.age) + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.arrival_time) + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.departure_time) + '</td>' +
+        '<td>' + destinationBadge(p.destination) + '</td>' +
         '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : dash) + '</td>' +
+        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
         '<td>' + tempCell(p.temperature) + '</td>' +
         '<td>' + hrCell(p.heartrate) + '</td>' +
         '<td>' + fmt(p.resprate) + '</td>' +
@@ -266,7 +277,7 @@ function renderLogPatientsTable(patients) {
         '<div class="s-table-wrap"><table class="s-table">' +
         '<thead><tr>' +
         '<th>Patient ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
-        '<th>Arrival Time</th><th>Departure Time</th><th>Bed Occupation</th>' +
+        '<th>Arrival Time</th><th>Departure Time</th><th>Destination</th><th>Bed Occupation</th><th>Bed History</th>' +
         '<th>Temp</th><th>HR</th><th>RR</th>' +
         '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
         '<th style="width:170px">Actions</th>' +
@@ -374,6 +385,7 @@ function renderPatientsTable(patients) {
         '<td class="pat-td-arrival">' + _formatDatetime(p.departure_time) + '</td>' +
         '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : '<span class="s-null-dash">–</span>') + '</td>' +
         '<td>' + bedCell(p) + '</td>' +
+        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
         '<td>' + tempCell(p.temperature) + '</td>' +
         '<td>' + hrCell(p.heartrate) + '</td>' +
         '<td>' + fmt(p.resprate) + '</td>' +
@@ -397,7 +409,7 @@ function renderPatientsTable(patients) {
         '<thead><tr>' +
         '<th>Patient ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
         '<th>Arrival Time</th><th>Departure Time</th><th>Bed Occupation</th>' +
-        '<th>Bed</th>' +
+        '<th>Bed</th><th>Bed History</th>' +
         '<th>Temp</th><th>HR</th><th>RR</th>' +
         '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
         '<th style="width:220px">Actions</th>' +
@@ -458,25 +470,34 @@ async function submitPatientForm() {
     const departure = _patVal('pat-departure-time') || null;
     const bedOcc    = _patVal('pat-bed-occupation-time') || null;
     const age       = _patInt('pat-age');
+    const name      = _patVal('pat-name');
+    const gender    = _patVal('pat-gender');
+    const pain      = _patVal('pat-pain');
+    const chiefcomplaint = _patVal('pat-chiefcomplaint');
 
     setPatAddError('');
     if (!patientId || patientId < 1) { setPatAddError('Patient ID must be a positive integer.'); return; }
     if (!stayId    || stayId    < 1) { setPatAddError('Stay ID must be a positive integer.'); return; }
-    if (age    !== null && age    < 0)                      { setPatAddError('Age must be a positive number.'); return; }
-    if (temp   !== null && (temp   < 26  || temp   > 46))  { setPatAddError('Temperature must be between 26 and 46 °C.'); return; }
-    if (hr     !== null && (hr     < 20  || hr     > 300)) { setPatAddError('Heart rate must be between 20 and 300 bpm.'); return; }
-    if (rr     !== null && (rr     < 4   || rr     > 100)) { setPatAddError('Resp. rate must be between 4 and 100.'); return; }
-    if (o2     !== null && (o2     < 0   || o2     > 100)) { setPatAddError('O₂ saturation must be between 0 and 100 %.'); return; }
-    if (sbp    !== null && (sbp    < 40  || sbp    > 300)) { setPatAddError('SBP must be between 40 and 300 mmHg.'); return; }
-    if (dbp    !== null && (dbp    < 20  || dbp    > 200)) { setPatAddError('DBP must be between 20 and 200 mmHg.'); return; }
-    if (acuity !== null && (acuity < 1   || acuity > 5))   { setPatAddError('Acuity must be between 1 and 5.'); return; }
+    if (!name)                { setPatAddError('Name is required.'); return; }
+    if (!gender)               { setPatAddError('Gender is required.'); return; }
+    if (age    === null || age    < 0)                      { setPatAddError('Age is required and must be a positive number.'); return; }
+    if (!arrival)              { setPatAddError('Arrival time is required.'); return; }
+    if (temp   === null || temp   < 26  || temp   > 46)  { setPatAddError('Temperature is required and must be between 26 and 46 °C.'); return; }
+    if (hr     === null || hr     < 20  || hr     > 300) { setPatAddError('Heart rate is required and must be between 20 and 300 bpm.'); return; }
+    if (rr     === null || rr     < 4   || rr     > 100) { setPatAddError('Resp. rate is required and must be between 4 and 100.'); return; }
+    if (o2     === null || o2     < 0   || o2     > 100) { setPatAddError('O₂ saturation is required and must be between 0 and 100 %.'); return; }
+    if (sbp    === null || sbp    < 40  || sbp    > 300) { setPatAddError('SBP is required and must be between 40 and 300 mmHg.'); return; }
+    if (dbp    === null || dbp    < 20  || dbp    > 200) { setPatAddError('DBP is required and must be between 20 and 200 mmHg.'); return; }
+    if (!pain)                 { setPatAddError('Pain is required.'); return; }
+    if (acuity === null || acuity < 1   || acuity > 5)   { setPatAddError('Acuity is required and must be between 1 and 5.'); return; }
+    if (!chiefcomplaint)       { setPatAddError('Chief complaint is required.'); return; }
 
     const payload = {
         patient_id:          patientId,
         stay_id:             stayId,
-        name:                _patVal('pat-name')           || null,
-        gender:              _patVal('pat-gender')         || null,
-        age:                 age,
+        name,
+        gender,
+        age,
         arrival_time:        arrival,
         departure_time:      departure,
         bed_occupation_time: bedOcc,
@@ -486,9 +507,9 @@ async function submitPatientForm() {
         o2sat:               o2,
         sbp,
         dbp,
-        pain:                _patVal('pat-pain')           || null,
+        pain,
         acuity,
-        chiefcomplaint:      _patVal('pat-chiefcomplaint') || null
+        chiefcomplaint
     };
 
     const btn = document.getElementById('pat-add-btn');
@@ -544,6 +565,9 @@ function openEditPatientModal(row, source) {
     document.getElementById('pedit-pain').value                = row.pain           != null ? row.pain           : '';
     document.getElementById('pedit-acuity').value              = row.acuity         != null ? row.acuity         : '';
     document.getElementById('pedit-chiefcomplaint').value      = row.chiefcomplaint != null ? row.chiefcomplaint : '';
+    const destGroup = document.getElementById('pedit-destination-group');
+    if (destGroup) destGroup.style.display = patEditSource === 'log' ? '' : 'none';
+    splitDestination('pedit-destination', 'pedit-destination-detail', row.destination);
     setPatEditError('');
     document.getElementById('patient-edit-modal').style.display = 'block';
 }
@@ -569,24 +593,33 @@ async function saveEditPatient() {
     const bedOcc    = document.getElementById('pedit-bed-occupation-time').value.trim() || null;
     const ageRaw    = document.getElementById('pedit-age').value.trim();
     const age       = ageRaw === '' ? null : parseInt(ageRaw);
+    const name      = document.getElementById('pedit-name').value.trim();
+    const gender    = document.getElementById('pedit-gender').value;
+    const pain      = document.getElementById('pedit-pain').value.trim();
+    const chiefcomplaint = document.getElementById('pedit-chiefcomplaint').value.trim();
 
     setPatEditError('');
     if (isNaN(patientId) || patientId < 1) { setPatEditError('Patient ID must be a positive integer.'); return; }
-    if (age    !== null && age    < 0)                      { setPatEditError('Age must be a positive number.'); return; }
-    if (temp   !== null && (temp   < 26  || temp   > 46))  { setPatEditError('Temperature must be between 26 and 46 °C.'); return; }
-    if (hr     !== null && (hr     < 20  || hr     > 300)) { setPatEditError('Heart rate must be between 20 and 300 bpm.'); return; }
-    if (rr     !== null && (rr     < 4   || rr     > 100)) { setPatEditError('Resp. rate must be between 4 and 100.'); return; }
-    if (o2     !== null && (o2     < 0   || o2     > 100)) { setPatEditError('O₂ sat must be between 0 and 100 %.'); return; }
-    if (sbp    !== null && (sbp    < 40  || sbp    > 300)) { setPatEditError('SBP must be between 40 and 300 mmHg.'); return; }
-    if (dbp    !== null && (dbp    < 20  || dbp    > 200)) { setPatEditError('DBP must be between 20 and 200 mmHg.'); return; }
-    if (acuity !== null && (acuity < 1   || acuity > 5))   { setPatEditError('Acuity must be between 1 and 5.'); return; }
+    if (!name)                 { setPatEditError('Name is required.'); return; }
+    if (!gender)                { setPatEditError('Gender is required.'); return; }
+    if (age    === null || age    < 0)                      { setPatEditError('Age is required and must be a positive number.'); return; }
+    if (!arrival)               { setPatEditError('Arrival time is required.'); return; }
+    if (temp   === null || temp   < 26  || temp   > 46)  { setPatEditError('Temperature is required and must be between 26 and 46 °C.'); return; }
+    if (hr     === null || hr     < 20  || hr     > 300) { setPatEditError('Heart rate is required and must be between 20 and 300 bpm.'); return; }
+    if (rr     === null || rr     < 4   || rr     > 100) { setPatEditError('Resp. rate is required and must be between 4 and 100.'); return; }
+    if (o2     === null || o2     < 0   || o2     > 100) { setPatEditError('O₂ sat is required and must be between 0 and 100 %.'); return; }
+    if (sbp    === null || sbp    < 40  || sbp    > 300) { setPatEditError('SBP is required and must be between 40 and 300 mmHg.'); return; }
+    if (dbp    === null || dbp    < 20  || dbp    > 200) { setPatEditError('DBP is required and must be between 20 and 200 mmHg.'); return; }
+    if (!pain)                  { setPatEditError('Pain is required.'); return; }
+    if (acuity === null || acuity < 1   || acuity > 5)   { setPatEditError('Acuity is required and must be between 1 and 5.'); return; }
+    if (!chiefcomplaint)        { setPatEditError('Chief complaint is required.'); return; }
 
     // Log patients API expects subject_id; daily patients API expects patient_id
     const idField = patEditSource === 'log' ? 'subject_id' : 'patient_id';
     const payload = {
         [idField]:           patientId,
-        name:                document.getElementById('pedit-name').value.trim()           || null,
-        gender:              document.getElementById('pedit-gender').value                || null,
+        name,
+        gender,
         age,
         arrival_time:        arrival,
         departure_time:      departure,
@@ -597,10 +630,13 @@ async function saveEditPatient() {
         o2sat:               o2,
         sbp,
         dbp,
-        pain:                document.getElementById('pedit-pain').value.trim()           || null,
+        pain,
         acuity,
-        chiefcomplaint:      document.getElementById('pedit-chiefcomplaint').value.trim() || null
+        chiefcomplaint
     };
+    if (patEditSource === 'log') {
+        payload.destination = composeDestination('pedit-destination', 'pedit-destination-detail');
+    }
 
     const btn = document.getElementById('save-patient-edit-btn');
     btn.disabled = true; btn.textContent = 'Saving…';

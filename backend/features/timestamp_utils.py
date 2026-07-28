@@ -30,6 +30,37 @@ from fastapi import HTTPException
 import pandas as pd
 
 
+_DEST_DETAIL_PREFIX = 'Hospital Department: '
+
+
+def validate_destination(v):
+    """
+    Validate a `destination` field shared by every discharge/departure endpoint.
+
+    Accepts "Home", the bare "Hospital Department", or "Hospital Department: <name>"
+    where <name> is free text naming the specific department (entered via the
+    detail text box shown next to the destination dropdown in the UI). The
+    combined string must still fit the DailyPatients/LogPatients `destination`
+    column, which is VARCHAR(50).
+
+    Args:
+        v : Raw destination string from the request body, or None.
+
+    Raises:
+        ValueError : If v is set but doesn't match one of the accepted forms.
+
+    Returns:
+        The original value, unchanged, when valid.
+    """
+    if v is None:
+        return v
+    if v in ('Home', 'Hospital Department'):
+        return v
+    if v.startswith(_DEST_DETAIL_PREFIX) and len(v) <= 50 and v[len(_DEST_DETAIL_PREFIX):].strip():
+        return v
+    raise ValueError('must be "Home", "Hospital Department", or "Hospital Department: <name>" (max 50 characters total)')
+
+
 def safe_read_csv(path: str, columns: list) -> pd.DataFrame:
     """
     Read a CSV file and return its contents as a DataFrame.

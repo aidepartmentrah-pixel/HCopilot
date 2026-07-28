@@ -27,7 +27,7 @@ from db.models import User
 
 ALL_SECTIONS        = "home,flow-prediction,beds-display,patients,scheduling,simulation,unurgent,statistics,settings"
 ALL_SETTINGS_TABS   = "beds,doctors,nurses,wards,daily-patients,log-patients,shifts,groups,datasets,relations,models,features,reset"
-ALL_STATISTICS_TABS = "patients,nurses,doctors"
+ALL_STATISTICS_TABS = "patients,nurses,doctors,wards,daily"
 
 
 def _hash(password: str) -> str:

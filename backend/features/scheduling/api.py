@@ -24,7 +24,7 @@
 # =============================================================================
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 from db.session import SessionLocal
@@ -34,7 +34,8 @@ from features.beds_display.bed_manager import BedManager
 from features.data_management.log_patients_manager import LogPatientsManager
 from features.staff_management.nurses_manager import NursesManager
 from features.staff_management.doctors_manager import DoctorsManager
-from features.timestamp_utils import validate_timestamp_order, validate_discharge_time
+from features.timestamp_utils import validate_timestamp_order, validate_discharge_time, validate_destination
+from features.staff_logs.link_archiver import archive_patient_doctor_links, archive_patient_nurse_links
 
 router       = APIRouter()
 rel          = RelationsManager()
@@ -58,6 +59,13 @@ def _current_staff(patient_id: int):
 class DischargeRequest(BaseModel):
     # Optional departure time; defaults to now if omitted
     departure_time: Optional[str] = None
+    # Where the patient went: "Home" or "Hospital Department[: <name>]"
+    destination: Optional[str] = None
+
+    @field_validator('destination')
+    @classmethod
+    def check_destination(cls, v: Optional[str]) -> Optional[str]:
+        return validate_destination(v)
 
 
 class AssignmentCreate(BaseModel):
@@ -136,6 +144,7 @@ async def create_assignment(a: AssignmentCreate):
         bed_mgr.check_bed_available(a.bed_id)
         bed_mgr.check_patient_has_no_bed(a.patient_id)
         rel.add("patient_bed", a.patient_id, a.bed_id)
+        bed_mgr.add_bed_to_history(a.patient_id, a.bed_id)
         if a.doctor_id:
             rel.add("patient_doctor", a.patient_id, a.doctor_id)
             doctors_mgr.update_patient_count(a.doctor_id, +1)
@@ -171,9 +180,19 @@ async def edit_assignment(patient_id: int, old_bed_id: int, a: AssignmentEdit):
             bed_mgr.check_bed_available(a.new_bed_id)
             rel.delete("patient_bed", patient_id, old_bed_id)
             rel.add("patient_bed", patient_id, a.new_bed_id)
+            bed_mgr.add_bed_to_history(patient_id, a.new_bed_id)
 
         # Capture current staff before replacing links so counts can be adjusted
         old_doctor_ids, old_nurse_ids = _current_staff(patient_id)
+
+        # Archive the links being replaced so history survives the reassignment
+        stay_id_for_log = a.stay_id
+        if stay_id_for_log is None:
+            with SessionLocal() as session:
+                p = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).first()
+                stay_id_for_log = p.stay_id if p else None
+        archive_patient_doctor_links(patient_id, stay_id_for_log)
+        archive_patient_nurse_links(patient_id, stay_id_for_log)
 
         # Full replacement of doctor links: decrement old, increment new
         rel.delete_by_left("patient_doctor", patient_id)
@@ -217,6 +236,11 @@ async def delete_assignment(patient_id: int, bed_id: int):
     # Release the bed and remove all staff links for this patient without archiving to the log
     try:
         old_doctor_ids, old_nurse_ids = _current_staff(patient_id)
+        with SessionLocal() as session:
+            p = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).first()
+            stay_id_for_log = p.stay_id if p else None
+        archive_patient_doctor_links(patient_id, stay_id_for_log)
+        archive_patient_nurse_links(patient_id, stay_id_for_log)
         rel.delete("patient_bed", patient_id, bed_id)
         rel.delete_by_left("patient_doctor", patient_id)
         for did in old_doctor_ids:
@@ -257,6 +281,8 @@ async def discharge_patient(patient_id: int, bed_id: int, req: DischargeRequest)
             # existing bad bed_occupation_time values
             validate_discharge_time(row.arrival_time, row.bed_occupation_time, departure_time)
 
+            row.destination = req.destination
+
             archived = {
                 "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
                 "gender": row.gender, "age": row.age, "temperature": row.temperature,
@@ -264,6 +290,8 @@ async def discharge_patient(patient_id: int, bed_id: int, req: DischargeRequest)
                 "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
                 "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
                 "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
+                "destination": row.destination, "bed_history": row.bed_history,
+                "admission_ward_id": row.admission_ward_id, "admission_ward_name": row.admission_ward_name,
             }
             log_mgr.append(archived)
 
@@ -272,6 +300,8 @@ async def discharge_patient(patient_id: int, bed_id: int, req: DischargeRequest)
 
         # Release all bed/doctor/nurse links and update staff patient counts
         old_doctor_ids, old_nurse_ids = _current_staff(patient_id)
+        archive_patient_doctor_links(patient_id, stay_id)
+        archive_patient_nurse_links(patient_id, stay_id)
         rel.delete_by_left("patient_bed",    patient_id)
         rel.delete_by_left("patient_doctor", patient_id)
         for did in old_doctor_ids:

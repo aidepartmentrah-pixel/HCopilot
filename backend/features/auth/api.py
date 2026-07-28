@@ -31,8 +31,8 @@ class UserBody(BaseModel):
     Three comma-separated fields control which parts of the frontend are accessible:
       sections:         navigation page keys (e.g. "home,beds-display,patients")
       settings_tabs:    settings panel sub-tab keys (e.g. "doctors,beds,reset")
-      statistics_tabs:  statistics section sub-tab keys: "patients", "nurses", "doctors"
-                        (if empty for a non-admin, all three tabs default to accessible)
+      statistics_tabs:  statistics section sub-tab keys: "patients", "nurses", "doctors",
+                        "wards", "daily" (if empty for a non-admin, all tabs default to accessible)
     """
     username:         str
     password:         Optional[str] = None

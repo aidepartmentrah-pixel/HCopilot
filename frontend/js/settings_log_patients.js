@@ -97,6 +97,15 @@ function renderLogTable(patients) {
         return '<span class="pat-gender-badge ' + cls + '">' + v + '</span>';
     };
 
+    const destinationBadge = v => {
+        if (!v) return dash;
+        const isHome = v === 'Home';
+        const bg = isHome ? '#dcfce7' : '#dbeafe';
+        const fg = isHome ? '#166534' : '#1e40af';
+        const icon = isHome ? '🏠' : '🏥';
+        return '<span style="background:' + bg + ';color:' + fg + ';border-radius:6px;padding:2px 8px;font-size:12px;white-space:nowrap">' + icon + ' ' + v + '</span>';
+    };
+
     const rows = patients.map(p =>
         '<tr>' +
         '<td class="s-td-id">' + p.subject_id + '</td>' +
@@ -106,7 +115,9 @@ function renderLogTable(patients) {
         '<td>' + fmt(p.age) + '</td>' +
         '<td>' + fmtDt(p.arrival_time) + '</td>' +
         '<td>' + fmtDt(p.departure_time) + '</td>' +
+        '<td>' + destinationBadge(p.destination) + '</td>' +
         '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : dash) + '</td>' +
+        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
         '<td>' + tempCell(p.temperature) + '</td>' +
         '<td>' + hrCell(p.heartrate) + '</td>' +
         '<td>' + fmt(p.resprate) + '</td>' +
@@ -129,7 +140,7 @@ function renderLogTable(patients) {
         '<div class="s-table-wrap"><table class="s-table">' +
         '<thead><tr>' +
         '<th>Subject ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
-        '<th>Arrival Time</th><th>Departure Time</th><th>Bed Occupation</th>' +
+        '<th>Arrival Time</th><th>Departure Time</th><th>Destination</th><th>Bed Occupation</th><th>Bed History</th>' +
         '<th>Temp</th><th>HR</th><th>RR</th>' +
         '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
         '<th style="width:90px">Actions</th>' +

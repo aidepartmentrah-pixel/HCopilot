@@ -22,21 +22,8 @@
 # =============================================================================
 
 import pandas as pd
-import math
 from fastapi import HTTPException
 from ..data_management.daily_patients_manager import DailyPatientsManager
-
-
-def _safe(v):
-    # Coerce NaN/None to Python None for JSON serialisation
-    if v is None:
-        return None
-    try:
-        if math.isnan(float(v)):
-            return None
-    except (TypeError, ValueError):
-        pass
-    return v
 
 
 class PatientManager(DailyPatientsManager):
@@ -71,33 +58,36 @@ class PatientManager(DailyPatientsManager):
             "next_stay_id":    int(df["stay_id"].max())    + 1,
         }
 
-    def _row_to_dict(self, row):
+    def _row(self, p) -> dict:
         """
         Serialise a DailyPatients row to a JSON-safe dict, renaming subject_id → patient_id.
 
-        The CSV uses subject_id internally (matching the historical Patients.csv convention)
-        but the frontend always refers to the same field as patient_id.  This override
-        applies the rename so all patient_management API responses use the frontend's term.
+        The CSV/table uses subject_id internally (matching the historical Patients.csv
+        convention) but the frontend always refers to the same field as patient_id.  This
+        overrides DailyPatientsManager._row (the method get_all()/get_stats() actually call)
+        so all patient_management API responses use the frontend's term.
         """
-        # Override base serialisation to expose subject_id as patient_id for the UI
         return {
-            "patient_id":          int(row["subject_id"]),
-            "stay_id":             int(row["stay_id"]),
-            "name":                _safe(row.get("name")),
-            "gender":              _safe(row.get("gender")),
-            "age":                 _safe(row.get("age")),
-            "arrival_time":        _safe(row.get("arrival_time")),
-            "departure_time":      _safe(row.get("departure_time")),
-            "bed_occupation_time": _safe(row.get("bed_occupation_time")),
-            "temperature":         _safe(row.get("temperature")),
-            "heartrate":           _safe(row.get("heartrate")),
-            "resprate":            _safe(row.get("resprate")),
-            "o2sat":               _safe(row.get("o2sat")),
-            "sbp":                 _safe(row.get("sbp")),
-            "dbp":                 _safe(row.get("dbp")),
-            "pain":                _safe(row.get("pain")),
-            "acuity":              _safe(row.get("acuity")),
-            "chiefcomplaint":      _safe(row.get("chiefcomplaint")),
+            "patient_id":          p.subject_id,
+            "stay_id":             p.stay_id,
+            "name":                p.name,
+            "gender":              p.gender,
+            "age":                 p.age,
+            "arrival_time":        p.arrival_time,
+            "departure_time":      p.departure_time,
+            "bed_occupation_time": p.bed_occupation_time,
+            "bed_history":         p.bed_history,
+            "admission_ward_id":   p.admission_ward_id,
+            "admission_ward_name": p.admission_ward_name,
+            "temperature":         p.temperature,
+            "heartrate":           p.heartrate,
+            "resprate":            p.resprate,
+            "o2sat":               p.o2sat,
+            "sbp":                 p.sbp,
+            "dbp":                 p.dbp,
+            "pain":                p.pain,
+            "acuity":              p.acuity,
+            "chiefcomplaint":      p.chiefcomplaint,
         }
 
     def add(self, patient_id, stay_id, arrival_time=None, departure_time=None, bed_occupation_time=None,
