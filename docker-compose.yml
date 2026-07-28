@@ -43,7 +43,7 @@ services:
     # bed numbers, staff roster) from the CSVs baked into the image — see
     # backend/scripts/migrate_csv_to_mssql.py. Idempotent: safe to re-run on
     # every container start (skips any table that already has rows).
-    command: ["sh", "-c", "python scripts/ensure_database_exists.py && alembic upgrade head && python scripts/migrate_csv_to_mssql.py"]
+    command: ["sh", "-c", "python scripts/ensure_database_exists.py && alembic upgrade head && python scripts/migrate_csv_to_mssql.py && python scripts/import_ml_historical_data.py"]
     environment:
       DATABASE_SERVER: sqlserver
       DATABASE_PORT: 1433

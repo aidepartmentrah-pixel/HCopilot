@@ -1,15 +1,13 @@
-# HCopilot — Developer Setup Guide
+# HCopilot — Developer Setup Guide (Docker)
 
 Hussein,
 
 Since you delivered HCopilot, we've made two major changes to the project that you should know about before picking development back up:
 
 1. **The data layer moved from CSV files to a real Microsoft SQL Server database.** Every feature that used to read/write CSV files under `backend/datasets/` now goes through SQLAlchemy models and Alembic migrations (`backend/db/`, `backend/alembic/`).
-2. **The flow-prediction model now trains from that same database**, not from static CSV files.
+2. **The whole application is now Dockerized** — backend, frontend, and SQL Server all run as containers, defined in `docker-compose.yml` at the repo root. This is now the standard way to run the project, in development and in production.
 
-You've been added as a collaborator via a fork of the repository (not direct write access to the original) — the repo is public, so you can fork it, clone your fork, do your work there, and open a Pull Request back to us when you're ready. We'll review and merge from there.
-
-This document covers getting a local development environment running from scratch — no Docker, straight against a native SQL Server install, since that's your preference.
+The repository is public: `https://github.com/aidepartmentrah-pixel/HCopilot`. You don't have write access to it directly — fork it, do your work in your fork, and open a Pull Request back to us when you're ready. We'll review and merge from there.
 
 ## 1. Fork and clone
 
@@ -17,54 +15,49 @@ This document covers getting a local development environment running from scratc
 2. Clone your fork locally:
    ```
    git clone https://github.com/HusseinZein235/HCopilot.git
+   cd HCopilot
    ```
 
-## 2. Prerequisites
+## 2. Prerequisite
 
-- **Python 3.11+**
-- **SQL Server 2022 Developer Edition** — free, full-featured (not Express), download directly from Microsoft. This is a native install, no Docker involved.
-- **ODBC Driver 18 for SQL Server** — a separate small driver install, required by the Python SQL Server library (`pyodbc`) regardless of how SQL Server itself is hosted.
+- **Docker Desktop**, installed and running. That's the only thing you need installed on your machine — Python, SQL Server, and all dependencies run inside the containers themselves.
 
-## 3. Python environment
+## 3. Configure the environment
 
-From the repo root:
-```
-cd backend
-python -m venv .venv
-.venv\Scripts\activate          (Windows)
-pip install -r requirements.txt
-```
-
-## 4. Configure the database connection
-
-Copy `backend/.env.example` to `backend/.env` and fill in the values for your local SQL Server instance:
+Copy the template and fill in a real password:
 
 ```
-DATABASE_SERVER=localhost
-DATABASE_PORT=1433
-DATABASE_NAME=HCopilotDB
-DATABASE_USER=sa
-DATABASE_PASSWORD=<your local sa password>
-DATABASE_DRIVER=ODBC Driver 18 for SQL Server
-DATABASE_TRUST_SERVER_CERTIFICATE=yes
+cp .env.example .env
 ```
 
-## 5. Build the database
+Open `.env` and replace both `change-me-to-a-strong-password` values with a
+real password. It needs to be 8+ characters with at least 3 of: uppercase,
+lowercase, digit, symbol — SQL Server will reject anything weaker.
 
-Run these two commands in order, from `backend/`:
+## 4. Build and start everything
 
 ```
-python scripts/ensure_database_exists.py
-alembic upgrade head
+docker compose build
+docker compose up -d
 ```
 
-The first creates the `HCopilotDB` database itself (SQL Server needs `CREATE DATABASE` before anything else can happen). The second builds every table from the version-controlled migration files in `backend/alembic/versions/` — this is the full schema history, so you'll end up with the exact same table structure we have.
+This builds the backend and frontend images from the `Dockerfile`s in the
+repo, then starts four containers in order: `sqlserver` → `db-init` (builds
+the database schema via Alembic, then exits — this is expected, not a
+crash) → `backend` → `frontend`.
 
-## 6. About data — please read this before assuming something's broken
+Check everything came up healthy:
+```
+docker compose ps
+```
+`sqlserver`, `backend`, and `frontend` should all show `healthy`. `db-init`
+should show `Exited (0)`.
 
-**The actual hospital data is intentionally not in this repository.** The CSV files that used to hold patients, staff, beds, and wards, and the historical dataset used to train the forecasting model, are excluded via `.gitignore` for size and privacy reasons — they always have been, since your original commit.
+## 5. About data — please read this before assuming something's broken
 
-After step 5, your database will have empty tables, except for a few things the application seeds automatically the first time it runs:
+**The actual hospital data is intentionally not in this repository.** The CSV files that used to hold patients, staff, beds, and wards, and the historical dataset used to train the forecasting model, are excluded via `.gitignore` for size and privacy reasons — they always have been, since your original commit. `db-init` looks for them automatically on startup, but since they don't exist in your clone, it will simply find nothing to load.
+
+After `docker compose up`, your database will have empty tables, except for a few things the application seeds automatically the first time it runs:
 - A default `admin` / `admin` login
 - Default shift definitions (morning/night)
 - Default rotation groups (Group 1/Group 2)
@@ -75,20 +68,23 @@ Everything else — wards, beds, doctors, nurses, patients — will be empty unt
 
 This is expected, not a bug in your setup.
 
-## 7. Run the app
+## 6. Use the app
+
+Open `http://localhost:8082` in a browser (or whatever `FRONTEND_PORT` you set in `.env`). Log in with `admin` / `admin`.
+
+## 7. Day-to-day commands
+
+| What | Command |
+|---|---|
+| View logs | `docker compose logs -f backend` (or `frontend`, `sqlserver`) |
+| Restart after a code change | `docker compose up -d --build backend` |
+| Stop everything | `docker compose down` |
+| Stop and wipe the database too | `docker compose down -v` |
+
+## 8. Running the test suite
 
 ```
-cd backend
-uvicorn app:app --port 8090
-```
-
-Open `http://localhost:8090` in a browser. Log in with `admin` / `admin`.
-
-## 8. Run the test suite
-
-```
-cd backend
-pytest tests/
+docker compose exec backend pytest tests/
 ```
 
 This should pass in full against your empty-but-schema-complete database — it's designed to create and clean up its own test data, not depend on any pre-existing records.

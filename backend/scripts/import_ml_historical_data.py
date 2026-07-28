@@ -34,6 +34,9 @@ def import_ed_stays():
             return
 
     path = os.path.join(DATASETS, "edstays_with_synth.csv")
+    if not os.path.exists(path):
+        print("HistoricalEdStays: edstays_with_synth.csv not found, skipping")
+        return
     df = pd.read_csv(path)
     csv_rows = len(df)
 
@@ -63,6 +66,9 @@ def import_weather():
             return
 
     path = os.path.join(DATASETS, "meteo.csv")
+    if not os.path.exists(path):
+        print("DailyWeather: meteo.csv not found, skipping")
+        return
     df = pd.read_csv(path)
     csv_rows = len(df)
 

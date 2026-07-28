@@ -4,7 +4,9 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
-tests/
+# tests/ is intentionally NOT excluded: it's a few KB, and shipping it means
+# `docker compose exec backend pytest tests/` works out of the box for any
+# developer without a separate native Python setup just to run tests.
 .env
 .env.*
 !.env.example
