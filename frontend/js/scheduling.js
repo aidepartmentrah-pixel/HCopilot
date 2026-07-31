@@ -48,6 +48,15 @@ let selUnurgent  = false;   // true when routing to Unurgent Care instead of a b
 
 let schedUnurgentIds = new Set();  // patient_ids already in unurgent care (excluded from list)
 
+// ── Assignments table pagination ────────────────────────────────────────────
+const SCHED_ASSIGN_PAGE_SIZE = 25;
+let schedAssignPage = 1;
+
+function schedChangeAssignPage(page) {
+    schedAssignPage = page;
+    _renderAssignmentsTable(document.getElementById('sch-assignments-search')?.value || '');
+}
+
 // ── Entry point ────────────────────────────────────────────────────────────────
 
 async function loadSchedulingSection() {
@@ -234,6 +243,7 @@ async function loadSchedAssignments() {
         const res  = await fetch(SCHED_BASE + '/list');
         const data = await res.json();
         schedAssignments = data.assignments || [];
+        schedAssignPage  = 1;
         _renderAssignmentsTable();
     } catch (e) {
         if (el) el.innerHTML = '<div class="sch-empty"><span class="sch-empty-icon">⚠️</span>Failed to load assignments</div>';
@@ -690,6 +700,7 @@ async function deleteSchedAssignment(patientId, bedId) {
 
 function filterSchedAssignments() {
     const q = (document.getElementById('sch-assignments-search')?.value || '').toLowerCase().trim();
+    schedAssignPage = 1;
     _renderAssignmentsTable(q);
 }
 
@@ -728,6 +739,9 @@ function _renderAssignmentsTable(search) {
         return;
     }
 
+    const { page, totalPages, start, pageItems } = paginateSlice(rows, schedAssignPage, SCHED_ASSIGN_PAGE_SIZE);
+    schedAssignPage = page;
+
     el.innerHTML = `
         <div style="overflow-x:auto">
         <table class="s-table">
@@ -743,7 +757,7 @@ function _renderAssignmentsTable(search) {
                 </tr>
             </thead>
             <tbody>
-                ${rows.map(a => {
+                ${pageItems.map(a => {
                     const bed      = schedBeds.find(x => x.bed_id == a.bed_id);
                     const bedLabel = bed ? bed.bed_number : a.bed_id;
                     const btype    = bed ? (bed.bed_type || 'normal') : null;
@@ -780,7 +794,9 @@ function _renderAssignmentsTable(search) {
                 }).join('')}
             </tbody>
         </table>
-        </div>`;
+        </div>
+        <div class="s-table-footer">Showing ${start + 1}–${start + pageItems.length} of ${rows.length} assignments${rows.length < schedAssignments.length ? ` <span class="s-filter-hint">(filtered from ${schedAssignments.length} total)</span>` : ''}</div>
+        ${paginationBarHtml(page, totalPages, 'schedChangeAssignPage(%p)')}`;
 }
 
 function _typeBadge(val, color) {

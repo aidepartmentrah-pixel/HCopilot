@@ -278,6 +278,53 @@ function formatValue(value) {
     return value;
 }
 
+// ── Client-side pagination helpers ───────────────────────────────────────────
+// Used by tables that already hold their full dataset in memory (patients,
+// scheduling assignments) to slice one page's worth of rows and render a
+// First/Prev/Next/Last control bar, instead of rendering every row at once.
+
+/**
+ * Slice `items` down to one page, clamping the requested page into range.
+ *
+ * @param {Array}  items    - Full (already-filtered) array to paginate.
+ * @param {number} page     - Requested 1-based page number.
+ * @param {number} pageSize - Rows per page.
+ * @returns {{page: number, totalPages: number, start: number, pageItems: Array}}
+ */
+function paginateSlice(items, page, pageSize) {
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const clamped    = Math.min(Math.max(1, page), totalPages);
+    const start      = (clamped - 1) * pageSize;
+    return { page: clamped, totalPages, start, pageItems: items.slice(start, start + pageSize) };
+}
+
+/**
+ * Build a First/Prev/Next/Last pagination control bar as an HTML string.
+ * Returns '' when there is only one page, so callers can splice this
+ * directly into a table footer without an extra visibility check.
+ *
+ * `gotoExpr` is a JS call expression template with a `%p` placeholder for
+ * the target page number, e.g. "patChangePage('daily', %p)" — it is inlined
+ * into each button's onclick attribute so the caller's own page-change
+ * handler (which knows which table/state to re-render) is invoked.
+ *
+ * @param {number} page       - Current 1-based page number.
+ * @param {number} totalPages - Total number of pages.
+ * @param {string} gotoExpr   - Onclick JS expression template containing `%p`.
+ * @returns {string} HTML for the pagination bar, or '' if pagination is unnecessary.
+ */
+function paginationBarHtml(page, totalPages, gotoExpr) {
+    if (totalPages <= 1) return '';
+    const go = p => gotoExpr.split('%p').join(p);
+    return '<div class="s-pagination">' +
+        '<button class="s-page-btn"' + (page <= 1 ? ' disabled' : '') + ' onclick="' + go(1) + '">⏮ First</button>' +
+        '<button class="s-page-btn"' + (page <= 1 ? ' disabled' : '') + ' onclick="' + go(page - 1) + '">◀ Prev</button>' +
+        '<span class="s-page-info">Page ' + page + ' of ' + totalPages + '</span>' +
+        '<button class="s-page-btn"' + (page >= totalPages ? ' disabled' : '') + ' onclick="' + go(page + 1) + '">Next ▶</button>' +
+        '<button class="s-page-btn"' + (page >= totalPages ? ' disabled' : '') + ' onclick="' + go(totalPages) + '">Last ⏭</button>' +
+        '</div>';
+}
+
 // ── Destination select + detail-text helpers ───────────────────────────────
 // Every departure/discharge popup (beds, scheduling, unurgent, log-patient
 // edit) pairs a "Home" / "Hospital Department" <select> with a free-text

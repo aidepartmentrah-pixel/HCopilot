@@ -28,6 +28,20 @@ let patDeleteStayId  = null;
 let patDeleteSource  = 'daily'; // 'daily' | 'log' — controls which API endpoint deletePatient calls
 let patActiveView    = 'daily'; // 'daily' | 'log'
 
+// ── Pagination state ──────────────────────────────────────────────────────────
+// Daily and Log views paginate independently since only one is visible at a time
+// but the user may flip back and forth without losing their place in either.
+const PAT_PAGE_SIZE  = 25;
+let patDailyPage      = 1;
+let patLogPage        = 1;
+let _patDailyFiltered = []; // last array passed to renderPatientsTable() (post-filter, pre-slice)
+let _patLogFiltered   = []; // last array passed to renderLogPatientsTable() (post-filter, pre-slice)
+
+function patChangePage(view, page) {
+    if (view === 'daily') { patDailyPage = page; renderPatientsTable(_patDailyFiltered); }
+    else                  { patLogPage   = page; renderLogPatientsTable(_patLogFiltered); }
+}
+
 window.addEventListener('click', function(e) {
     if (e.target === document.getElementById('patient-edit-modal'))   closeEditPatientModal();
     if (e.target === document.getElementById('patient-delete-modal')) closeDeletePatientModal();
@@ -139,6 +153,7 @@ async function loadPatients() {
         document.getElementById('pat-search').value = '';
         document.getElementById('pat-filter-bar').style.display  = 'flex';
 
+        patDailyPage = 1;
         renderPatientsTable(allPatientsData);
         initPatientForm();
     } catch (error) {
@@ -156,6 +171,7 @@ function switchPatientView(view) {
     if (view === 'daily') {
         document.getElementById('pat-dataset-card-title').textContent    = '📋 Patient Dataset';
         document.getElementById('pat-dataset-card-subtitle').textContent = 'All patient stays in the system';
+        patDailyPage = 1;
         renderPatientsTable(allPatientsData);
         document.getElementById('pat-stats-bar').style.display  = allPatientsData.length ? 'flex' : 'none';
         document.getElementById('pat-filter-bar').style.display = allPatientsData.length ? 'flex' : 'none';
@@ -192,6 +208,7 @@ async function loadPatientLog() {
             container.innerHTML = '<div class="empty-state"><div class="empty-icon">📁</div><h3>No Discharged Patients Yet</h3><p>Discharged patients will appear here after discharge.</p></div>';
             return;
         }
+        patLogPage = 1;
         renderLogPatientsTable(allPatLogData);
     } catch (error) {
         container.innerHTML = '<div class="error-state"><div class="error-icon">❌</div><h3>Error Loading Log</h3><p>' + error.message + '</p></div>';
@@ -203,10 +220,15 @@ function renderLogPatientsTable(patients) {
     const countEl   = document.getElementById('pat-visible-count');
     if (countEl) countEl.textContent = patients.length + ' record' + (patients.length !== 1 ? 's' : '');
 
+    _patLogFiltered = patients;
+
     if (patients.length === 0) {
         container.innerHTML = '<div class="s-no-results"><div class="s-no-results-icon">🔍</div><p>No records match your filters.</p></div>';
         return;
     }
+
+    const { page, totalPages, start, pageItems } = paginateSlice(patients, patLogPage, PAT_PAGE_SIZE);
+    patLogPage = page;
 
     const dash = '<span class="s-null-dash">–</span>';
     const fmt  = v => (v !== null && v !== undefined ? v : dash);
@@ -243,7 +265,7 @@ function renderLogPatientsTable(patients) {
         return '<span style="background:' + bg + ';color:' + fg + ';border-radius:6px;padding:2px 8px;font-size:12px;white-space:nowrap">' + icon + ' ' + v + '</span>';
     };
 
-    const rows = patients.map(p =>
+    const rows = pageItems.map(p =>
         '<tr>' +
         '<td class="s-td-id">' + p.subject_id + '</td>' +
         '<td class="s-td-id">' + p.stay_id + '</td>' +
@@ -284,9 +306,10 @@ function renderLogPatientsTable(patients) {
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
-        '<div class="s-table-footer">' + patients.length + ' records shown' +
+        '<div class="s-table-footer">Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + patients.length + ' records' +
         (patients.length < allPatLogData.length ? ' <span class="s-filter-hint">(filtered from ' + allPatLogData.length + ' total)</span>' : '') +
-        '</div>';
+        '</div>' +
+        paginationBarHtml(page, totalPages, "patChangePage('log', %p)");
 }
 
 function filterPatients() {
@@ -299,6 +322,7 @@ function filterPatients() {
             || (p.name && p.name.toLowerCase().includes(search))
             || (p.chiefcomplaint && p.chiefcomplaint.toLowerCase().includes(search))
         );
+        patLogPage = 1;
         renderLogPatientsTable(filtered);
     } else {
         const filtered = allPatientsData.filter(p =>
@@ -308,6 +332,7 @@ function filterPatients() {
             || (p.name && p.name.toLowerCase().includes(search))
             || (p.chiefcomplaint && p.chiefcomplaint.toLowerCase().includes(search))
         );
+        patDailyPage = 1;
         renderPatientsTable(filtered);
     }
 }
@@ -317,10 +342,15 @@ function renderPatientsTable(patients) {
     const countEl   = document.getElementById('pat-visible-count');
     if (countEl) countEl.textContent = patients.length + ' record' + (patients.length !== 1 ? 's' : '');
 
+    _patDailyFiltered = patients;
+
     if (patients.length === 0) {
         container.innerHTML = '<div class="s-no-results"><div class="s-no-results-icon">🔍</div><p>No records match your filters.</p></div>';
         return;
     }
+
+    const { page, totalPages, start, pageItems } = paginateSlice(patients, patDailyPage, PAT_PAGE_SIZE);
+    patDailyPage = page;
 
     const dash = '<span class="s-null-dash">–</span>';
     const fmt  = v => (v !== null && v !== undefined ? v : dash);
@@ -373,7 +403,7 @@ function renderPatientsTable(patients) {
         return '<span class="pat-gender-badge ' + cls + '">' + v + '</span>';
     };
 
-    const rows = patients.map(p => {
+    const rows = pageItems.map(p => {
         const bed = patientBedMap[p.patient_id];
         return '<tr>' +
         '<td class="s-td-id">' + p.patient_id + '</td>' +
@@ -416,11 +446,12 @@ function renderPatientsTable(patients) {
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
-        '<div class="s-table-footer">' + patients.length + ' records shown' +
+        '<div class="s-table-footer">Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + patients.length + ' records' +
         (patients.length < allPatientsData.length
             ? ' <span class="s-filter-hint">(filtered from ' + allPatientsData.length + ' total)</span>'
             : '') +
-        '</div>';
+        '</div>' +
+        paginationBarHtml(page, totalPages, "patChangePage('daily', %p)");
 }
 
 document.addEventListener('click', function(e) {
