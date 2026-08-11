@@ -1,24 +1,28 @@
 # Backup & Restore — HCopilot
 
+Run these from the persistent install's scripts, not from a release
+folder: `/opt/rah/apps/hcopilot/scripts/`.
+
 ## Taking a backup
 
 ```bash
-cd release
-./scripts/backup_database.sh
+/opt/rah/apps/hcopilot/scripts/backup_database.sh
 ```
 
 This runs a full `BACKUP DATABASE` inside the `sqlserver` container and
 writes a timestamped `.bak` file. The file lands inside the container at
-`/var/opt/mssql/backup/`, which is bind-mounted to `release/compose/backups/`
-on the host — **the backup survives even if the container or its data
-volume is deleted**, because it lives on the host filesystem, not inside
-the container.
+`/var/opt/mssql/backup/`, which is bind-mounted to
+`/opt/rah/apps/hcopilot/backups/` on the host — **the backup survives even
+if the container or its data volume is deleted, and even if the release
+folder it was installed from is later removed**, because it lives under
+the persistent install directory, not inside a container or a release
+folder.
 
 Expected output ends with something like:
 ```
 BACKUP DATABASE successfully processed 11914 pages in 0.9 seconds (106.9 MB/sec).
 ==> Backup written inside container at /var/opt/mssql/backup/HCopilotDB_20260709_092027.bak
-==> On the host, this is under release/compose/backups/
+==> On the host, this is under /opt/rah/apps/hcopilot/backups (bind-mounted — see compose/docker-compose.yml)
 ```
 
 Copy the `.bak` file off the server to separate media/storage regularly —
@@ -37,8 +41,7 @@ is expected and correct for this deployment.
 you mean to discard everything since the backup was taken.
 
 ```bash
-cd release
-./scripts/restore_database.sh release/compose/backups/HCopilotDB_20260709_092027.bak
+/opt/rah/apps/hcopilot/scripts/restore_database.sh /opt/rah/apps/hcopilot/backups/HCopilotDB_20260709_092027.bak
 ```
 
 This script:
@@ -53,11 +56,12 @@ RESTORE DATABASE successfully processed 11914 pages in 0.6 seconds (161.9 MB/sec
 ==> Done. Run scripts/verify_installation.sh to confirm.
 ```
 
-Run `./scripts/verify_installation.sh` afterward to confirm the application
-is healthy and the restored data is reachable.
+Run `/opt/rah/apps/hcopilot/scripts/verify_installation.sh` afterward to
+confirm the application is healthy and the restored data is reachable.
 
 ## Backup schedule recommendation
 
-At minimum: before every update (`update_offline.sh` prompts for this
-automatically), and on a regular schedule appropriate to how often patient
-data changes (daily is reasonable for an active ED).
+At minimum: before every update (`update_offline.sh` does this
+automatically now — no manual confirmation step needed), and on a regular
+schedule appropriate to how often patient data changes (daily is
+reasonable for an active ED).

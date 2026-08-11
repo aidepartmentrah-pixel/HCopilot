@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# verify_installation.sh — post-install/post-update health check.
+# verify_installation.sh — post-install/post-update health check, run
+# against the persistent install directory.
 set -euo pipefail
 
-RELEASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$RELEASE_DIR/compose"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/_common.sh"
 
-if [ -f .env ]; then
-  set -a; source .env; set +a
-fi
+require_existing_install
+compose_cd
 
 echo "==> Container status:"
 docker compose ps
@@ -49,6 +49,10 @@ else
   echo "==> FRONTEND PROXY CHECK FAILED." >&2
   FAIL=1
 fi
+
+echo "==> Checking install directory independence markers..."
+[ -f "$INSTALL_ENV_FILE" ] && echo "==> Persistent .env present at $INSTALL_ENV_FILE." || { echo "==> Persistent .env MISSING." >&2; FAIL=1; }
+[ -f "$INSTALL_VERSION_FILE" ] && echo "==> Installed version recorded: $(cat "$INSTALL_VERSION_FILE")." || echo "==> (No INSTALLED_VERSION file yet — expected during a first-time install run.)"
 
 if [ "$FAIL" -eq 0 ]; then
   echo "==> Installation verified — application is healthy."

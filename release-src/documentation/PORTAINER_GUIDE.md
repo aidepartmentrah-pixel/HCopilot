@@ -3,6 +3,16 @@
 For operators who prefer managing this stack through Portainer's web UI
 instead of the command line.
 
+**Prefer `./scripts/install_offline.sh`/`update_offline.sh` (see
+`INSTALL_OFFLINE.md`/`UPDATE_OFFLINE.md`) when possible** — those scripts
+generate the database password, install everything to the persistent
+`/opt/rah/apps/hcopilot/` location, register the DBeaver connection, and
+record deployment history automatically. Deploying through Portainer
+bypasses all of that: you'll need to generate/track the password yourself,
+this stack won't live at the standard persistent path, and you're
+responsible for keeping backups/DBeaver/history in sync by hand. Use this
+guide only when a GUI-managed stack is specifically what you want.
+
 ## Prerequisite
 
 Portainer CE is already installed on the offline server. This guide
@@ -16,7 +26,7 @@ Images must be loaded via `./scripts/load_images.sh` (or manually,
 on an offline server.
 
 In Portainer: **Images** (left sidebar) → confirm you see
-`hcopilot-backend:1.0.0`, `hcopilot-frontend:1.0.0`, and
+`hcopilot-backend:1.0.1`, `hcopilot-frontend:1.0.1`, and
 `mcr.microsoft.com/mssql/server:2022-latest` listed.
 
 ## Step 2 — Create the stack

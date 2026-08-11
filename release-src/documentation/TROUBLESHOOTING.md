@@ -2,41 +2,35 @@
 
 ## Install fails immediately: "dependency failed to start: container ... sqlserver ... is unhealthy"
 
-**Confirmed root cause in the field**: `compose/.env` still had the
-placeholder text `REPLACE_WITH_STRONG_PASSWORD` left in `MSSQL_SA_PASSWORD`/
-`DATABASE_PASSWORD` (from `.env.offline.template`). That string is all
-uppercase letters and underscores — only 2 of the 4 character classes SQL
-Server's password policy requires (needs 3 of: uppercase, lowercase, digit,
-symbol) — so SQL Server's own setup step rejects it. The healthcheck then
-fails every time with `Login failed for user 'sa'`, and Compose gives up
-waiting and aborts the whole install with this confusing message, days
-after the actual cause (a copy-paste step that was skipped).
+`install_offline.sh` generates a fresh random password (24 alphanumeric
+characters — always satisfies SQL Server's complexity policy) and writes
+it directly into `/opt/rah/apps/hcopilot/compose/.env` — a
+forgotten/placeholder password is not a realistic cause with the current
+installer.
 
-Current versions of `install_offline.sh` catch this instantly with a clear
-error before touching Docker at all — if you're seeing the confusing
-version instead, you're on an older copy of the script; get the latest
-release.
-
-**If you're already stuck in this state**, fixing `.env` alone is not
-enough — SQL Server only applies `MSSQL_SA_PASSWORD` the very first time it
-sees a truly empty data volume. The failed attempt already created and
-partially initialized that volume, so retrying without wiping it first
-reproduces the exact same login failure. Fix in this order:
+**If you edited `.env` by hand afterward and now see this error**, the
+underlying rule still applies: SQL Server passwords need 8+ characters
+with at least 3 of uppercase/lowercase/digit/symbol. Fixing `.env` alone
+is not enough once this has failed once — SQL Server only applies
+`MSSQL_SA_PASSWORD` the very first time it sees a truly empty data volume,
+so the failed attempt already created and partially initialized that
+volume. Fix in this order:
 
 ```bash
-cd release/compose
+cd /opt/rah/apps/hcopilot/compose
 docker compose down -v      # removes the broken volume too — required, not optional
 ```
 
-Then edit `compose/.env` and replace **both** placeholder lines with a
-real password meeting the complexity rule above, confirm with
-`cat compose/.env` that no `REPLACE_WITH_STRONG_PASSWORD` text remains,
-and re-run `../scripts/install_offline.sh`.
+Then fix the password in `.env` and re-run
+`/opt/rah/apps/hcopilot/scripts/start_stack.sh` (or, if you're mid-install,
+the release's `./scripts/install_offline.sh` again — it refuses to touch
+an install that already has a `.env`, so remove
+`/opt/rah/apps/hcopilot/compose/.env` first if you want it to regenerate one).
 
 ## `db-init` container exits with an error / `backend` never starts
 
 ```bash
-cd release/compose
+cd /opt/rah/apps/hcopilot/compose
 docker compose logs db-init
 ```
 
@@ -58,7 +52,7 @@ mid-update, or just not started) — the browser tab was open before/after
 the containers were unavailable. Check:
 
 ```bash
-cd release/compose
+cd /opt/rah/apps/hcopilot/compose
 docker compose ps
 ```
 
@@ -136,7 +130,7 @@ configuration that was loaded on first install. Only do this on a
 fresh/test install, never on a server holding real records:
 
 ```bash
-cd release/compose
+cd /opt/rah/apps/hcopilot/compose
 docker compose down -v   # -v removes the sqlserver data volume too
 docker compose up -d
 ```

@@ -1,15 +1,22 @@
 # docker-compose.yml — HCopilot full stack (sqlserver + db-init + backend + frontend)
 #
-# Mirrors the shape already used by RAH Lab's other SQL-Server-backed project
-# (voice-project_Deployment): sqlserver -> db-init (one-shot, alembic upgrade
-# head) -> backend -> frontend, each gated on the previous service's health/
-# completion.
+# This is the RELEASE-SIDE deployment definition: version-specific, applied
+# to the persistent live deployment at /opt/rah/apps/hcopilot/compose/ during
+# install/update (see scripts/install_offline.sh, scripts/update_offline.sh).
+# It intentionally has no `build:` sections — production runs only the exact
+# images shipped as docker-images/*.tar in this release, never rebuilds.
+#
+# Explicit stable project identity: `name:` below, not the directory this
+# file happens to live in — see RAH Application Release & Deployment
+# Standard §3.4.
 #
 # NOTE ON SHARED SQL SERVER: per RAH Lab policy, one SQL Server instance may
 # host multiple project databases. If this hospital's offline server already
 # runs a shared SQL Server instance (e.g. for another project), you can point
 # DATABASE_SERVER at that instance instead and remove the sqlserver/db-init
-# services below — see release/documentation/INSTALL_OFFLINE.md.
+# services below — see documentation/INSTALL_OFFLINE.md.
+
+name: hcopilot
 
 services:
   sqlserver:
@@ -20,9 +27,11 @@ services:
       MSSQL_PID: Express
     volumes:
       - hcopilot_sqlserver_data:/var/opt/mssql
-      # Host-side backup destination — survives container/volume recreation.
-      # See release/scripts/backup_database.sh and restore_database.sh.
-      - ./backups:/var/opt/mssql/backup
+      # Host-side backup destination — lives under the persistent install
+      # directory (../backups relative to this file, i.e.
+      # /opt/rah/apps/hcopilot/backups), NOT inside the disposable release
+      # folder, so it survives release-folder cleanup and updates.
+      - ../backups:/var/opt/mssql/backup
     ports:
       # Exposed for optional GUI access (DBeaver/SSMS/Azure Data Studio) —
       # not required for the app itself, which reaches sqlserver over the
@@ -37,7 +46,7 @@ services:
     restart: unless-stopped
 
   db-init:
-    image: hcopilot-backend:1.0.0
+    image: hcopilot-backend:__APP_VERSION__
     # First install: create the database, build the schema, then transport
     # this hospital's existing lookup/configuration data (real ward layout,
     # bed numbers, staff roster) from the CSVs baked into the image — see
@@ -58,10 +67,7 @@ services:
     restart: "no"
 
   backend:
-    image: hcopilot-backend:1.0.0
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: hcopilot-backend:__APP_VERSION__
     environment:
       DATABASE_SERVER: sqlserver
       DATABASE_PORT: 1433
@@ -84,10 +90,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: hcopilot-frontend:1.0.0
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: hcopilot-frontend:__APP_VERSION__
     ports:
       - "${FRONTEND_PORT:-8082}:80"
     depends_on:

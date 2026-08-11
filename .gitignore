@@ -12,8 +12,11 @@ backend/.venv/
 !.env.example
 !.env.offline.template
 
-# Docker image tarballs and generated release output — rebuilt on demand,
-# too large to commit
-release/docker-images/*.tar
-release/compose/.env
-release/compose/backups/
+# Versioned Application Release artifacts (release/<version>/...) — built
+# from source on demand via the release engineering scripts, include large
+# Docker image tarballs, and are archived separately per the RAH Release
+# Archive policy rather than committed to source control.
+release/
+
+# Packager output — fully generated, never hand-authored
+/release_packager/
