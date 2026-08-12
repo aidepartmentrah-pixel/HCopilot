@@ -20,3 +20,4 @@ release/
 
 # Packager output — fully generated, never hand-authored
 /release_packager/
+/.rah/
