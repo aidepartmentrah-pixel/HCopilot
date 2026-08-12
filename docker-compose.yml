@@ -9,7 +9,7 @@
 # host multiple project databases. If this hospital's offline server already
 # runs a shared SQL Server instance (e.g. for another project), you can point
 # DATABASE_SERVER at that instance instead and remove the sqlserver/db-init
-# services below — see release/documentation/INSTALL_OFFLINE.md.
+# services below — see release/1.0.1/documentation/INSTALL_OFFLINE.md.
 
 services:
   sqlserver:
@@ -21,7 +21,7 @@ services:
     volumes:
       - hcopilot_sqlserver_data:/var/opt/mssql
       # Host-side backup destination — survives container/volume recreation.
-      # See release/scripts/backup_database.sh and restore_database.sh.
+      # See release/1.0.1/scripts/backup_database.sh and restore_database.sh.
       - ./backups:/var/opt/mssql/backup
     ports:
       # Exposed for optional GUI access (DBeaver/SSMS/Azure Data Studio) —
@@ -37,7 +37,7 @@ services:
     restart: unless-stopped
 
   db-init:
-    image: hcopilot-backend:1.0.0
+    image: hcopilot-backend:1.0.1
     # First install: create the database, build the schema, then transport
     # this hospital's existing lookup/configuration data (real ward layout,
     # bed numbers, staff roster) from the CSVs baked into the image — see
@@ -58,7 +58,7 @@ services:
     restart: "no"
 
   backend:
-    image: hcopilot-backend:1.0.0
+    image: hcopilot-backend:1.0.1
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -84,7 +84,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: hcopilot-frontend:1.0.0
+    image: hcopilot-frontend:1.0.1
     build:
       context: ./frontend
       dockerfile: Dockerfile
