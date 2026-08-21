@@ -19,7 +19,7 @@ echo "==> HCopilot offline installation (release $RELEASE_VERSION)"
 echo "==> Install target: $INSTALL_ROOT"
 echo
 
-if [ -f "$INSTALL_ENV_FILE" ]; then
+if [ -f "$INSTALL_VERSION_FILE" ]; then
   die "An installation already exists at $INSTALL_ROOT. Use scripts/update_offline.sh instead — install_offline.sh never runs against an existing deployment."
 fi
 
