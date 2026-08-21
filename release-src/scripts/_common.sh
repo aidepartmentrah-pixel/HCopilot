@@ -11,6 +11,16 @@
 set -euo pipefail
 
 APP_SLUG="hcopilot"
+# Pins the Docker Compose project identity to the Release manifest's own
+# declared compose_project_name, matching the RAH Application Release &
+# Deployment Standard's stable-identity requirement. Without this,
+# `docker compose up -d` (run from $INSTALL_COMPOSE_DIR, i.e. a directory
+# named "compose") derives the project name from that directory's own
+# basename instead -- "compose", not "hcopilot" -- which silently
+# mislabels every container and makes Platform's own verification (which
+# correctly filters containers by the manifest's declared project name)
+# report the application as not installed even when it is running fine.
+export COMPOSE_PROJECT_NAME="$APP_SLUG"
 INSTALL_ROOT="${HCOPILOT_INSTALL_ROOT:-/opt/rah/apps/${APP_SLUG}}"
 INSTALL_COMPOSE_DIR="${INSTALL_ROOT}/compose"
 INSTALL_BACKUPS_DIR="${INSTALL_ROOT}/backups"
