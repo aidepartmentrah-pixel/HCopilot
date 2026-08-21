@@ -54,7 +54,7 @@ done < "$RELEASE_DIR/configuration/.env.offline.template"
 echo
 
 log "Step 4/8: Refreshing persistent operational scripts and database resources..."
-cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/"
+cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/" 2>/dev/null || true
 cp "$RELEASE_DIR"/scripts/_common.sh \
    "$RELEASE_DIR"/scripts/start_stack.sh \
    "$RELEASE_DIR"/scripts/stop_stack.sh \

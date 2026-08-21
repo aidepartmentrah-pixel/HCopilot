@@ -36,7 +36,14 @@ chmod 600 "$INSTALL_ENV_FILE"
 log "Generated a new database password and wrote it to $INSTALL_ENV_FILE (mode 600)."
 
 log "Step 3/7: Installing persistent operational scripts and database resources into $INSTALL_ROOT..."
-cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/"
+# TODO: backup_database.sh/restore_database.sh need backup_database.sql/
+# restore_database.sql at $INSTALL_ROOT/database/, but nothing in
+# .rah/engineering-answers.json currently tells the Packaging Engine to
+# include release-src/database/*.sql in a built Release -- so this copy
+# is currently always a no-op against a real packaged Release, and
+# backup/restore are broken until that declaration gap is fixed. Made
+# non-fatal here so a missing declaration doesn't block install itself.
+cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/" 2>/dev/null || true
 cp "$RELEASE_DIR"/scripts/_common.sh \
    "$RELEASE_DIR"/scripts/start_stack.sh \
    "$RELEASE_DIR"/scripts/stop_stack.sh \
