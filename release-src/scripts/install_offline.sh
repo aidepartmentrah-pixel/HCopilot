@@ -31,7 +31,7 @@ cp "$RELEASE_DIR/compose/docker-compose.yml" "$INSTALL_COMPOSE_DIR/docker-compos
 
 GENERATED_PASSWORD="$(generate_password)"
 sed -e "s/__GENERATE_ME__/${GENERATED_PASSWORD}/g" \
-    "$RELEASE_DIR/compose/.env.offline.template" > "$INSTALL_ENV_FILE"
+    "$RELEASE_DIR/configuration/.env.offline.template" > "$INSTALL_ENV_FILE"
 chmod 600 "$INSTALL_ENV_FILE"
 log "Generated a new database password and wrote it to $INSTALL_ENV_FILE (mode 600)."
 

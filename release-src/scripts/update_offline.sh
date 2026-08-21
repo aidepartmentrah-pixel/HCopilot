@@ -49,7 +49,7 @@ while IFS='=' read -r key value; do
     log "  Added new required variable: $key"
     ADDED=1
   fi
-done < "$RELEASE_DIR/compose/.env.offline.template"
+done < "$RELEASE_DIR/configuration/.env.offline.template"
 [ "$ADDED" -eq 0 ] && log "  No new configuration variables introduced by this release."
 echo
 
