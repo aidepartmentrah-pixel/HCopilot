@@ -31,11 +31,13 @@ log "This will REPLACE the current ${DATABASE_NAME} database. Stopping backend f
 docker compose stop backend
 
 # -i takes a path resolved INSIDE the container, and database/*.sql is not
-# mounted there — pipe the host-side .sql file through stdin instead.
+# mounted there — pipe it through stdin instead. Reads from $RELEASE_DIR
+# (the currently-running Release's own immutable copy), not $INSTALL_ROOT
+# — see backup_database.sh's own comment for why.
 docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C \
   -v DB_NAME="$DATABASE_NAME" -v BACKUP_PATH="$CONTAINER_BACKUP_PATH" \
-  < "$INSTALL_ROOT/database/restore_database.sql"
+  < "$RELEASE_DIR/database/restore_database.sql"
 
 log "Restore complete. Restarting backend..."
 docker compose start backend
