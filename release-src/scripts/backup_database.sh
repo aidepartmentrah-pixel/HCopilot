@@ -28,18 +28,21 @@ docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -v DB_NAME="$DATABASE_NAME" -v BACKUP_PATH="$BACKUP_FILE" \
   < "$RELEASE_DIR/database/backup_database.sql"
 
-HOST_BACKUP_FILE="$INSTALL_BACKUPS_DIR/${DATABASE_NAME}_${TIMESTAMP}.bak"
 log "Backup written inside container at ${BACKUP_FILE}"
-log "On the host, this is under $INSTALL_BACKUPS_DIR (bind-mounted — see compose/docker-compose.yml)"
 
 # RAH_BACKUP_OUTPUT_PATH is the durable, Platform-owned artifact location
 # (config.backups_path/<slug>/<timestamp>/database.dump — outside the
 # replaceable app deployment entirely, per the Backup Isolation Rule).
-# HOST_BACKUP_FILE above is only this script's own transient working copy;
-# Platform checks for the artifact at RAH_BACKUP_OUTPUT_PATH specifically,
-# so it must be copied there for the backup to be recorded as real.
+# Pulled directly from the container by its own internal path via `docker
+# compose cp`, deliberately NOT via a computed host-side bind-mount path:
+# the compose file's own backup-volume convention has changed at least
+# once already (`./backups` vs `../backups`, a real, separately-found
+# discrepancy between what's baked into an already-running deployment and
+# what's in the current source tree), so trusting a host-path convention
+# here would silently break for exactly the deployment histories this
+# script most needs to handle correctly.
 if [ -n "${RAH_BACKUP_OUTPUT_PATH:-}" ]; then
   mkdir -p "$(dirname "$RAH_BACKUP_OUTPUT_PATH")"
-  cp "$HOST_BACKUP_FILE" "$RAH_BACKUP_OUTPUT_PATH"
+  docker compose cp "sqlserver:${BACKUP_FILE}" "$RAH_BACKUP_OUTPUT_PATH"
   log "Copied to Platform-owned backup location: $RAH_BACKUP_OUTPUT_PATH"
 fi

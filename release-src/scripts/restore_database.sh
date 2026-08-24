@@ -23,14 +23,13 @@ compose_cd
 
 # RAH_BACKUP_SOURCE_PATH lives under Platform's own config.backups_path,
 # which the sqlserver container has no bind mount into at all. Copy it
-# into $INSTALL_BACKUPS_DIR first -- that directory IS bind-mounted into
-# the sqlserver container at /var/opt/mssql/backup (see
-# compose/docker-compose.yml) -- so sqlcmd can reach it by a
-# container-internal path the same way backup_database.sh already does.
-mkdir -p "$INSTALL_BACKUPS_DIR"
+# straight into the container by its own internal path via `docker
+# compose cp`, deliberately not via a computed host-side bind-mount path
+# — see backup_database.sh's own comment for why that assumption isn't
+# safe across a deployment's real history.
 BACKUP_FILENAME="restore_$(date +%Y%m%d_%H%M%S).bak"
-cp "$RAH_BACKUP_SOURCE_PATH" "$INSTALL_BACKUPS_DIR/$BACKUP_FILENAME"
 CONTAINER_BACKUP_PATH="/var/opt/mssql/backup/${BACKUP_FILENAME}"
+docker compose cp "$RAH_BACKUP_SOURCE_PATH" "sqlserver:${CONTAINER_BACKUP_PATH}"
 
 log "This will REPLACE the current ${DATABASE_NAME} database. Stopping backend first..."
 docker compose stop backend
