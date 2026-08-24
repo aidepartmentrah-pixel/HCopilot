@@ -29,11 +29,27 @@ mkdir -p "$INSTALL_COMPOSE_DIR" "$INSTALL_BACKUPS_DIR" "$INSTALL_ROOT/database" 
 log "Step 2/7: Installing this release's Compose definition and generating persistent configuration..."
 cp "$RELEASE_DIR/compose/docker-compose.yml" "$INSTALL_COMPOSE_DIR/docker-compose.yml"
 
-GENERATED_PASSWORD="$(generate_password)"
-sed -e "s/__GENERATE_ME__/${GENERATED_PASSWORD}/g" \
-    "$RELEASE_DIR/configuration/.env.offline.template" > "$INSTALL_ENV_FILE"
-chmod 600 "$INSTALL_ENV_FILE"
-log "Generated a new database password and wrote it to $INSTALL_ENV_FILE (mode 600)."
+if [ -s "$INSTALL_ENV_FILE" ]; then
+  # A real .env already exists here (e.g. the RAH Offline Platform's own
+  # render_configuration() already wrote real operator-chosen ports and
+  # generated secrets before invoking this script). Never overwrite it
+  # from the generic template -- that would silently discard whatever
+  # the operator actually chose. This branch is what makes a
+  # Platform-driven install honor Platform's own configuration instead
+  # of always falling back to the template's hardcoded example values.
+  chmod 600 "$INSTALL_ENV_FILE"
+  log "Using existing persistent configuration already present at $INSTALL_ENV_FILE."
+else
+  # No .env yet -- genuine first-time manual install (operator running
+  # this script directly, no Platform involved). Original behavior,
+  # unchanged: generate a fresh password and materialize .env from the
+  # template.
+  GENERATED_PASSWORD="$(generate_password)"
+  sed -e "s/__GENERATE_ME__/${GENERATED_PASSWORD}/g" \
+      "$RELEASE_DIR/configuration/.env.offline.template" > "$INSTALL_ENV_FILE"
+  chmod 600 "$INSTALL_ENV_FILE"
+  log "Generated a new database password and wrote it to $INSTALL_ENV_FILE (mode 600)."
+fi
 
 log "Step 3/7: Installing persistent operational scripts and database resources into $INSTALL_ROOT..."
 # TODO: backup_database.sh/restore_database.sh need backup_database.sql/
