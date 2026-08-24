@@ -17,8 +17,11 @@
   and adjust with MOVE clauses as needed.
 */
 
-:setvar DB_NAME "HCopilotDB"
-:setvar BACKUP_PATH "/var/opt/mssql/backup/HCopilotDB.bak"
+-- No default :setvar here on purpose -- see backup_database.sql's own
+-- comment: sqlcmd's :setvar unconditionally overrides a value already
+-- passed via -v, so a hardcoded default here would silently discard the
+-- caller's real BACKUP_PATH. DB_NAME/BACKUP_PATH must always be supplied
+-- via -v by the caller (see the header comment above).
 
 ALTER DATABASE [$(DB_NAME)] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 GO

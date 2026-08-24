@@ -15,8 +15,13 @@
   survives container/volume recreation.
 */
 
-:setvar DB_NAME "HCopilotDB"
-:setvar BACKUP_PATH "/var/opt/mssql/backup/HCopilotDB.bak"
+-- No default :setvar here on purpose -- sqlcmd's :setvar unconditionally
+-- overrides a value already passed via -v, so a hardcoded default here
+-- would silently discard the caller's real, timestamped BACKUP_PATH on
+-- every single invocation (found live: every backup was actually landing
+-- at a fixed HCopilotDB.bak, never the timestamped path the calling
+-- script computed and later looked for). DB_NAME/BACKUP_PATH must always
+-- be supplied via -v by the caller (see the header comment above).
 
 -- No COMPRESSION: the docker-compose.yml sqlserver service runs MSSQL_PID=Express,
 -- and backup compression is an Enterprise/Standard-only feature — Express
