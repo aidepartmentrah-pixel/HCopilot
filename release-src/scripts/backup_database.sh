@@ -28,5 +28,18 @@ docker compose exec -T sqlserver /opt/mssql-tools18/bin/sqlcmd \
   -v DB_NAME="$DATABASE_NAME" -v BACKUP_PATH="$BACKUP_FILE" \
   < "$RELEASE_DIR/database/backup_database.sql"
 
+HOST_BACKUP_FILE="$INSTALL_BACKUPS_DIR/${DATABASE_NAME}_${TIMESTAMP}.bak"
 log "Backup written inside container at ${BACKUP_FILE}"
 log "On the host, this is under $INSTALL_BACKUPS_DIR (bind-mounted — see compose/docker-compose.yml)"
+
+# RAH_BACKUP_OUTPUT_PATH is the durable, Platform-owned artifact location
+# (config.backups_path/<slug>/<timestamp>/database.dump — outside the
+# replaceable app deployment entirely, per the Backup Isolation Rule).
+# HOST_BACKUP_FILE above is only this script's own transient working copy;
+# Platform checks for the artifact at RAH_BACKUP_OUTPUT_PATH specifically,
+# so it must be copied there for the backup to be recorded as real.
+if [ -n "${RAH_BACKUP_OUTPUT_PATH:-}" ]; then
+  mkdir -p "$(dirname "$RAH_BACKUP_OUTPUT_PATH")"
+  cp "$HOST_BACKUP_FILE" "$RAH_BACKUP_OUTPUT_PATH"
+  log "Copied to Platform-owned backup location: $RAH_BACKUP_OUTPUT_PATH"
+fi
