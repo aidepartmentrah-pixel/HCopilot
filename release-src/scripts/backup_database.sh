@@ -16,6 +16,18 @@ compose_cd
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_FILE="/var/opt/mssql/backup/${DATABASE_NAME}_${TIMESTAMP}.bak"
 
+# The backup volume is bind-mounted from the host, which Docker creates
+# root-owned by default -- but SQL Server's own process inside the
+# container runs as the unprivileged `mssql` user (same UID-mismatch bug
+# class already documented for pgAdmin and Voice Project's SQL Server —
+# see docs/development/application-validation-lessons.md — hitting this
+# specific directory for the first time here, since backup was never
+# actually run for real before now). Fixed from inside the container via
+# a root exec, not by chowning a host path whose real resolved location
+# has already proven unreliable to predict from outside (see the
+# docker compose cp comment below).
+docker compose exec -T -u root sqlserver chown mssql:mssql /var/opt/mssql/backup
+
 # -i takes a path resolved INSIDE the container, and database/*.sql is not
 # mounted there — pipe it through stdin instead (sqlcmd reads from stdin
 # when no -i/-Q is given). Reads from $RELEASE_DIR (the currently-running
