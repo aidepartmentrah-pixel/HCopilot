@@ -38,7 +38,22 @@ if [ -s "$INSTALL_ENV_FILE" ]; then
   # Platform-driven install honor Platform's own configuration instead
   # of always falling back to the template's hardcoded example values.
   chmod 600 "$INSTALL_ENV_FILE"
-  log "Using existing persistent configuration already present at $INSTALL_ENV_FILE."
+
+  # DATABASE_USER is always "sa" here (HCopilot has no separate
+  # app-level SQL login -- see database/ensure_database_exists.py) --
+  # DATABASE_PASSWORD must therefore equal the real sa password, i.e.
+  # MSSQL_SA_PASSWORD. render_configuration() has no way to know these
+  # two independently-declared `source: generated` secrets are actually
+  # the same real-world credential for this app -- generating them
+  # separately (as it correctly does for any two *unrelated* secrets)
+  # leaves them mismatched, and db-init's own login as sa then fails.
+  # The template-substitution branch below never hit this: both
+  # placeholders shared one single generated value by construction.
+  # Aligning them here, the one place that actually knows they're the
+  # same credential, not in Platform's generic rendering.
+  REAL_SA_PASSWORD="$(grep '^MSSQL_SA_PASSWORD=' "$INSTALL_ENV_FILE" | cut -d= -f2-)"
+  sed -i "s|^DATABASE_PASSWORD=.*|DATABASE_PASSWORD=${REAL_SA_PASSWORD}|" "$INSTALL_ENV_FILE"
+  log "Using existing persistent configuration already present at $INSTALL_ENV_FILE (DATABASE_PASSWORD aligned to the real sa password)."
 else
   # No .env yet -- genuine first-time manual install (operator running
   # this script directly, no Platform involved). Original behavior,
