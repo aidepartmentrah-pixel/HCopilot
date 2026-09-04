@@ -27,8 +27,14 @@ _DRIVER   = os.getenv("DATABASE_DRIVER", "ODBC Driver 18 for SQL Server")
 _SERVER   = os.getenv("DATABASE_SERVER", "localhost")
 _PORT     = os.getenv("DATABASE_PORT", "1433")
 _DATABASE = os.getenv("DATABASE_NAME", "HCopilotDB")
-_USER     = os.getenv("DATABASE_USER", "sa")
-_PASSWORD = os.getenv("DATABASE_PASSWORD", "")
+# Deliberately not DATABASE_USER: CREATE DATABASE is a server-level
+# operation only `sa` can perform, regardless of which login this app's
+# own runtime code otherwise connects as (see ensure_login_exists.py,
+# which creates that dedicated, database-scoped login right after this
+# script runs). Reads MSSQL_SA_PASSWORD directly, not DATABASE_PASSWORD —
+# the latter now names the dedicated login's own, separate credential.
+_USER     = "sa"
+_PASSWORD = os.getenv("MSSQL_SA_PASSWORD", "")
 _TRUST_CERT = os.getenv("DATABASE_TRUST_SERVER_CERTIFICATE", "yes")
 
 _master_connection_string = (

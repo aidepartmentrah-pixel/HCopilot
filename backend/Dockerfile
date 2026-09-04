@@ -7,6 +7,13 @@
 
 FROM python:3.11-slim-bookworm
 
+# Real, observed network-path issue on this build host: plain HTTP (port
+# 80) from Docker containers gets a synthetic 403 injected on the base
+# image's default apt sources (http://deb.debian.org) — identical HTTPS
+# requests succeed. Same fix already applied in the Air-Gapped-System-
+# Platform repo's own platform/Dockerfile.
+RUN sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl gnupg2 apt-transport-https ca-certificates \
     && mkdir -p /usr/share/keyrings \

@@ -38,18 +38,32 @@ services:
 
   db-init:
     image: hcopilot-backend:1.0.1
-    # First install: create the database, build the schema, then transport
-    # this hospital's existing lookup/configuration data (real ward layout,
-    # bed numbers, staff roster) from the CSVs baked into the image — see
-    # backend/scripts/migrate_csv_to_mssql.py. Idempotent: safe to re-run on
-    # every container start (skips any table that already has rows).
-    command: ["sh", "-c", "python scripts/ensure_database_exists.py && alembic upgrade head && python scripts/migrate_csv_to_mssql.py && python scripts/import_ml_historical_data.py"]
+    # First install: create the database, create HCopilot's own dedicated
+    # SQL Server login (db_owner on its own database only — never the
+    # shared sa account, see ensure_login_exists.py and
+    # docs/decisions/database-identity-convention.md), build the schema,
+    # then transport this hospital's existing lookup/configuration data
+    # (real ward layout, bed numbers, staff roster) from the CSVs baked
+    # into the image — see backend/scripts/migrate_csv_to_mssql.py.
+    # Idempotent: safe to re-run on every container start (skips any
+    # table that already has rows, and skips login/database creation if
+    # they already exist).
+    command: ["sh", "-c", "python scripts/ensure_database_exists.py && python scripts/ensure_login_exists.py && alembic upgrade head && python scripts/migrate_csv_to_mssql.py && python scripts/import_ml_historical_data.py"]
     environment:
       DATABASE_SERVER: sqlserver
       DATABASE_PORT: 1433
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_USER: ${DATABASE_USER}
-      DATABASE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      # A real, distinct credential from the sa account below — the
+      # dedicated login's own independently-generated password, never
+      # aliased to MSSQL_SA_PASSWORD (that alias was only ever correct
+      # while DATABASE_USER was literally "sa" — see Bug 30).
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      # Needed only by ensure_database_exists.py/ensure_login_exists.py,
+      # which must connect as sa (the only login that can CREATE DATABASE/
+      # CREATE LOGIN) for their own one-time bootstrap steps, before this
+      # container's later steps switch to the dedicated login above.
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
       DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
       DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
     depends_on:
@@ -67,7 +81,7 @@ services:
       DATABASE_PORT: 1433
       DATABASE_NAME: ${DATABASE_NAME}
       DATABASE_USER: ${DATABASE_USER}
-      DATABASE_PASSWORD: ${MSSQL_SA_PASSWORD}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
       DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
     ports:
