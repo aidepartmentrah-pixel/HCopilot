@@ -62,11 +62,24 @@ def main():
         cur.execute("SELECT name FROM sys.server_principals WHERE name = ?", _NEW_LOGIN)
         if cur.fetchone() is None:
             print(f"Creating SQL Server login '{_NEW_LOGIN}'...")
-            # Password is a real, Platform-generated secret already meeting
-            # SQL Server's complexity policy (see installation.py's own
-            # _generate_secret_value) — CHECK_POLICY stays on deliberately,
-            # same discipline as every other real credential in this fleet.
-            cur.execute(f"CREATE LOGIN [{_NEW_LOGIN}] WITH PASSWORD = ?", _NEW_LOGIN_PASSWORD)
+            # CHECK_POLICY = OFF: a service login never interactively
+            # changes its password, so Windows password-expiration policy
+            # would eventually lock this account out for no real reason —
+            # same real fleet precedent as Voice Project's own
+            # 001_create_database.sql. The password itself is still a real,
+            # Platform-generated secret meeting SQL Server's complexity
+            # requirements at creation time (see installation.py's own
+            # _generate_secret_value).
+            # Real, live-found bug: CREATE LOGIN's WITH PASSWORD clause does
+            # not accept a parameterized value at all -- SQL Server rejects
+            # a `?`/sp_executesql placeholder here with "Incorrect syntax
+            # near '@P1'" (102), unlike an ordinary DML statement. The
+            # password must be a literal in the SQL text; single quotes are
+            # doubled (T-SQL's own literal-escaping convention) rather than
+            # trusted as injection-safe just because this password is
+            # always alphanumeric today.
+            escaped_password = _NEW_LOGIN_PASSWORD.replace("'", "''")
+            cur.execute(f"CREATE LOGIN [{_NEW_LOGIN}] WITH PASSWORD = '{escaped_password}', CHECK_POLICY = OFF")
             print(f"Login '{_NEW_LOGIN}' created.")
         else:
             print(f"Login '{_NEW_LOGIN}' already exists, skipping.")
