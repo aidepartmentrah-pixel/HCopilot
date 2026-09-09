@@ -1,0 +1,15 @@
+# Force LF for shell/SQL scripts regardless of any individual clone's own
+# core.autocrlf setting. Found live, 2026-09-09 (DUTD2 Gate 2, first-ever
+# real UI-driven update test for HCopilot): release-src/scripts/update_offline.sh
+# had CRLF line endings even though the actual committed blob is clean LF --
+# this Windows checkout's own core.autocrlf=true silently re-introduces
+# CRLF into the working tree on checkout, without a .gitattributes forcing
+# the real, stored line ending, while `git status` reports clean (autocrlf
+# normalizes the comparison, not the on-disk bytes) -- invisible until the
+# Platform first actually executed the file directly via its own shebang
+# line, which the Linux kernel parses literally including the trailing \r
+# ("env: 'bash\r': No such file or directory"). Same real bug class already
+# hit and fixed this way for Voice Project (Bug 24) -- mirrored exactly
+# rather than re-derived.
+*.sh text eol=lf
+*.sql text eol=lf
