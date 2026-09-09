@@ -18,6 +18,16 @@ echo
 
 require_existing_install
 
+# Self-healing: an install old enough to predate install_offline.sh's own
+# database/*.sql copy step (found live, DUTD2 Gate 2, updating from a real
+# Starter-Kit-trusted 1.0.10) never got this file written to $INSTALL_ROOT
+# at all -- Step 1 below deliberately uses that currently-installed backup
+# tooling (not this release's own), so it needs the file to exist regardless
+# of how old the running install is. Ensured here, unconditionally, rather
+# than assuming any prior install step already did it.
+mkdir -p "$INSTALL_ROOT/database"
+cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/" 2>/dev/null || true
+
 PREVIOUS_VERSION="unknown"
 [ -f "$INSTALL_VERSION_FILE" ] && PREVIOUS_VERSION="$(cat "$INSTALL_VERSION_FILE")"
 log "Currently installed: $PREVIOUS_VERSION  ->  Updating to: $RELEASE_VERSION"
