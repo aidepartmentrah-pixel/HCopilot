@@ -20,7 +20,12 @@ APP_SLUG="hcopilot"
 # mislabels every container and makes Platform's own verification (which
 # correctly filters containers by the manifest's declared project name)
 # report the application as not installed even when it is running fine.
-export COMPOSE_PROJECT_NAME="$APP_SLUG"
+#
+# Overridable via a pre-set COMPOSE_PROJECT_NAME so a second, path-isolated
+# instance of this app (e.g. engineering/validation testing alongside a
+# real deployment) can run under a different Compose identity instead of
+# colliding container names with the real one -- see Bug 37.
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$APP_SLUG}"
 INSTALL_ROOT="${HCOPILOT_INSTALL_ROOT:-/opt/rah/apps/${APP_SLUG}}"
 INSTALL_COMPOSE_DIR="${INSTALL_ROOT}/compose"
 INSTALL_BACKUPS_DIR="${INSTALL_ROOT}/backups"
