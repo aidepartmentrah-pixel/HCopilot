@@ -61,8 +61,9 @@ function _formatDatetime(v) {
 // than inventing new thresholds. Temperature/RR stay available via the
 // cell's title tooltip rather than as separate columns.
 function vitalsSummaryCell(p) {
-    const dash = '<span class="s-null-dash">–</span>';
-    if (p.sbp == null && p.dbp == null && p.heartrate == null && p.o2sat == null) return dash;
+    if (p.sbp == null && p.dbp == null && p.heartrate == null && p.o2sat == null) {
+        return '<span class="pat-vitals-cell not-recorded">Not recorded</span>';
+    }
     const parts = [];
     if (p.sbp != null || p.dbp != null) parts.push('BP ' + (p.sbp ?? '–') + '/' + (p.dbp ?? '–'));
     if (p.heartrate != null) {
@@ -73,26 +74,68 @@ function vitalsSummaryCell(p) {
         const cls = p.o2sat < 95 ? 's-vital-warn' : (p.o2sat >= 98 ? 's-vital-ok' : '');
         parts.push('<span class="' + cls + '">SpO₂ ' + p.o2sat + '%</span>');
     }
-    const title = 'Temp ' + (p.temperature != null ? p.temperature + '°C' : '–') +
+    let title = 'Temp ' + (p.temperature != null ? p.temperature + '°C' : '–') +
                   ' · RR ' + (p.resprate != null ? p.resprate : '–');
+    if (p.isbar && p.isbar.vitals_measured_at) title += ' · Measured ' + _formatDatetime(p.isbar.vitals_measured_at);
     return '<span class="pat-vitals-cell" title="' + title + '">' + parts.join(' · ') + '</span>';
 }
 
-// Only renders badges that actually apply — no empty placeholder chips —
-// from the small ISBAR subset merged into /list by the backend.
+// Shows "None" in muted text rather than an empty cell, and only renders
+// badges that actually apply — no empty placeholder chips — from the small
+// ISBAR subset merged into /list by the backend.
 function riskBadgesCell(isbar) {
-    if (!isbar) return '';
     const badges = [];
-    if (isbar.allergies_status === 'Yes') badges.push(['allergy', '⚠️ Allergy']);
-    if (isbar.fall_risk === 'Yes') badges.push(['fall', '🚶 Fall Risk']);
-    if (isbar.pressure_injury_risk === 'Yes') badges.push(['pressure', '🟦 Pressure Risk']);
-    if (isbar.isolation_precautions && isbar.isolation_precautions !== 'None') {
-        badges.push(['isolation', '🦠 ' + isbar.isolation_precautions]);
+    if (isbar) {
+        if (isbar.allergies_status === 'Yes') badges.push(['allergy', '⚠️ Allergy']);
+        if (isbar.fall_risk === 'Yes') badges.push(['fall', '🚶 Fall Risk']);
+        if (isbar.pressure_injury_risk === 'Yes') badges.push(['pressure', '🟦 Pressure Risk']);
+        if (isbar.isolation_precautions && isbar.isolation_precautions !== 'None') {
+            badges.push(['isolation', '🦠 ' + isbar.isolation_precautions]);
+        }
     }
-    if (badges.length === 0) return '';
+    if (badges.length === 0) return '<span class="pat-flags-none">None</span>';
     return '<div class="pat-badges-cell">' + badges.map(([cls, label]) =>
         '<span class="pat-risk-badge ' + cls + '">' + label + '</span>').join('') + '</div>';
 }
+
+// Patient identity cell: "Unknown Patient" (muted) is clearer than a bare
+// dash when name wasn't recorded — e.g. an unidentified emergency arrival.
+function patIdentityCell(name, id) {
+    const nameHtml = name
+        ? '<div class="pat-identity-name">' + _isbarEsc(name) + '</div>'
+        : '<div class="pat-identity-name unknown">Unknown Patient</div>';
+    return nameHtml + '<span class="s-td-id" style="font-size:11px">#' + id + '</span>';
+}
+
+// Compact actions cell: View stays a full button (row-click is the other
+// path in), Edit is an icon-only button, and Delete moves into a small
+// "⋯" overflow menu so destructive styling isn't visible by default.
+function patActionsCell(stayId, rowJson, viewAction, editAction, deleteAction) {
+    return '<div style="display:flex;gap:6px;align-items:center;justify-content:flex-end">' +
+        '<button class="s-action-btn s-view-btn" data-action="' + viewAction + '" data-stayid="' + stayId + '">👁️ View</button>' +
+        '<button class="pat-icon-btn" data-action="' + editAction + '" data-row=\'' + _safeAttr(rowJson) + '\' title="Edit">✏️</button>' +
+        '<div class="pat-row-menu">' +
+            '<button class="pat-icon-btn" data-action="toggle-row-menu" title="More actions">⋯</button>' +
+            '<div class="pat-row-menu-list" hidden>' +
+                '<button class="pat-row-menu-item danger" data-action="' + deleteAction + '" data-stayid="' + stayId + '">🗑️ Delete</button>' +
+            '</div>' +
+        '</div>' +
+    '</div>';
+}
+
+document.addEventListener('click', function(e) {
+    const toggleBtn = e.target.closest('[data-action="toggle-row-menu"]');
+    if (toggleBtn) {
+        const list = toggleBtn.nextElementSibling;
+        const wasHidden = list.hidden;
+        document.querySelectorAll('.pat-row-menu-list').forEach(l => { l.hidden = true; });
+        list.hidden = !wasHidden;
+        return;
+    }
+    if (!e.target.closest('.pat-row-menu')) {
+        document.querySelectorAll('.pat-row-menu-list').forEach(l => { l.hidden = true; });
+    }
+});
 
 function patAutoOccupation() {
     const arr = document.getElementById('pat-arrival-time').value;
@@ -196,8 +239,91 @@ function initPatientForm() {
         document.getElementById('pat-vitals-measured-at').value = _currentDatetimeLocal();
         const u = typeof currentUser === 'function' ? currentUser() : null;
         document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
+        refreshPatientCoreSectionStatus();
     }
 }
+
+// ── Outer add-card collapse ("+ Add New Patient Stay" → data-entry mode) ────
+// Collapsed by default; expanding is the explicit "start entering a new
+// stay" action. Collapses again after a successful submit so attention
+// returns to the dataset table, per the Wave-2 design feedback.
+
+function toggleAddCardCollapse(forceExpanded) {
+    const card = document.getElementById('pat-add-card');
+    const body = document.getElementById('pat-add-body');
+    const top = document.getElementById('pat-add-top');
+    const title = document.getElementById('pat-add-top-title');
+    const icon = document.getElementById('pat-add-top-icon');
+    const statusEl = document.getElementById('pat-add-top-status');
+    const expanded = forceExpanded !== undefined ? forceExpanded : card.dataset.expanded !== 'true';
+
+    card.dataset.expanded = expanded ? 'true' : 'false';
+    body.hidden = !expanded;
+    top.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    icon.textContent = expanded ? '📋' : '➕';
+    title.textContent = expanded ? 'New Patient Entry' : 'Add New Patient Stay';
+    statusEl.hidden = !expanded;
+    if (expanded) {
+        statusEl.textContent = 'In progress';
+        // Only Patient & Arrival opens by default when entering data-entry mode
+        document.getElementById('isbar-details-patient-arrival-add').open = true;
+    }
+}
+
+function cancelAddPatientForm() {
+    if (isbarAddDirty || _patVal('pat-name') || _patVal('pat-chiefcomplaint')) {
+        if (!confirm('Discard this in-progress patient entry?')) return;
+    }
+    clearPatientForm();
+    toggleAddCardCollapse(false);
+}
+
+// Opens a section by id (any mode) and scrolls it into view — used by the
+// "Continue to Vital Signs →" affordance and by validation-failure handling.
+function openIsbarSection(mode, sectionId) {
+    const details = document.getElementById(`isbar-details-${sectionId}-${mode}`);
+    if (!details) return;
+    details.open = true;
+    details.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── Patient & Arrival / Initial Vital Signs status (real required fields) ───
+
+function refreshPatientCoreSectionStatus() {
+    const requiredArrival = ['pat-name', 'pat-gender', 'pat-age', 'pat-arrival-time', 'pat-chiefcomplaint', 'pat-acuity'];
+    updateIsbarCoreSectionStatus('add', 'patient-arrival', requiredArrival,
+        id => document.getElementById(id).value, false,
+        _patVal('pat-chiefcomplaint') || null);
+
+    const requiredVitals = ['pat-temperature', 'pat-heartrate', 'pat-resprate', 'pat-o2sat', 'pat-sbp', 'pat-dbp', 'pat-pain'];
+    const o2Support = _patVal('pat-o2-support');
+    const missingFlow = O2_SUPPORT_NEEDS_FLOW.includes(o2Support) && !_patVal('pat-o2-flow-rate');
+    updateIsbarCoreSectionStatus('add', 'vitals', requiredVitals,
+        id => document.getElementById(id).value, missingFlow, null);
+
+    updatePatAddRequiredRemaining();
+}
+
+function updatePatAddRequiredRemaining() {
+    const el = document.getElementById('pat-add-required-remaining');
+    if (!el) return;
+    const requiredIds = ['pat-name', 'pat-gender', 'pat-age', 'pat-arrival-time', 'pat-chiefcomplaint', 'pat-acuity',
+        'pat-temperature', 'pat-heartrate', 'pat-resprate', 'pat-o2sat', 'pat-sbp', 'pat-dbp', 'pat-pain'];
+    const remaining = requiredIds.filter(id => !document.getElementById(id).value).length;
+    el.textContent = remaining > 0 ? `Required fields remaining: ${remaining}` : 'All required fields complete';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const accordion = document.getElementById('pat-add-accordion');
+    if (!accordion) return;
+    accordion.addEventListener('input', refreshPatientCoreSectionStatus);
+    accordion.addEventListener('change', refreshPatientCoreSectionStatus);
+    accordion.addEventListener('click', e => {
+        // Scale buttons are plain <button> elements — clicking one fires
+        // neither 'input' nor 'change', so status must be refreshed here.
+        if (e.target.closest('.pat-scale-btn')) refreshPatientCoreSectionStatus();
+    });
+});
 
 // ── Load & Render ─────────────────────────────────────────────────────────────
 
@@ -323,7 +449,6 @@ function renderLogPatientsTable(patients) {
     }
 
     const dash = '<span class="s-null-dash">–</span>';
-    const fmt  = v => (v !== null && v !== undefined ? v : dash);
 
     const acuityBadge = v => {
         if (v == null) return dash;
@@ -344,7 +469,7 @@ function renderLogPatientsTable(patients) {
 
     const rows = patients.map(p =>
         '<tr class="pat-row" data-view-stayid="' + p.stay_id + '">' +
-        '<td><div style="font-weight:600">' + fmt(p.name) + '</div><span class="s-td-id" style="font-size:11px">#' + p.subject_id + '</span></td>' +
+        '<td>' + patIdentityCell(p.name, p.subject_id) + '</td>' +
         '<td class="s-td-id">' + p.stay_id + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.arrival_time) + '</td>' +
         '<td>' + destinationBadge(p.destination) + '</td>' +
@@ -352,12 +477,7 @@ function renderLogPatientsTable(patients) {
         '<td>' + vitalsSummaryCell(p) + '</td>' +
         '<td>' + riskBadgesCell(p.isbar) + '</td>' +
         '<td class="s-td-actions">' +
-            '<button class="s-action-btn s-view-btn" data-action="view-log-patient-details" ' +
-                'data-stayid="' + p.stay_id + '">👁️ View</button>' +
-            '<button class="s-action-btn s-edit-btn" data-action="edit-log-patient" ' +
-                'data-row=\'' + _safeAttr(JSON.stringify(p)) + '\'>✏️ Edit</button>' +
-            '<button class="s-action-btn s-del-btn" data-action="delete-log-patient" ' +
-                'data-stayid="' + p.stay_id + '">🗑️ Delete</button>' +
+            patActionsCell(p.stay_id, JSON.stringify(p), 'view-log-patient-details', 'edit-log-patient', 'delete-log-patient') +
         '</td>' +
         '</tr>'
     ).join('');
@@ -410,7 +530,6 @@ function renderPatientsTable(patients) {
     }
 
     const dash = '<span class="s-null-dash">–</span>';
-    const fmt  = v => (v !== null && v !== undefined ? v : dash);
 
     const acuityBadge = v => {
         if (v == null) return dash;
@@ -430,7 +549,7 @@ function renderPatientsTable(patients) {
 
     const rows = patients.map(p =>
         '<tr class="pat-row" data-view-stayid="' + p.stay_id + '">' +
-        '<td><div style="font-weight:600">' + fmt(p.name) + '</div><span class="s-td-id" style="font-size:11px">#' + p.patient_id + '</span></td>' +
+        '<td>' + patIdentityCell(p.name, p.patient_id) + '</td>' +
         '<td class="s-td-id">' + p.stay_id + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.arrival_time) + '</td>' +
         '<td>' + bedCell(p) + '</td>' +
@@ -438,12 +557,7 @@ function renderPatientsTable(patients) {
         '<td>' + vitalsSummaryCell(p) + '</td>' +
         '<td>' + riskBadgesCell(p.isbar) + '</td>' +
         '<td class="s-td-actions">' +
-            '<button class="s-action-btn s-view-btn" data-action="view-patient-details" ' +
-                'data-stayid="' + p.stay_id + '">👁️ View</button>' +
-            '<button class="s-action-btn s-edit-btn" data-action="edit-patient" ' +
-                'data-row=\'' + _safeAttr(JSON.stringify(p)) + '\'>✏️ Edit</button>' +
-            '<button class="s-action-btn s-del-btn" data-action="delete-patient" ' +
-                'data-stayid="' + p.stay_id + '">🗑️ Delete</button>' +
+            patActionsCell(p.stay_id, JSON.stringify(p), 'view-patient-details', 'edit-patient', 'delete-patient') +
         '</td>' +
         '</tr>'
     ).join('');
@@ -501,6 +615,33 @@ function setPatAddError(msg) {
     el.style.display = msg ? 'block' : 'none';
 }
 
+function setPatAddErrorSummary(msg) {
+    const el = document.getElementById('pat-add-error-summary');
+    if (!el) return;
+    if (!msg) { el.hidden = true; el.innerHTML = ''; return; }
+    const parts = msg.split(';').map(s => s.trim()).filter(Boolean);
+    el.hidden = false;
+    el.innerHTML = parts.length > 1
+        ? '<strong>Please fix the following before saving:</strong><ul>' + parts.map(p => `<li>${_isbarEsc(p)}</li>`).join('') + '</ul>'
+        : _isbarEsc(msg);
+}
+
+// Which accordion section each core field lives in, so a validation failure
+// can open + scroll to the right place rather than leaving the user to hunt
+// for the error inside a collapsed section.
+const PAT_FIELD_SECTION = {
+    'pat-name': 'patient-arrival', 'pat-gender': 'patient-arrival', 'pat-age': 'patient-arrival',
+    'pat-arrival-time': 'patient-arrival', 'pat-chiefcomplaint': 'patient-arrival', 'pat-acuity': 'patient-arrival',
+    'pat-temperature': 'vitals', 'pat-heartrate': 'vitals', 'pat-resprate': 'vitals', 'pat-o2sat': 'vitals',
+    'pat-sbp': 'vitals', 'pat-dbp': 'vitals', 'pat-pain': 'vitals',
+};
+
+function failPatAddValidation(msg, fieldId) {
+    setPatAddError(msg);
+    const sectionId = PAT_FIELD_SECTION[fieldId];
+    if (sectionId) openIsbarSection('add', sectionId);
+}
+
 function clearPatientForm() {
     ['pat-name','pat-gender','pat-age',
      'pat-departure-time','pat-bed-occupation-time',
@@ -513,7 +654,9 @@ function clearPatientForm() {
     const u = typeof currentUser === 'function' ? currentUser() : null;
     document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
     setPatAddError('');
+    setPatAddErrorSummary('');
     initPatientForm();
+    refreshPatientCoreSectionStatus();
 }
 
 async function submitPatientForm() {
@@ -536,21 +679,22 @@ async function submitPatientForm() {
     const chiefcomplaint = _patVal('pat-chiefcomplaint');
 
     setPatAddError('');
-    if (!patientId || patientId < 1) { setPatAddError('Patient ID must be a positive integer.'); return; }
-    if (!stayId    || stayId    < 1) { setPatAddError('Stay ID must be a positive integer.'); return; }
-    if (!name)                { setPatAddError('Name is required.'); return; }
-    if (!gender)               { setPatAddError('Gender is required.'); return; }
-    if (age    === null || age    < 0)                      { setPatAddError('Age is required and must be a positive number.'); return; }
-    if (!arrival)              { setPatAddError('Arrival time is required.'); return; }
-    if (temp   === null || temp   < 26  || temp   > 46)  { setPatAddError('Temperature is required and must be between 26 and 46 °C.'); return; }
-    if (hr     === null || hr     < 20  || hr     > 300) { setPatAddError('Heart rate is required and must be between 20 and 300 bpm.'); return; }
-    if (rr     === null || rr     < 4   || rr     > 100) { setPatAddError('Resp. rate is required and must be between 4 and 100.'); return; }
-    if (o2     === null || o2     < 0   || o2     > 100) { setPatAddError('O₂ saturation is required and must be between 0 and 100 %.'); return; }
-    if (sbp    === null || sbp    < 40  || sbp    > 300) { setPatAddError('SBP is required and must be between 40 and 300 mmHg.'); return; }
-    if (dbp    === null || dbp    < 20  || dbp    > 200) { setPatAddError('DBP is required and must be between 20 and 200 mmHg.'); return; }
-    if (!pain)                 { setPatAddError('Pain is required.'); return; }
-    if (acuity === null || acuity < 1   || acuity > 5)   { setPatAddError('Acuity is required and must be between 1 and 5.'); return; }
-    if (!chiefcomplaint)       { setPatAddError('Chief complaint is required.'); return; }
+    setPatAddErrorSummary('');
+    if (!patientId || patientId < 1) { failPatAddValidation('Patient ID must be a positive integer.', 'pat-patient-id'); return; }
+    if (!stayId    || stayId    < 1) { failPatAddValidation('Stay ID must be a positive integer.', 'pat-stay-id'); return; }
+    if (!name)                { failPatAddValidation('Name is required.', 'pat-name'); return; }
+    if (!gender)               { failPatAddValidation('Gender is required.', 'pat-gender'); return; }
+    if (age    === null || age    < 0)                      { failPatAddValidation('Age is required and must be a positive number.', 'pat-age'); return; }
+    if (!arrival)              { failPatAddValidation('Arrival time is required.', 'pat-arrival-time'); return; }
+    if (temp   === null || temp   < 26  || temp   > 46)  { failPatAddValidation('Temperature is required and must be between 26 and 46 °C.', 'pat-temperature'); return; }
+    if (hr     === null || hr     < 20  || hr     > 300) { failPatAddValidation('Heart rate is required and must be between 20 and 300 bpm.', 'pat-heartrate'); return; }
+    if (rr     === null || rr     < 4   || rr     > 100) { failPatAddValidation('Resp. rate is required and must be between 4 and 100.', 'pat-resprate'); return; }
+    if (o2     === null || o2     < 0   || o2     > 100) { failPatAddValidation('O₂ saturation is required and must be between 0 and 100 %.', 'pat-o2sat'); return; }
+    if (sbp    === null || sbp    < 40  || sbp    > 300) { failPatAddValidation('SBP is required and must be between 40 and 300 mmHg.', 'pat-sbp'); return; }
+    if (dbp    === null || dbp    < 20  || dbp    > 200) { failPatAddValidation('DBP is required and must be between 20 and 200 mmHg.', 'pat-dbp'); return; }
+    if (!pain)                 { failPatAddValidation('Pain is required.', 'pat-pain'); return; }
+    if (acuity === null || acuity < 1   || acuity > 5)   { failPatAddValidation('Acuity is required and must be between 1 and 5.', 'pat-acuity'); return; }
+    if (!chiefcomplaint)       { failPatAddValidation('Chief complaint is required.', 'pat-chiefcomplaint'); return; }
 
     const payload = {
         patient_id:          patientId,
@@ -584,11 +728,30 @@ async function submitPatientForm() {
             body:    JSON.stringify(payload)
         });
         const result = await response.json();
-        if (!response.ok) { setPatAddError(parseApiError(result.detail) || 'Error ' + response.status); return; }
+        if (!response.ok) {
+            const errMsg = parseApiError(result.detail) || 'Error ' + response.status;
+            setPatAddError(errMsg);
+            setPatAddErrorSummary(errMsg);
+            // A backend-rejected ISBAR conditional-validation error means the
+            // Situation/Background/Focused/Recommendation sections hold the
+            // problem — Patient & Arrival/Vitals already passed client-side
+            // checks above, so open the metadata accordion generally rather
+            // than guessing which of the 4 sections.
+            if (errMsg.toLowerCase().includes('isbar') || errMsg.includes('allergy') || errMsg.includes('o2_')) {
+                ['situation', 'background', 'focused', 'recommendation'].forEach(id => {
+                    const d = document.getElementById(`isbar-details-${id}-add`);
+                    if (d) d.open = true;
+                });
+            }
+            return;
+        }
         clearPatientForm();
+        setPatAddErrorSummary('');
+        toggleAddCardCollapse(false);
         showMessage(result.message, 'success');
         notifyDataChange('patient', `Patient #${patientId} added to daily patients`);
         loadPatients();
+        document.querySelector('.pat-dataset-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         setPatAddError('Network error: ' + error.message);
     } finally {

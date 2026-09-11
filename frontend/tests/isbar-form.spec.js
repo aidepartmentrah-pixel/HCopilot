@@ -16,18 +16,35 @@ test.describe('ISBAR entry form', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await gotoPatients(page);
+    // The whole "Add New Patient Stay" card is collapsed by default (Wave-2
+    // redesign) — expand it into data-entry mode before interacting with
+    // any of its fields.
+    await page.click('#pat-add-top');
+    await expect(page.locator('#pat-add-body')).toBeVisible();
   });
 
-  test('opens the Patients page with the accordion mounted', async ({ page }) => {
+  test('opens collapsed by default, then expands into data-entry mode with only Patient & Arrival open', async ({ page }) => {
+    // Re-collapse first to verify the true default state, since beforeEach already expanded it
+    await page.click('#pat-add-top');
+    await expect(page.locator('#pat-add-body')).toBeHidden();
+    await page.click('#pat-add-top');
+    await expect(page.locator('#pat-add-body')).toBeVisible();
+
     await expect(page.locator('.pat-add-card')).toBeVisible();
     await expect(page.locator('#isbar-details-patient-arrival-add')).toBeVisible();
     await expect(page.locator('#isbar-details-vitals-add')).toBeVisible();
-    // Patient & Arrival and Initial Vital Signs are open by default per spec
+    // Only Patient & Arrival opens by default; everything else (including
+    // Vitals) stays collapsed until the user continues or opens it manually
     await expect(page.locator('#isbar-details-patient-arrival-add')).toHaveJSProperty('open', true);
-    await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', true);
-    // The 4 metadata-driven sections start collapsed
+    await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', false);
     const situationDetails = page.locator('#isbar-details-situation-add');
     await expect(situationDetails).toHaveJSProperty('open', false);
+  });
+
+  test('"Continue to Vital Signs" opens the Vitals section', async ({ page }) => {
+    await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', false);
+    await page.click('#isbar-details-patient-arrival-add button:has-text("Continue to Vital Signs")');
+    await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', true);
   });
 
   test('expands and collapses every ISBAR section', async ({ page }) => {
@@ -53,6 +70,10 @@ test.describe('ISBAR entry form', () => {
     await expect(page.locator('#pat-acuity')).toHaveValue('2');
 
     // ── 2. Initial Vital Signs (+ conditional O2 flow rate) ────────────────
+    // Vitals is collapsed by default now — open it via the same "Continue"
+    // affordance a real user would use.
+    await page.click('#isbar-details-patient-arrival-add button:has-text("Continue to Vital Signs")');
+    await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', true);
     await page.fill('#pat-temperature', '38.1');
     await page.fill('#pat-heartrate', '92');
     await page.fill('#pat-resprate', '18');
@@ -135,8 +156,10 @@ test.describe('ISBAR entry form', () => {
 
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'compact-patient-table.png'), fullPage: true });
 
-    // ── Cleanup: delete the test patient via the UI ─────────────────────────
+    // ── Cleanup: delete the test patient via the UI (Delete lives in the
+    // row's "⋯" overflow menu, not a direct button) ─────────────────────────
     const row = page.locator('.s-table tbody tr', { hasText: TEST_NAME });
+    await row.locator('[data-action="toggle-row-menu"]').click();
     await row.locator('[data-action="delete-patient"]').click();
     await page.click('#pat-delete-confirm-btn');
     await expect(page.locator('#message')).toContainText(/removed|deleted/i, { timeout: 10000 });

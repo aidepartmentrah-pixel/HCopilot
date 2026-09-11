@@ -902,27 +902,32 @@
             <div class="pat-section-layout">
 
                 <!-- Inline Add Form — ISBAR accordion -->
-                <div class="pat-add-card">
-                    <div class="pat-add-top">
-                        <span class="pat-add-icon">➕</span>
-                        <h3>Add New Patient Stay</h3>
-                    </div>
-                    <div class="pat-add-body">
+                <div class="pat-add-card" id="pat-add-card" data-expanded="false">
+                    <button type="button" class="pat-add-top" id="pat-add-top" onclick="toggleAddCardCollapse()" aria-expanded="false">
+                        <span class="pat-add-icon" id="pat-add-top-icon">➕</span>
+                        <h3 id="pat-add-top-title">Add New Patient Stay</h3>
+                        <span class="isbar-section-status pat-add-top-status" id="pat-add-top-status" hidden>Not started</span>
+                        <span class="isbar-chevron pat-add-top-chevron" aria-hidden="true"></span>
+                    </button>
+                    <div class="pat-add-body" id="pat-add-body" hidden>
                         <div id="pat-add-error" class="pat-add-error"></div>
+                        <div id="pat-add-error-summary" class="pat-add-error-summary" hidden></div>
 
                         <div class="isbar-accordion" id="pat-add-accordion">
                             <!-- 1. Patient & Arrival — open by default -->
-                            <details class="isbar-section" id="isbar-details-patient-arrival-add" open>
+                            <details class="isbar-section" id="isbar-details-patient-arrival-add" data-status="none" open>
                                 <summary class="isbar-section-summary">
-                                    <span class="isbar-section-title">🧑‍⚕️ Patient &amp; Arrival</span>
+                                    <span class="isbar-section-number">1</span>
+                                    <span class="isbar-section-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M4 18c0-3.6 2.7-6 6-6s6 2.4 6 6"/></svg></span>
+                                    <span class="isbar-section-title">Patient &amp; Arrival</span>
                                     <span class="isbar-section-status" id="isbar-summary-patient-arrival-add">Not started</span>
                                     <span class="isbar-chevron" aria-hidden="true"></span>
                                 </summary>
-                                <div class="isbar-section-body">
-                                    <div class="isbar-field"><label>Patient ID <span class="pat-hint">(auto)</span></label>
-                                        <input class="isbar-input" type="number" id="pat-patient-id" placeholder="Auto-generated"></div>
-                                    <div class="isbar-field"><label>Stay ID <span class="pat-hint">(auto)</span></label>
-                                        <input class="isbar-input" type="number" id="pat-stay-id" placeholder="Auto-generated"></div>
+                                <div class="isbar-section-body isbar-grid-patient-arrival">
+                                    <div class="isbar-field"><label>Patient ID <span class="pat-hint pat-hint-auto">Auto</span></label>
+                                        <input class="isbar-input" type="number" id="pat-patient-id" placeholder="Auto-generated" readonly></div>
+                                    <div class="isbar-field"><label>Stay ID <span class="pat-hint pat-hint-auto">Auto</span></label>
+                                        <input class="isbar-input" type="number" id="pat-stay-id" placeholder="Auto-generated" readonly></div>
                                     <div class="isbar-field"><label>Name <span class="pat-hint">(required)</span></label>
                                         <input class="isbar-input" type="text" id="pat-name" placeholder="e.g. Jane Doe" required></div>
                                     <div class="isbar-field"><label>Gender <span class="pat-hint">(required)</span></label>
@@ -952,17 +957,22 @@
                                         </div>
                                         <input type="hidden" id="pat-acuity">
                                     </div>
+                                    <div class="isbar-section-next">
+                                        <button type="button" class="s-btn s-btn-outline" onclick="openIsbarSection('add','vitals')">Continue to Vital Signs →</button>
+                                    </div>
                                 </div>
                             </details>
 
-                            <!-- 2. Initial Vital Signs — open by default -->
-                            <details class="isbar-section" id="isbar-details-vitals-add" open>
+                            <!-- 2. Initial Vital Signs — collapsed until the user continues from section 1 -->
+                            <details class="isbar-section" id="isbar-details-vitals-add" data-status="none">
                                 <summary class="isbar-section-summary">
-                                    <span class="isbar-section-title">💓 Initial Vital Signs</span>
+                                    <span class="isbar-section-number">2</span>
+                                    <span class="isbar-section-icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h3.2l1.8-5.5L10.5 15l2-8.5 1.5 3.5H18"/></svg></span>
+                                    <span class="isbar-section-title">Initial Vital Signs</span>
                                     <span class="isbar-section-status" id="isbar-summary-vitals-add">Not started</span>
                                     <span class="isbar-chevron" aria-hidden="true"></span>
                                 </summary>
-                                <div class="isbar-section-body">
+                                <div class="isbar-section-body isbar-grid-vitals">
                                     <div class="isbar-field"><label>Temperature <span class="pat-hint">(required, °C)</span></label>
                                         <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0" required><span class="isbar-unit">°C</span></div></div>
                                     <div class="isbar-field"><label>Heart Rate <span class="pat-hint">(required, bpm)</span></label>
@@ -1008,9 +1018,9 @@
                                         </select></div>
                                     <div class="isbar-field isbar-vitals-o2-flow" id="pat-o2-flow-wrap" hidden><label>O₂ Flow Rate <span class="pat-hint">(required for this support type)</span></label>
                                         <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.5" id="pat-o2-flow-rate"><span class="isbar-unit">L/min</span></div></div>
-                                    <div class="isbar-field"><label>Measured At <span class="pat-hint">(auto)</span></label>
+                                    <div class="isbar-field"><label>Measured At <span class="pat-hint pat-hint-auto">Auto</span></label>
                                         <input class="isbar-input" type="datetime-local" id="pat-vitals-measured-at"></div>
-                                    <div class="isbar-field"><label>Recorded By <span class="pat-hint">(auto)</span></label>
+                                    <div class="isbar-field"><label>Recorded By <span class="pat-hint pat-hint-auto">Auto</span></label>
                                         <input class="isbar-input" type="text" id="pat-vitals-recorded-by"></div>
                                 </div>
                             </details>
@@ -1020,8 +1030,12 @@
                         </div>
 
                         <div class="pat-add-footer">
-                            <button class="s-btn s-btn-outline" onclick="clearPatientForm()">🗑️ Clear</button>
-                            <button class="s-btn s-btn-primary" id="pat-add-btn" onclick="submitPatientForm()">➕ Add Patient</button>
+                            <span class="pat-add-required-remaining" id="pat-add-required-remaining"></span>
+                            <span class="pat-add-footer-actions">
+                                <button class="s-btn s-btn-outline" onclick="cancelAddPatientForm()">Cancel</button>
+                                <button class="s-btn s-btn-outline" onclick="clearPatientForm()">🔄 Reset Form</button>
+                                <button class="s-btn s-btn-primary" id="pat-add-btn" onclick="submitPatientForm()">➕ Add Patient</button>
+                            </span>
                         </div>
                     </div>
                 </div>

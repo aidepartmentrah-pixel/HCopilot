@@ -30,13 +30,15 @@ function renderIsbarAccordionSections(mode) {
         const containerId = isbarSectionContainerId(mode, section.id);
         const summaryId    = isbarSummaryId(mode, section.id);
         return `
-        <details class="isbar-section" id="isbar-details-${section.id}-${mode}">
+        <details class="isbar-section" id="isbar-details-${section.id}-${mode}" data-status="none">
             <summary class="isbar-section-summary">
-                <span class="isbar-section-title">${section.icon} ${section.title}</span>
+                <span class="isbar-section-number">${section.number}</span>
+                <span class="isbar-section-icon" aria-hidden="true">${section.icon}</span>
+                <span class="isbar-section-title">${section.title}</span>
                 <span class="isbar-section-status" id="${summaryId}">Not started</span>
                 <span class="isbar-chevron" aria-hidden="true"></span>
             </summary>
-            <div class="isbar-section-body" id="${containerId}"></div>
+            <div class="isbar-section-body isbar-grid-${section.id}" id="${containerId}"></div>
         </details>`;
     }).join('');
 }
@@ -176,11 +178,31 @@ document.addEventListener('click', function(e) {
 
 // ── Section status ───────────────────────────────────────────────────────
 
+// Applies a computed status to the <summary> (as a short pill badge plus an
+// optional trailing detail string — matching the mockup's "In progress ·
+// Measured 09:42" layout, not one long run-on sentence) and to the parent
+// <details data-status> attribute the CSS keys the numbered-circle color and
+// left-border accent off. `status` is 'none' | 'progress' | 'complete' | 'error'.
+function _applyIsbarSectionStatus(detailsEl, statusEl, status, badgeText, detailText) {
+    if (detailsEl) detailsEl.dataset.status = status;
+    if (!statusEl) return;
+    statusEl.className = 'isbar-section-status';
+    const badge = '<span class="isbar-status-badge isbar-status-' + status + '">' + badgeText + '</span>';
+    const detail = detailText ? ' <span class="isbar-status-detail">' + _isbarEsc(detailText) + '</span>' : '';
+    statusEl.innerHTML = badge + detail;
+}
+
+// Optional sections (Situation/Background/Focused Assessment/Recommendation)
+// have no top-level required fields, so "complete" would be a meaningless
+// claim here — reaching "no outstanding conditional requirement" is shown as
+// progress (blue), not complete (green). Green is reserved for the two
+// sections that have real required-tier fields (Patient & Arrival, Vitals).
 function updateIsbarSectionStatus(mode, sectionId) {
     if (!sectionId) return;
     const section = ISBAR_METADATA_SECTIONS.find(s => s.id === sectionId);
-    const el = document.getElementById(isbarSummaryId(mode, sectionId));
-    if (!section || !el) return;
+    const statusEl = document.getElementById(isbarSummaryId(mode, sectionId));
+    const detailsEl = document.getElementById(`isbar-details-${sectionId}-${mode}`);
+    if (!section || !statusEl) return;
     const state = isbarState[mode];
 
     const visibleFields = section.fields.filter(f => isbarFieldVisible(f, state));
@@ -188,15 +210,12 @@ function updateIsbarSectionStatus(mode, sectionId) {
     const missingRequired = visibleFields.filter(f =>
         f.requiredTier === 'conditional' && (state[f.id] === undefined || state[f.id] === ''));
 
-    el.classList.remove('isbar-status-none', 'isbar-status-progress', 'isbar-status-missing');
     if (missingRequired.length > 0) {
-        el.textContent = 'Missing required information';
-        el.classList.add('isbar-status-missing');
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'error', 'Missing info');
         return;
     }
     if (filled.length === 0) {
-        el.textContent = 'Not started';
-        el.classList.add('isbar-status-none');
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'none', 'Not started');
         return;
     }
     const summaryParts = filled.slice(0, 3).map(f => {
@@ -207,8 +226,35 @@ function updateIsbarSectionStatus(mode, sectionId) {
         if (f.type === 'boolean') return f.label;
         return String(state[f.id]).slice(0, 24);
     });
-    el.textContent = `In progress · ${summaryParts.join(' · ')}`;
-    el.classList.add('isbar-status-progress');
+    _applyIsbarSectionStatus(detailsEl, statusEl, 'progress', 'In progress', summaryParts.join(' · '));
+}
+
+// Patient & Arrival / Initial Vital Signs have real required-tier fields, so
+// unlike the optional sections above, these can reach a genuine 'complete'
+// (green) state. `requiredIds` / `valueOf` let each hand-written section in
+// patients.js describe its own required fields and how to read them.
+function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, hasMissingConditional, summaryText) {
+    const statusEl = document.getElementById(isbarSummaryId(mode, sectionId));
+    const detailsEl = document.getElementById(`isbar-details-${sectionId}-${mode}`);
+    if (!statusEl) return;
+
+    const filledRequired = requiredIds.filter(id => {
+        const v = valueOf(id);
+        return v !== null && v !== undefined && v !== '';
+    });
+    if (hasMissingConditional) {
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'error', 'Missing info');
+        return;
+    }
+    if (filledRequired.length === 0) {
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'none', 'Not started');
+        return;
+    }
+    if (filledRequired.length === requiredIds.length) {
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'complete', 'Complete', summaryText);
+        return;
+    }
+    _applyIsbarSectionStatus(detailsEl, statusEl, 'progress', `${filledRequired.length} of ${requiredIds.length} complete`, summaryText);
 }
 
 // ── Build payload / reset ────────────────────────────────────────────────

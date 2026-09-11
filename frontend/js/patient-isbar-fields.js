@@ -15,11 +15,31 @@
 // backend allow-list (or vice versa) will cause 422s or silently-unmatched
 // display labels.
 
+// One consistent monochrome icon set (stroke-based, 20x20, currentColor) for
+// every ISBAR section header, across all 3 surfaces (entry form, edit modal,
+// Patient Details view) — replaces the earlier mixed-emoji icons. Sections 1
+// & 2 (Patient & Arrival, Initial Vital Signs) are hand-written directly in
+// index.html since they need bespoke compact controls; their icon markup
+// there must stay visually identical to these two entries.
+const ISBAR_SECTION_ICONS = {
+  'patient-arrival': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M4 18c0-3.6 2.7-6 6-6s6 2.4 6 6"/></svg>',
+  'vitals': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h3.2l1.8-5.5L10.5 15l2-8.5 1.5 3.5H18"/></svg>',
+  'situation': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="15" rx="2"/><rect x="7" y="1.3" width="6" height="3" rx="1"/><line x1="7" y1="9.5" x2="13" y2="9.5"/><line x1="7" y1="13" x2="13" y2="13"/></svg>',
+  'background': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5c2.3-1.3 5.4-1.3 8 0v12c-2.6-1.3-5.7-1.3-8 0v-12z"/><path d="M18 4.5c-2.3-1.3-5.4-1.3-8 0v12c2.6-1.3 5.7-1.3 8 0v-12z"/></svg>',
+  'focused': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="12" height="15" rx="2"/><rect x="7" y="1.3" width="6" height="3" rx="1"/><path d="M7.3 10.3l1.8 1.8 3.6-3.6"/></svg>',
+  'recommendation': '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="2" x2="4" y2="18"/><path d="M4 3.2c2.8-1.4 5.6 1.4 8.4 0v7.6c-2.8 1.4-5.6-1.4-8.4 0"/></svg>',
+};
+
+const ISBAR_SECTION_NUMBERS = {
+  'patient-arrival': 1, 'vitals': 2, 'situation': 3, 'background': 4, 'focused': 5, 'recommendation': 6,
+};
+
 const ISBAR_METADATA_SECTIONS = [
   {
     id: 'situation',
     title: 'Situation',
-    icon: '📋',
+    icon: ISBAR_SECTION_ICONS.situation,
+    number: 3,
     fields: [
       { id: 'reason_for_admission', label: 'Reason for Admission', type: 'textarea', requiredTier: 'optional' },
       { id: 'current_diagnosis', label: 'Current Diagnosis', type: 'textarea', requiredTier: 'optional' },
@@ -50,7 +70,8 @@ const ISBAR_METADATA_SECTIONS = [
   {
     id: 'background',
     title: 'Background',
-    icon: '📖',
+    icon: ISBAR_SECTION_ICONS.background,
+    number: 4,
     fields: [
       {
         id: 'past_medical_history', label: 'Past Medical History', type: 'checkbox-group', requiredTier: 'optional',
@@ -149,7 +170,8 @@ const ISBAR_METADATA_SECTIONS = [
   {
     id: 'focused',
     title: 'Focused Assessment',
-    icon: '🩺',
+    icon: ISBAR_SECTION_ICONS.focused,
+    number: 5,
     subheadings: {
       neuro_status: 'Neurological',
       diet: 'Gastrointestinal',
@@ -202,7 +224,8 @@ const ISBAR_METADATA_SECTIONS = [
   {
     id: 'recommendation',
     title: 'Recommendation & Handover',
-    icon: '🤝',
+    icon: ISBAR_SECTION_ICONS.recommendation,
+    number: 6,
     fields: [
       {
         id: 'nursing_priorities', label: 'Nursing Priorities for Next Shift', type: 'checkbox-group', requiredTier: 'optional',

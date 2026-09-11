@@ -64,6 +64,24 @@ function _pdField(label, valueHtml) {
     return '<div class="pdetails-field"><div class="label">' + label + '</div>' + valueHtml + '</div>';
 }
 
+// Read-only sections have no in-progress/error state (they only ever show
+// what was saved), so status here is purely informational: "complete" (green)
+// when the section has any recorded data, "none" (gray) when it's entirely
+// unrecorded — never blue/red, those describe active data entry only.
+function _pdSectionHeader(number, iconSvg, title, summaryText, hasData, open) {
+    const status = hasData ? 'complete' : 'none';
+    const badge = '<span class="isbar-status-badge isbar-status-' + status + '">' + (hasData ? 'Recorded' : 'Not recorded') + '</span>';
+    const detail = summaryText ? ' <span class="isbar-status-detail">' + _isbarEsc(summaryText) + '</span>' : '';
+    return '<details class="isbar-section" data-status="' + status + '"' + (open ? ' open' : '') + '>' +
+        '<summary class="isbar-section-summary">' +
+            '<span class="isbar-section-number">' + number + '</span>' +
+            '<span class="isbar-section-icon" aria-hidden="true">' + iconSvg + '</span>' +
+            '<span class="isbar-section-title">' + title + '</span>' +
+            '<span class="isbar-section-status">' + badge + detail + '</span>' +
+            '<span class="isbar-chevron" aria-hidden="true"></span>' +
+        '</summary>';
+}
+
 function _pdCsvLabels(section, fieldId, csv) {
     if (!csv) return null;
     const field = section.fields.find(f => f.id === fieldId);
@@ -113,13 +131,8 @@ function renderReadOnlyMetaSection(section, isbar) {
         ? filledLabels.slice(0, 3).join(' · ')
         : 'Not recorded';
 
-    return '<details class="isbar-section">' +
-        '<summary class="isbar-section-summary">' +
-            '<span class="isbar-section-title">' + section.icon + ' ' + section.title + '</span>' +
-            '<span class="isbar-section-status">' + _isbarEsc(summary) + '</span>' +
-            '<span class="isbar-chevron" aria-hidden="true"></span>' +
-        '</summary>' +
-        '<div class="pdetails-section-body">' + (bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
+    return _pdSectionHeader(section.number, section.icon, section.title, summary, filledLabels.length > 0, false) +
+        '<div class="pdetails-section-body isbar-grid-' + section.id + '">' + (bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
     '</details>';
 }
 
@@ -138,13 +151,8 @@ function renderPatientArrivalReadOnly(d) {
         _pdField('Bed', _pdVal(bedStr)) +
         _pdField('Chief Complaint', _pdVal(d.chiefcomplaint));
     const summary = d.chiefcomplaint ? d.chiefcomplaint : 'Not recorded';
-    return '<details class="isbar-section" open>' +
-        '<summary class="isbar-section-summary">' +
-            '<span class="isbar-section-title">🧑‍⚕️ Patient &amp; Arrival</span>' +
-            '<span class="isbar-section-status">' + _isbarEsc(summary) + '</span>' +
-            '<span class="isbar-chevron" aria-hidden="true"></span>' +
-        '</summary>' +
-        '<div class="pdetails-section-body">' + body + '</div>' +
+    return _pdSectionHeader(1, ISBAR_SECTION_ICONS['patient-arrival'], 'Patient & Arrival', summary, !!d.chiefcomplaint, true) +
+        '<div class="pdetails-section-body isbar-grid-patient-arrival">' + body + '</div>' +
     '</details>';
 }
 
@@ -167,13 +175,8 @@ function renderVitalsReadOnly(d) {
         _pdField('Measured At', _pdVal(isbar.vitals_measured_at)) +
         _pdField('Recorded By', _pdVal(isbar.vitals_recorded_by));
     const summary = 'BP ' + (d.sbp ?? '–') + '/' + (d.dbp ?? '–') + ' · HR ' + (d.heartrate ?? '–') + ' · SpO₂ ' + (d.o2sat ?? '–') + '%';
-    return '<details class="isbar-section" open>' +
-        '<summary class="isbar-section-summary">' +
-            '<span class="isbar-section-title">💓 Initial Vital Signs</span>' +
-            '<span class="isbar-section-status">' + summary + '</span>' +
-            '<span class="isbar-chevron" aria-hidden="true"></span>' +
-        '</summary>' +
-        '<div class="pdetails-section-body">' + body + '</div>' +
+    return _pdSectionHeader(2, ISBAR_SECTION_ICONS.vitals, 'Initial Vital Signs', summary, d.sbp != null || d.heartrate != null, true) +
+        '<div class="pdetails-section-body isbar-grid-vitals">' + body + '</div>' +
     '</details>';
 }
 
