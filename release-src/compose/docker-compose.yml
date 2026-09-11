@@ -76,6 +76,14 @@ services:
       DATABASE_PASSWORD: ${MSSQL_SA_PASSWORD}
       DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
       DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
+    volumes:
+      # Same rationale as ../backups above: lives under the persistent
+      # install directory (/opt/rah/apps/hcopilot/models), NOT the
+      # disposable release folder, so the live Flow_prediction.pkl and
+      # every versioned training run written at runtime by the model
+      # training engine survive a release update instead of being reset to
+      # whatever was baked into the new image.
+      - ../models/AIModels:/app/models/AIModels
     ports:
       - "${BACKEND_PORT:-8090}:8090"
     depends_on:

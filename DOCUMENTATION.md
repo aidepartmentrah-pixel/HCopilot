@@ -438,8 +438,8 @@ Staff marked as absent in Settings are excluded from all candidate pools in both
 Uses a trained **XGBoost** gradient-boosted tree model to forecast daily patient arrivals for up to 30 days ahead.
 
 **How it works:**
-1. Historical ED visit data (`edstays_with_synth.csv`) is resampled to a daily arrival count.
-2. Weather data (`meteo.csv`) is merged in as an additional feature.
+1. Historical ED visit data (`HistoricalEdStays`, originally sourced from `edstays_with_synth.csv`) is resampled to a daily arrival count.
+2. Weather data (`DailyWeather`, originally sourced from `meteo.csv`) is merged in as an additional feature.
 3. Time-series features are engineered: calendar features (day of week, month, ISO week), lag features (yesterday's count, same day last week), and a 7-day rolling mean.
 4. The trained model (`backend/models/AIModels/Flow_prediction.pkl`) is loaded from disk.
 5. Predictions are made one day at a time using an **auto-regressive loop**: each day's prediction feeds back as the lag input for the next day.
@@ -468,6 +468,18 @@ Both the model file and the feature DataFrame are cached in module-level variabl
 - Days 1–7: lags reference the real historical tail from the dataset.
 - Day 8+: lags reference previously predicted values (auto-regressive).
 - Temperature: the 7-day historical average is used as a static proxy for all future days.
+
+#### Model Training Engine
+
+**Location:** `backend/features/model_training/`
+
+Retrains the model above from the latest `HistoricalEdStays`/`DailyWeather` data, on demand, with full run history — no more manually training externally and dropping a `.pkl` file into place (see §8, "Retraining the Flow Prediction Model", for the old manual workflow this replaces).
+
+Training this one model on the current dataset (~3,000 rows) takes a few seconds, so a single `POST /train` call both retrains AND deploys the new model as live — there's no separate review/promotion step required. Every run is still versioned under `backend/models/AIModels/training_runs/{run_id}/` with its own persisted metrics, so an older model can be redeployed at any time via `promote` without retraining.
+
+**Endpoints:** see §7, "Model Training (`/api/model-training`)".
+
+**Offline/CLI fallback:** `backend/scripts/train_flow_prediction_model.py` calls the exact same training logic and can be run directly (`.venv\Scripts\python.exe scripts\train_flow_prediction_model.py` from `backend/`) if the API process isn't available — useful for the air-gapped hospital deployments this app targets.
 
 ---
 
@@ -1020,6 +1032,19 @@ All endpoints are prefixed with their mount path. The full URL is `http://localh
 | GET | `/historical?days=N` | Last N days of actual counts |
 | GET | `/stats` | Dataset aggregate statistics |
 
+### Model Training (`/api/model-training`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/train` | Retrain the flow_prediction model from the latest data and deploy it as live (synchronous) |
+| GET | `/status` | Whether a training run is currently in progress |
+| GET | `/runs` | List past training runs, most recent first |
+| GET | `/runs/{run_id}` | One run's full detail |
+| GET | `/live` | The currently-deployed run's metrics (model accuracy) |
+| GET | `/runs/{run_id}/export` | Download that run's trained `.pkl` artifact |
+| POST | `/runs/{run_id}/promote` | Redeploy an existing run without retraining (rollback) |
+| DELETE | `/runs/{run_id}` | Delete a non-live run's history and artifact |
+
 ### Statistics (`/api/statistics`)
 
 | Method | Path | Description |
@@ -1150,12 +1175,15 @@ After changing shifts, make sure all doctors and nurses have their `shift` field
 3. Days are 0-indexed from Monday. Example: `"1,3,5"` means Tuesday, Thursday, Saturday.
 4. Doctors use the `work_days` field (stores group_id). Nurses use the `group` field.
 
-### Setting Up the Flow Prediction Model
+### Retraining the Flow Prediction Model
 
-1. Train the XGBoost model externally and save it as a joblib `.pkl` file containing a dict `{"model": <XGBRegressor>, "features": ["temperature_2m_mean", "dayofweek", "month", "weekofyear", "y_lag_1", "y_lag_7", "y_roll_7"]}`.
-2. Place the file at `backend/models/AIModels/Flow_prediction.pkl`.
-3. Ensure `backend/datasets/edstays_with_synth.csv` and `backend/datasets/meteo.csv` are present.
-4. Navigate to the Flow Prediction page — the model loads automatically on first request.
+1. Ensure `HistoricalEdStays` and `DailyWeather` have data (see `backend/scripts/import_ml_historical_data.py` for the initial seed).
+2. Trigger a retrain: `POST /api/model-training/train`. This trains on the latest data, evaluates it on a chronological holdout split, and deploys it as the live model immediately — no manual file placement needed.
+3. Check `GET /api/model-training/live` for the current model's accuracy (MAE/RMSE/R²/MAPE/sMAPE), or `GET /api/model-training/runs` for full history.
+4. To roll back to a previous model without retraining: `POST /api/model-training/runs/{run_id}/promote`.
+5. Offline fallback (no running API process): `.venv\Scripts\python.exe scripts\train_flow_prediction_model.py` from `backend/`, which calls the same training engine directly.
+
+The Flow Prediction page picks up a newly (re)trained model automatically on its next request — no restart needed (see §5.6, caching strategy).
 
 ---
 

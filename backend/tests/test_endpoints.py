@@ -61,6 +61,8 @@ SAFE_GET_ENDPOINTS = [
     "/api/ward-census/today",
     "/api/ward-census/history",
     "/api/daily-analysis/report",
+    "/api/model-training/status",
+    "/api/model-training/runs",
 ]
 
 

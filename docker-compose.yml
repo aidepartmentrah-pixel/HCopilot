@@ -84,6 +84,15 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
       DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
+    volumes:
+      # Without this, the live Flow_prediction.pkl and every versioned
+      # training run written at runtime by the model training engine
+      # (features/model_training/) would live only in this container's
+      # writable layer and be silently lost on the next `docker compose up`
+      # after an image rebuild/update — exactly when a hospital would apply
+      # an update. Mirrors the ../backups bind mount already used for SQL
+      # Server backups above.
+      - ./backend/models/AIModels:/app/models/AIModels
     ports:
       - "${BACKEND_PORT:-8090}:8090"
     depends_on:

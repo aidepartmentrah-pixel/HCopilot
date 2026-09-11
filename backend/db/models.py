@@ -30,7 +30,7 @@
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, ForeignKey, ForeignKeyConstraint,
-    CheckConstraint, UniqueConstraint, Float, DateTime,
+    CheckConstraint, UniqueConstraint, Float, DateTime, Boolean,
 )
 
 from db.session import Base
@@ -502,3 +502,56 @@ class DailyWeather(Base):
     temperature_2m_min   = Column(Float, nullable=True)
     temperature_2m_max   = Column(Float, nullable=True)
     precipitation_sum_mm = Column(Float, nullable=True)
+
+
+# ── Model training run history (Stage 3: training engine) ─────────────────
+# One row per training run of any model in the system. model_name exists
+# even though "flow_prediction" is the only value today, so a second trained
+# model never needs a schema migration to fit into the same history table.
+#
+# is_live is the ONLY source of truth for "which run's artifact is currently
+# deployed" — it is NOT derived from status/finished_at, so promoting an
+# older completed run back to live (a rollback, with no retraining) is just
+# a boolean flip plus a file copy, handled entirely by
+# features/model_training/trainer.py.
+#
+# status='running' rows are forensic, not authoritative for concurrency:
+# whether a training run is currently in progress is decided by an
+# in-process threading.Lock in trainer.py (safe because the backend runs as
+# a single uvicorn process — no --workers). A row can be left at
+# status='running' forever if the process crashes mid-training; a startup
+# sweep in app.py reconciles any such orphaned row to status='failed' on
+# the next boot so history stays honest.
+#
+# This is the first Boolean/BIT column in this schema — every other
+# true/false-shaped column elsewhere is a legacy "True"/"False" String kept
+# for CSV-import compatibility (see the notes at the top of this file).
+# TrainingRuns is a brand-new table with no such legacy constraint.
+
+class TrainingRun(Base):
+    __tablename__ = "TrainingRuns"
+    __table_args__ = (
+        CheckConstraint("status IN ('running','completed','failed')", name="ck_training_runs_status"),
+        UniqueConstraint("run_id", name="uq_training_runs_run_id"),
+    )
+
+    id                = Column(Integer, primary_key=True, autoincrement=True)
+    run_id            = Column(String(64), nullable=False, index=True)
+    model_name        = Column(String(100), nullable=False, index=True)
+    started_at        = Column(DateTime, nullable=False)
+    finished_at       = Column(DateTime, nullable=True)
+    status            = Column(String(20), nullable=False, index=True)  # running | completed | failed
+    row_count_train   = Column(Integer, nullable=True)
+    row_count_test    = Column(Integer, nullable=True)
+    train_data_start  = Column(String(10), nullable=True)  # "YYYY-MM-DD"
+    train_data_end    = Column(String(10), nullable=True)
+    hyperparameters   = Column(String(1000), nullable=True)  # JSON-encoded text
+    mae               = Column(Float, nullable=True)
+    rmse              = Column(Float, nullable=True)
+    mse               = Column(Float, nullable=True)
+    r2                = Column(Float, nullable=True)
+    mape              = Column(Float, nullable=True)
+    smape             = Column(Float, nullable=True)
+    artifact_path     = Column(String(500), nullable=True)  # relative to backend/, e.g. models/AIModels/training_runs/{run_id}/model.pkl
+    is_live           = Column(Boolean, nullable=False, default=False)
+    error_message     = Column(String(1000), nullable=True)

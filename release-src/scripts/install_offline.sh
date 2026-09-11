@@ -24,7 +24,7 @@ if [ -f "$INSTALL_VERSION_FILE" ]; then
 fi
 
 log "Step 1/7: Creating persistent install directory..."
-mkdir -p "$INSTALL_COMPOSE_DIR" "$INSTALL_BACKUPS_DIR" "$INSTALL_ROOT/database" "$INSTALL_ROOT/scripts"
+mkdir -p "$INSTALL_COMPOSE_DIR" "$INSTALL_BACKUPS_DIR" "$INSTALL_ROOT/database" "$INSTALL_ROOT/scripts" "$INSTALL_ROOT/models/AIModels"
 
 log "Step 2/7: Installing this release's Compose definition and generating persistent configuration..."
 cp "$RELEASE_DIR/compose/docker-compose.yml" "$INSTALL_COMPOSE_DIR/docker-compose.yml"
@@ -72,6 +72,14 @@ log "Step 3/7: Installing persistent operational scripts and database resources 
 # backup/restore are broken until that declaration gap is fixed. Made
 # non-fatal here so a missing declaration doesn't block install itself.
 cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/" 2>/dev/null || true
+# Seed the persistent models directory with this release's bundled model
+# file. compose/docker-compose.yml bind-mounts $INSTALL_ROOT/models/AIModels
+# into the backend container so trained models survive future updates (see
+# that file for why) -- which means Flow Prediction now reads from THIS
+# directory at runtime, never the image's own baked-in copy. -n (no-clobber)
+# is belt-and-suspenders here (Step 1 just created this directory empty on a
+# real first install) and becomes load-bearing in update_offline.sh below.
+cp -n "$RELEASE_DIR"/models/AIModels/*.pkl "$INSTALL_ROOT/models/AIModels/" 2>/dev/null || true
 cp "$RELEASE_DIR"/scripts/_common.sh \
    "$RELEASE_DIR"/scripts/start_stack.sh \
    "$RELEASE_DIR"/scripts/stop_stack.sh \

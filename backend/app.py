@@ -66,6 +66,7 @@ from features.unurgent.api import router as unurgent_router          # Unurgent 
 from features.auth.api import router as auth_router                  # Login + user account management
 from features.ward_census.api import router as ward_census_router    # Daily per-ward patient census
 from features.daily_analysis.api import router as daily_analysis_router  # Date-filterable combined daily report
+from features.model_training.api import router as model_training_router  # Train/list/promote flow-prediction model runs
 
 # ── Router registration ────────────────────────────────────────────────────────
 # Each router is mounted under its own URL prefix.  All API endpoints therefore
@@ -88,6 +89,7 @@ app.include_router(unurgent_router,   prefix="/api/unurgent")        # GET /api/
 app.include_router(auth_router,       prefix="/api/auth")            # POST /api/auth/login
 app.include_router(ward_census_router, prefix="/api/ward-census")    # GET /api/ward-census/today
 app.include_router(daily_analysis_router, prefix="/api/daily-analysis")  # GET /api/daily-analysis/report
+app.include_router(model_training_router, prefix="/api/model-training")  # POST /api/model-training/train, etc.
 
 
 @app.get("/health")
@@ -108,6 +110,23 @@ def _start_background_jobs():
         start_scheduler()
     except Exception as e:
         print(f"⚠️  ward census scheduler failed to start: {e}")
+
+
+@app.on_event("startup")
+def _reconcile_stuck_training_runs():
+    # A TrainingRuns row left at status='running' (e.g. the process was
+    # killed mid-training) can never be cleared by the in-process lock that
+    # would represent a genuinely active run, since that lock doesn't
+    # survive a restart. Sweep any such row to 'failed' on every boot so
+    # GET /api/model-training/status and run history stay honest. Also
+    # swallows errors — the DB may not be migrated yet on a cold start.
+    try:
+        from features.model_training.trainer import reconcile_stuck_runs
+        reconciled = reconcile_stuck_runs()
+        if reconciled:
+            print(f"⚠️  reconciled {reconciled} training run(s) interrupted by a previous restart")
+    except Exception as e:
+        print(f"⚠️  training run reconciliation failed to start: {e}")
 
 
 # ── Static frontend serving (local dev only) ───────────────────────────────────

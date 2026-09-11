@@ -28,6 +28,18 @@ require_existing_install
 mkdir -p "$INSTALL_ROOT/database"
 cp "$RELEASE_DIR"/database/*.sql "$INSTALL_ROOT/database/" 2>/dev/null || true
 
+# Self-healing, same rationale as above: an install from before this
+# release's backend volume mount (compose/docker-compose.yml) never had
+# $INSTALL_ROOT/models/AIModels at all, which would otherwise leave Flow
+# Prediction unable to find a model file the first time it starts under the
+# new bind-mounted path. -n (no-clobber) is the critical difference from the
+# database/*.sql copy above: it must NEVER overwrite an already-present
+# model file, because unlike those static SQL scripts, this hospital may
+# have already retrained and promoted its own model via
+# /api/model-training -- this only fills in a genuinely missing default.
+mkdir -p "$INSTALL_ROOT/models/AIModels"
+cp -n "$RELEASE_DIR"/models/AIModels/*.pkl "$INSTALL_ROOT/models/AIModels/" 2>/dev/null || true
+
 PREVIOUS_VERSION="unknown"
 [ -f "$INSTALL_VERSION_FILE" ] && PREVIOUS_VERSION="$(cat "$INSTALL_VERSION_FILE")"
 log "Currently installed: $PREVIOUS_VERSION  ->  Updating to: $RELEASE_VERSION"
