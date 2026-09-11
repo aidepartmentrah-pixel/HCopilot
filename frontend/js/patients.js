@@ -186,6 +186,17 @@ function toggleO2FlowRate(mode) {
 
 // Collects the hand-written "Initial Vital Signs" additions (not part of the
 // metadata-driven sections) into the shape ISBARDetails expects.
+//
+// vitals_measured_at/vitals_recorded_by have no visible field (Wave 4 removed
+// the metadata strip — it added weight without helping data entry) and are
+// handled differently per mode:
+//   - 'add' is the actual moment of first recording, so both are computed
+//     fresh here (now + the logged-in user) and always sent.
+//   - 'edit' omits them entirely. The backend's upsert() only touches fields
+//     present in the payload (see isbar_manager.py), so leaving them out
+//     preserves whoever originally recorded the vitals — editing an unrelated
+//     field (e.g. fixing a typo) must not silently reattribute the vitals to
+//     whoever happens to be editing right now.
 function collectVitalsAdditions(mode) {
     const prefix = _isbarPrefix(mode);
     const val = id => { const el = document.getElementById(prefix + '-' + id); return el ? el.value.trim() : ''; };
@@ -193,8 +204,11 @@ function collectVitalsAdditions(mode) {
     if (val('blood-glucose') !== '') out.blood_glucose = parseFloat(val('blood-glucose'));
     if (val('o2-support') !== '') out.o2_support = val('o2-support');
     if (val('o2-flow-rate') !== '') out.o2_flow_rate = parseFloat(val('o2-flow-rate'));
-    if (val('vitals-measured-at') !== '') out.vitals_measured_at = val('vitals-measured-at');
-    if (val('vitals-recorded-by') !== '') out.vitals_recorded_by = val('vitals-recorded-by');
+    if (mode === 'add') {
+        out.vitals_measured_at = _currentDatetimeLocal();
+        const u = typeof currentUser === 'function' ? currentUser() : null;
+        out.vitals_recorded_by = u ? (u.name || u.username || '') : '';
+    }
     return out;
 }
 
@@ -236,9 +250,6 @@ function initPatientForm() {
     if (mount && !mount.dataset.mounted) {
         mountIsbarAccordion('add');
         mount.dataset.mounted = '1';
-        document.getElementById('pat-vitals-measured-at').value = _currentDatetimeLocal();
-        const u = typeof currentUser === 'function' ? currentUser() : null;
-        document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
         refreshPatientCoreSectionStatus();
     }
 }
@@ -650,9 +661,6 @@ function clearPatientForm() {
         .forEach(id => { document.getElementById(id).value = ''; });
     resetVitalsAdditions('add');
     resetIsbarState('add');
-    document.getElementById('pat-vitals-measured-at').value = _currentDatetimeLocal();
-    const u = typeof currentUser === 'function' ? currentUser() : null;
-    document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
     setPatAddError('');
     setPatAddErrorSummary('');
     initPatientForm();
@@ -818,8 +826,9 @@ function openEditPatientModal(row, source) {
                     if (v.blood_glucose != null) document.getElementById('pedit-blood-glucose').value = v.blood_glucose;
                     if (v.o2_support) { document.getElementById('pedit-o2-support').value = v.o2_support; toggleO2FlowRate('edit'); }
                     if (v.o2_flow_rate != null) document.getElementById('pedit-o2-flow-rate').value = v.o2_flow_rate;
-                    if (v.vitals_measured_at) document.getElementById('pedit-vitals-measured-at').value = String(v.vitals_measured_at).slice(0, 16);
-                    if (v.vitals_recorded_by) document.getElementById('pedit-vitals-recorded-by').value = v.vitals_recorded_by;
+                    // No visible measured-at/recorded-by fields in the edit modal
+                    // (Wave 4) — collectVitalsAdditions('edit') omits them from
+                    // the save payload entirely, preserving whatever is stored.
                 }
             })
             .catch(() => {});

@@ -45,6 +45,7 @@ const ISBAR_METADATA_SECTIONS = [
       { id: 'current_diagnosis', label: 'Current Diagnosis', type: 'textarea', requiredTier: 'optional' },
       {
         id: 'clinical_status', label: 'Current Clinical Status', type: 'radio-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: ['Stable', 'Improving', 'Close monitoring', 'Deteriorating', 'Critical'],
       },
       {
@@ -112,6 +113,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'allergy_types', label: 'Allergy Type', type: 'checkbox-group', requiredTier: 'conditional',
+        choiceStyle: 'tiles',
         conditionalOn: { field: 'allergies_status', equals: 'Yes' },
         options: [
           { value: 'medication', label: 'Medication' },
@@ -130,6 +132,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'isolation_precautions', label: 'Isolation Precautions', type: 'radio-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: ['None', 'Contact', 'Droplet', 'Airborne', 'Reverse'],
       },
       {
@@ -187,7 +190,7 @@ const ISBAR_METADATA_SECTIONS = [
       critical_lab_results: 'Laboratory & Diagnostics',
     },
     fields: [
-      { id: 'neuro_status', label: 'Neurological Status', type: 'radio-group', requiredTier: 'optional',
+      { id: 'neuro_status', label: 'Neurological Status', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'tiles',
         options: ['Alert', 'Oriented', 'Confused', 'Drowsy', 'Unresponsive'] },
       { id: 'telemetry', label: 'Telemetry', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
       { id: 'edema', label: 'Edema', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
@@ -195,11 +198,11 @@ const ISBAR_METADATA_SECTIONS = [
 
       { id: 'diet', label: 'Diet', type: 'text', requiredTier: 'optional' },
       { id: 'npo', label: 'NPO', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
-      { id: 'swallow_assessment', label: 'Swallow Assessment', type: 'radio-group', requiredTier: 'optional',
+      { id: 'swallow_assessment', label: 'Swallow Assessment', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'tiles',
         options: ['Passed', 'Failed', 'Pending'] },
       { id: 'last_bowel_movement', label: 'Last Bowel Movement', type: 'text', requiredTier: 'optional' },
 
-      { id: 'voiding', label: 'Voiding', type: 'radio-group', requiredTier: 'optional', options: ['Independent', 'Assisted'] },
+      { id: 'voiding', label: 'Voiding', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'tiles', options: ['Independent', 'Assisted'] },
       { id: 'urinary_catheter', label: 'Urinary Catheter', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
       { id: 'wounds', label: 'Wounds', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
 
@@ -260,6 +263,7 @@ const ISBAR_METADATA_SECTIONS = [
       { id: 'consultations', label: 'Consultations', type: 'textarea', requiredTier: 'optional' },
       {
         id: 'discharge_transfer_plan', label: 'Discharge / Transfer Plan', type: 'radio-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'home', label: 'Home' },
           { value: 'ward', label: 'Ward admission' },

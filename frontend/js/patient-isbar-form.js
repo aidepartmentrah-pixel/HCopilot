@@ -55,35 +55,38 @@ function isbarFieldInputHtml(field, mode, value) {
         case 'boolean':
             return `<label class="isbar-boolean-check"><input type="checkbox" id="${name}" data-field-id="${field.id}" data-mode="${mode}" ${value ? 'checked' : ''}> ${field.label}</label>`;
         case 'radio-group': {
-            // choiceStyle: 'segmented' (Yes/No-style binary/ternary fields) gets a
-            // connected control; everything else (default) stays spaced pills.
-            // Same underlying button + data-radio-value contract either way, so
-            // click delegation / validation / Playwright selectors don't care
-            // which variant rendered a given field.
+            // Two variants, both rectangular (no rounded-pill option remains as
+            // of Wave 4): 'segmented' is a connected bar for binary/ternary
+            // Yes/No-style fields; 'tiles' reuses the exact same tile shape as
+            // checkbox-group tiles below (same size/radius/spacing — "one
+            // selection system") but without the checkbox-square glyph, since
+            // only one option can ever be selected — a checkmark prefix is
+            // enough to show state. Same button + data-radio-value contract
+            // either way, so click delegation / validation / Playwright
+            // selectors don't care which variant rendered a given field.
             const segmented = field.choiceStyle === 'segmented';
-            const groupClass = segmented ? 'isbar-choice-segmented' : 'isbar-chip-group';
-            const btnClass = segmented ? 'isbar-seg-btn' : 'isbar-chip';
+            const groupClass = segmented ? 'isbar-choice-segmented' : 'isbar-choice-tiles';
+            const btnClass = segmented ? 'isbar-seg-btn' : 'isbar-tile-btn isbar-tile-btn-radio';
             return `<div class="${groupClass}" role="radiogroup" aria-label="${field.label}">` +
                 isbarOptionValues(field).map(v => {
                     const label = isbarOptionLabel(field, v);
                     const selected = value === v;
-                    return `<button type="button" role="radio" aria-checked="${selected}" class="${btnClass} ${selected ? 'selected' : ''}" data-field-id="${field.id}" data-mode="${mode}" data-radio-value="${_isbarEsc(v)}">${_isbarEsc(label)}</button>`;
+                    const text = segmented ? _isbarEsc(label) : `<span>${_isbarEsc(label)}</span>`;
+                    return `<button type="button" role="radio" aria-checked="${selected}" class="${btnClass} ${selected ? 'selected' : ''}" data-field-id="${field.id}" data-mode="${mode}" data-radio-value="${_isbarEsc(v)}">${text}</button>`;
                 }).join('') + `</div>`;
         }
         case 'checkbox-group': {
-            // choiceStyle: 'tiles' (long lists, 6+ options) gets a responsive
-            // checkbox-tile grid; default stays spaced multi-select pills.
+            // Every checkbox-group field is choiceStyle:'tiles' as of Wave 4 —
+            // a responsive checkbox-tile grid with a real checkbox-square
+            // glyph (unlike the radio-tile variant above, since more than one
+            // option can be true at once here).
             const selectedTokens = value ? String(value).split(',').map(t => t.trim()) : [];
-            const tiles = field.choiceStyle === 'tiles';
-            const groupClass = tiles ? 'isbar-choice-tiles' : 'isbar-chip-group';
-            const btnClass = tiles ? 'isbar-tile-btn' : 'isbar-chip';
-            const tileGlyph = tiles ? '<span class="isbar-tile-check" aria-hidden="true"></span>' : '';
-            return `<div class="${groupClass}" role="group" aria-label="${field.label}">` +
+            return `<div class="isbar-choice-tiles" role="group" aria-label="${field.label}">` +
                 (field.options || []).map(o => {
                     const v = typeof o === 'string' ? o : o.value;
                     const label = typeof o === 'string' ? o : o.label;
                     const selected = selectedTokens.includes(v);
-                    return `<button type="button" role="checkbox" aria-checked="${selected}" class="${btnClass} ${selected ? 'selected' : ''}" data-field-id="${field.id}" data-mode="${mode}" data-checkbox-value="${_isbarEsc(v)}">${tileGlyph}<span>${_isbarEsc(label)}</span></button>`;
+                    return `<button type="button" role="checkbox" aria-checked="${selected}" class="isbar-tile-btn ${selected ? 'selected' : ''}" data-field-id="${field.id}" data-mode="${mode}" data-checkbox-value="${_isbarEsc(v)}"><span class="isbar-tile-check" aria-hidden="true"></span><span>${_isbarEsc(label)}</span></button>`;
                 }).join('') + `</div>`;
         }
         case 'text':

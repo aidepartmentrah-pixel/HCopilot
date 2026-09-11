@@ -28,11 +28,15 @@
     --radius-md: 10px;
     --radius-lg: 14px;
 
+    /* ~1.6-ratio spacing scale: 4 / 6 / 10 / 16 / 26 / 42px — one scale used
+       everywhere via var(), so changing it here ripples consistently instead
+       of needing per-rule edits. */
     --space-1: 4px;
-    --space-2: 8px;
-    --space-3: 12px;
+    --space-2: 6px;
+    --space-3: 10px;
     --space-4: 16px;
-    --space-5: 24px;
+    --space-5: 26px;
+    --space-6: 42px;
 }
 
 /* ── Page-level weight (Patients & Statistics sections only) ────────────── */
@@ -245,7 +249,7 @@ details[open] > .pat-add-top-chevron { transform: rotate(-135deg); }
 
 .isbar-grid-patient-arrival,
 .isbar-grid-recommendation { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.isbar-grid-vitals { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.isbar-grid-vitals { grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
 .isbar-grid-situation,
 .isbar-grid-background { grid-template-columns: repeat(2, 1fr); }
 .isbar-grid-focused { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
@@ -253,16 +257,13 @@ details[open] > .pat-add-top-chevron { transform: rotate(-135deg); }
 /* Free-text fields read better spanning the row instead of one narrow column */
 .isbar-field:has(textarea) { grid-column: 1 / -1; }
 
-/* Compact "measurement card" treatment for vitals */
-.isbar-grid-vitals .isbar-field {
-    background: #fafbfd;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    gap: 4px;
-}
-.isbar-grid-vitals .isbar-field:has(.pat-bp-combined),
-.isbar-grid-vitals .isbar-field:has(.pat-pain-scale) { grid-column: 1 / -1; background: none; border: none; padding: 0; }
+/* Vitals fields are ordinary .isbar-field entries in one aligned grid — no
+   per-field card box (Wave 2 added one, Wave 4 removes it: it read as
+   redundant "card inside a card" chrome, not a helpful grouping). Blood
+   pressure sits in a normal grid cell like any other vital (see
+   .pat-bp-combined below for its own equal-split sizing); only the wide
+   11-segment pain scale still needs the full row. */
+.isbar-grid-vitals .isbar-field:has(.pat-pain-scale) { grid-column: 1 / -1; }
 
 .isbar-field { display: flex; flex-direction: column; gap: 5px; }
 .isbar-field label {
@@ -330,35 +331,17 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     font-size: 11px; color: #9ca3af; pointer-events: none;
 }
 
-.isbar-chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
-.isbar-chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 6px 12px;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: var(--color-surface);
-    font-size: 12.5px;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    transition: all 0.12s;
-}
-.isbar-chip:hover { border-color: #b9bdf0; color: var(--color-text); }
-.isbar-chip:focus-visible, .pat-scale-btn:focus-visible {
+.pat-scale-btn:focus-visible {
     outline: 2px solid var(--color-primary); outline-offset: 1px;
 }
-.isbar-chip.selected {
-    background: var(--color-primary-soft);
-    border-color: var(--color-primary);
-    color: var(--color-primary-hover);
-    font-weight: 700;
-}
-.isbar-chip.selected::before { content: '\2713'; font-weight: 700; }
 
 /* ── Choice-control variants ──────────────────────────────────────────────
-   Three shapes for three different kinds of choice, driven by each field's
-   `choiceStyle` in patient-isbar-fields.js — not one pill style forced onto
-   everything. .isbar-chip(-group) above is the default (short single/multi
-   choice); these two are the explicit opt-in variants. */
+   Two rectangular shapes for every choice field, driven by each field's
+   `choiceStyle` in patient-isbar-fields.js — every radio-group/checkbox-group
+   field has an explicit choiceStyle as of Wave 4, so there is no third
+   "default rounded pill" variant left anywhere in the ISBAR form; "segmented"
+   and "tiles" are the only two shapes, sharing the same height/radius/
+   spacing/typography foundations ("one selection system"). */
 
 /* Segmented — binary/ternary exclusive choice (Yes/No, Yes/No/NKA): one
    connected control, same visual language as the Pain/Acuity scale so a
@@ -374,7 +357,9 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 .isbar-seg-btn {
     flex: 1 1 0;
     min-width: 56px;
-    padding: 7px 14px;
+    min-height: 34px;
+    padding: 6px 14px;
+    text-align: center;
     border: none;
     border-right: 1px solid var(--color-border);
     background: var(--color-surface);
@@ -402,17 +387,24 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 .isbar-tile-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
-    padding: 10px 12px;
+    min-height: 34px;
+    padding: 6px 12px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-surface);
     font-size: 13px;
     color: var(--color-text);
-    text-align: left;
+    text-align: center;
     cursor: pointer;
     transition: all 0.12s;
 }
+/* Radio-derived tiles (single-choice) have no checkbox glyph, so their one
+   text child can center on its own; checkbox-derived tiles keep the glyph +
+   label pair left-leaning within the centered flex row so the checkbox
+   doesn't visually drift away from its label on wider tiles. */
+.isbar-tile-btn:not(.isbar-tile-btn-radio) { justify-content: flex-start; }
 .isbar-tile-btn:hover { border-color: #b9bdf0; background: #fafbff; }
 .isbar-tile-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 .isbar-tile-btn.selected {
@@ -464,8 +456,8 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 }
 .pat-scale-btn {
     flex: 1 1 0;
-    min-height: 42px;
-    padding: 8px 6px;
+    min-height: 34px;
+    padding: 6px 6px;
     border: none;
     border-right: 1px solid rgba(0,0,0,0.06);
     background: var(--color-surface);
@@ -511,44 +503,16 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 .isbar-scale-zone-label.zone-high { color: var(--color-danger);  border-top-color: var(--color-danger); }
 
 .pat-bp-combined { display: flex; align-items: center; gap: 6px; }
-.pat-bp-combined input { text-align: center; }
-.pat-bp-sep { color: #9ca3af; font-weight: 700; }
-
-/* Measurement metadata strip (Measured At + Recorded By) — read as one line
-   of muted metadata, not two more clinical-looking input cards. The inputs
-   stay real and focusable (a nurse can correct an auto-filled value) but are
-   visually demoted: no border/background of their own, small leading icon. */
-.isbar-meta-strip {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    background: #f5f6fa;
-    border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    margin-top: 2px;
-}
-.isbar-meta-item { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.isbar-meta-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-muted); }
-.isbar-meta-label { font-size: 12.5px; color: var(--color-text-muted); white-space: nowrap; }
-.isbar-meta-sep { color: #c7cbd4; }
-.isbar-meta-input {
-    border: none;
-    background: transparent;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--color-text);
-    padding: 2px 4px;
-    border-radius: 4px;
+.pat-bp-combined input {
+    /* Without this, .isbar-input's width:100% fights for space inside the
+       flex row with no basis constraint — one input balloons, the other
+       shrinks to a sliver. flex:1 1 0 forces an even split. */
+    flex: 1 1 0;
+    width: auto;
     min-width: 0;
+    text-align: center;
 }
-.isbar-meta-input:hover { background: rgba(0,0,0,0.04); }
-.isbar-meta-input:focus {
-    outline: none;
-    background: var(--color-surface);
-    box-shadow: 0 0 0 2px var(--color-primary);
-}
-.isbar-meta-input[type="text"] { width: 160px; }
+.pat-bp-sep { color: #9ca3af; font-weight: 700; }
 
 /* ── Patient Details modal ──────────────────────────────────────────────── */
 

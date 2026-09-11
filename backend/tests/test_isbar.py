@@ -108,6 +108,37 @@ def test_isbar_edit_roundtrip(client):
         client.delete(f"/api/patients/delete/{stay_id}")
 
 
+def test_isbar_edit_omitting_a_field_preserves_its_existing_value(client):
+    # Regression test: p.isbar.model_dump() without exclude_unset=True used to
+    # serialize every field with its None default, so an edit payload that
+    # simply didn't mention vitals_measured_at/vitals_recorded_by (as the
+    # frontend intentionally does — see patients.js collectVitalsAdditions)
+    # would null out those columns instead of leaving them untouched.
+    patient_id, stay_id = _next_ids(client)
+    try:
+        payload = _base_payload(patient_id, stay_id)
+        payload["isbar"] = {
+            "vitals_measured_at": "2026-01-01T00:05",
+            "vitals_recorded_by": "PYTEST_NURSE",
+        }
+        resp = client.post("/api/patients/add", json=payload)
+        assert resp.status_code == 200, resp.text
+
+        modify_payload = _base_payload(patient_id, stay_id)
+        del modify_payload["stay_id"]
+        modify_payload["isbar"] = {"clinical_status": "Stable"}
+        resp = client.put(f"/api/patients/modify/{stay_id}", json=modify_payload)
+        assert resp.status_code == 200, resp.text
+
+        resp = client.get(f"/api/patients/{stay_id}/details")
+        isbar = resp.json()["isbar"]
+        assert isbar["vitals_measured_at"] == "2026-01-01T00:05"
+        assert isbar["vitals_recorded_by"] == "PYTEST_NURSE"
+        assert isbar["clinical_status"] == "Stable"
+    finally:
+        client.delete(f"/api/patients/delete/{stay_id}")
+
+
 def test_isbar_optional_fields_can_be_omitted(client):
     patient_id, stay_id = _next_ids(client)
     try:

@@ -373,7 +373,12 @@ async def add_patient(p: PatientCreate):
             name=p.name, gender=p.gender, age=p.age
         )
         if p.isbar is not None:
-            isbar_mgr.upsert(p.stay_id, p.isbar.model_dump())
+            # exclude_unset: a field the client never included in the request
+            # body must not overwrite a previously-stored value with the
+            # model's None default — see modify_patient below, where this
+            # actually matters (add() always targets a brand-new row, so it's
+            # a no-op difference here, but keeping both calls consistent).
+            isbar_mgr.upsert(p.stay_id, p.isbar.model_dump(exclude_unset=True))
         return result
     except HTTPException:
         raise
@@ -392,7 +397,14 @@ async def modify_patient(stay_id: int, p: PatientModify):
             name=p.name, gender=p.gender, age=p.age
         )
         if p.isbar is not None:
-            isbar_mgr.upsert(stay_id, p.isbar.model_dump())
+            # exclude_unset=True is the whole point here: the frontend
+            # intentionally omits vitals_measured_at/vitals_recorded_by from
+            # an edit payload (Wave 4 — no visible field for them anymore) so
+            # that editing an unrelated field never silently reattributes who
+            # recorded the vitals and when. Without exclude_unset, Pydantic's
+            # model_dump() fills every unset field with its None default and
+            # upsert() would treat that None as "clear this column."
+            isbar_mgr.upsert(stay_id, p.isbar.model_dump(exclude_unset=True))
         return result
     except HTTPException:
         raise
