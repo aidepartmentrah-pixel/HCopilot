@@ -141,3 +141,41 @@ def get_doctor_detail(member_id: int):
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+
+# ── ISBAR nursing-handover statistics ───────────────────────────────────────
+# Reads the small PatientISBARDetails side table (see db/models.py); every
+# method reports against the "documented" cohort (stays that have an ISBAR
+# row at all) rather than every ED patient — ISBAR fields are optional, so an
+# unrecorded field must never be silently treated as a negative/zero value.
+# Each returns a well-formed empty shape ({"labels": [], "counts": [],
+# "total": 0}, or the equivalent for safety-risks) when no data exists yet.
+
+@router.get("/clinical-status")
+def get_clinical_status_distribution():
+    """Return patient counts per current clinical status (Stable/Improving/.../Critical)."""
+    return _mgr.clinical_status_distribution()
+
+
+@router.get("/immediate-concerns")
+def get_immediate_concerns():
+    """Return the most frequently selected 'current immediate concerns', ranked by frequency."""
+    return _mgr.top_immediate_concerns()
+
+
+@router.get("/safety-risks")
+def get_safety_risks():
+    """Return counts/percentages of documented fall risk, pressure-injury risk, allergies, and isolation precautions."""
+    return _mgr.safety_risk_summary()
+
+
+@router.get("/o2-support")
+def get_o2_support_distribution():
+    """Return patient counts per oxygen/airway support type."""
+    return _mgr.o2_support_distribution()
+
+
+@router.get("/discharge-transfer")
+def get_discharge_transfer_distribution():
+    """Return patient counts per planned discharge/transfer destination (ISBAR handover field)."""
+    return _mgr.discharge_transfer_distribution()

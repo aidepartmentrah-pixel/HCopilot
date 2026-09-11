@@ -58,6 +58,28 @@ def _float(v, default=None):
     return float(v)
 
 
+# The app validates/labels temperature as °C, 26-46 (see
+# patient_management/api.py:check_temperature). A generous plausible-Celsius
+# window is used here (wider than the app's own validator) purely to flag
+# likely-unconverted °F values during import without rejecting genuine
+# clinical outliers — this only warns, it never silently converts or drops
+# the row, per the decision not to auto-mutate clinical data.
+_PLAUSIBLE_TEMP_C_MIN = 20.0
+_PLAUSIBLE_TEMP_C_MAX = 46.0
+
+
+def _float_temperature(v, subject_id, stay_id):
+    t = _float(v)
+    if t is not None and not (_PLAUSIBLE_TEMP_C_MIN <= t <= _PLAUSIBLE_TEMP_C_MAX):
+        print(
+            f"WARNING: subject_id={subject_id} stay_id={stay_id} temperature={t} "
+            f"is outside the plausible {_PLAUSIBLE_TEMP_C_MIN}-{_PLAUSIBLE_TEMP_C_MAX} °C range "
+            f"— check for an unconverted °F value before relying on this row.",
+            file=sys.stderr,
+        )
+    return t
+
+
 def _str_or_none(v):
     if v is None or str(v).strip() == "":
         return None
@@ -173,7 +195,7 @@ def migrate():
             name=_str_or_none(r.get("name")),
             gender=_str_or_none(r.get("gender")),
             age=_float(r.get("age")),
-            temperature=_float(r.get("temperature")),
+            temperature=_float_temperature(r.get("temperature"), r.get("subject_id"), r.get("stay_id")),
             heartrate=_float(r.get("heartrate")),
             resprate=_float(r.get("resprate")),
             o2sat=_float(r.get("o2sat")),
@@ -195,7 +217,7 @@ def migrate():
             name=_str_or_none(r.get("name")),
             gender=_str_or_none(r.get("gender")),
             age=_float(r.get("age")),
-            temperature=_float(r.get("temperature")),
+            temperature=_float_temperature(r.get("temperature"), r.get("subject_id"), r.get("stay_id")),
             heartrate=_float(r.get("heartrate")),
             resprate=_float(r.get("resprate")),
             o2sat=_float(r.get("o2sat")),

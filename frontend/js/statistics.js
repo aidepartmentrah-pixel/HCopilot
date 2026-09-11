@@ -27,6 +27,10 @@ let _acuityChart = null;
 let _throughputChart = null;
 let _nurseRoleChart = null;
 let _doctorTypeChart = null;
+let _clinicalStatusChart = null;
+let _immediateConcernsChart = null;
+let _o2SupportChart = null;
+let _dischargeTransferChart = null;
 
 // Staff data cached here so charts can be drawn lazily when their tab opens
 let _staffData = null;
@@ -517,6 +521,7 @@ function switchStatsTab(tab, btn) {
     }
     if (tab === 'wards') loadWardCensus();
     if (tab === 'daily') loadDailyAnalysis();
+    if (tab === 'clinical') loadClinicalStatistics();
 }
 
 function _renderStaffStats(data) {
@@ -1096,6 +1101,129 @@ function _renderDailyAnalysis(container, data) {
         '</div>';
 }
 
+// ── Clinical tab (ISBAR nursing-documentation aggregates) ──────────────────
+//
+// Five new /api/statistics/* endpoints, all sharing the same empty-dataset
+// shape ({labels:[], counts:[], total:0}, or {documented_total:0, risks:{...}}
+// for safety-risks) — every render function below checks `total`/
+// `documented_total` before calling `new Chart(...)`, since Chart.js renders
+// a blank axis rather than a clean message on empty data.
+
+async function loadClinicalStatistics() {
+    let clinicalStatus, concerns, safety, o2Support, dischargeTransfer;
+    try {
+        [clinicalStatus, concerns, safety, o2Support, dischargeTransfer] = await Promise.all([
+            fetch(`${STATS_BASE}/clinical-status`).then(r => r.json()),
+            fetch(`${STATS_BASE}/immediate-concerns`).then(r => r.json()),
+            fetch(`${STATS_BASE}/safety-risks`).then(r => r.json()),
+            fetch(`${STATS_BASE}/o2-support`).then(r => r.json()),
+            fetch(`${STATS_BASE}/discharge-transfer`).then(r => r.json()),
+        ]);
+    } catch (err) {
+        document.getElementById('safety-risks-tiles').innerHTML =
+            `<div class="stats-no-data"><span class="stats-no-data-icon">⚠️</span>Failed to load clinical statistics.</div>`;
+        console.error('Clinical statistics fetch error:', err);
+        return;
+    }
+    _safeRender('clinical status chart',    () => { _clinicalStatusChart    = _renderDistributionChart('clinicalStatusChart', 'clinical-status-meta', clinicalStatus, _clinicalStatusChart, 'doughnut'); });
+    _safeRender('immediate concerns chart', () => { _immediateConcernsChart = _renderDistributionChart('immediateConcernsChart', 'immediate-concerns-meta', concerns, _immediateConcernsChart, 'bar', true); });
+    _safeRender('o2 support chart',         () => { _o2SupportChart         = _renderDistributionChart('o2SupportChart', 'o2-support-meta', o2Support, _o2SupportChart, 'bar'); });
+    _safeRender('discharge transfer chart', () => { _dischargeTransferChart = _renderDistributionChart('dischargeTransferChart', 'discharge-transfer-meta', dischargeTransfer, _dischargeTransferChart, 'doughnut'); });
+    _safeRender('safety risk tiles',        () => _renderSafetyRiskTiles(safety));
+}
+
+const _CLINICAL_CHART_COLORS = ['#667eea', '#764ba2', '#2ecc71', '#f1c40f', '#e67e22', '#c0392b', '#3498db', '#95a5a6', '#16a085', '#8e44ad'];
+
+// Shared renderer for the four label/count distribution charts (clinical
+// status, immediate concerns, O2 support, discharge/transfer plan) — same
+// {labels, counts, total} shape from the backend, just a different chart
+// type per call site. Takes the caller's current Chart instance (or null),
+// destroys it, and returns the new one (or null on empty data) for the
+// caller to store back in its own module-level variable — mirrors how
+// _renderAcuitySection/_renderThroughputChart manage their own instances.
+function _renderDistributionChart(canvasId, metaId, data, existingChart, type, horizontal) {
+    const meta = document.getElementById(metaId);
+    if (meta) {
+        meta.innerHTML = data.total > 0
+            ? `<span>${data.total} stay${data.total !== 1 ? 's' : ''} with this field recorded</span>`
+            : `<span>No data recorded yet</span>`;
+    }
+
+    if (existingChart) existingChart.destroy();
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+    const wrap = canvas.parentElement;
+
+    if (!data.total || data.labels.length === 0) {
+        canvas.style.display = 'none';
+        let noData = wrap.querySelector('.stats-no-data');
+        if (!noData) {
+            noData = document.createElement('div');
+            noData.className = 'stats-no-data';
+            noData.innerHTML = '<span class="stats-no-data-icon">📭</span>No data available';
+            wrap.appendChild(noData);
+        }
+        return null;
+    }
+    canvas.style.display = '';
+    const existingNoData = wrap.querySelector('.stats-no-data');
+    if (existingNoData) existingNoData.remove();
+
+    return new Chart(canvas, {
+        type,
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.counts,
+                backgroundColor: _CLINICAL_CHART_COLORS,
+                borderWidth: type === 'doughnut' ? 2 : 0,
+                borderColor: '#fff',
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: horizontal ? 'y' : 'x',
+            plugins: {
+                legend: { display: type === 'doughnut', position: 'bottom', labels: { font: { size: 11 }, padding: 10 } },
+            },
+            scales: type === 'bar' ? { x: { beginAtZero: true, ticks: { precision: 0 } } } : undefined,
+            cutout: type === 'doughnut' ? '60%' : undefined,
+        },
+    });
+}
+
+function _renderSafetyRiskTiles(safety) {
+    const el = document.getElementById('safety-risks-tiles');
+    const metaEl = document.getElementById('safety-risks-meta');
+    if (!el) return;
+
+    if (!safety.documented_total) {
+        if (metaEl) metaEl.innerHTML = '<span>No ISBAR data recorded yet</span>';
+        el.innerHTML = '<div class="stats-no-data"><span class="stats-no-data-icon">📭</span>No data available</div>';
+        return;
+    }
+    if (metaEl) metaEl.innerHTML = `<span>${safety.documented_total} stay${safety.documented_total !== 1 ? 's' : ''} with ISBAR data recorded</span>`;
+
+    const tiles = [
+        { key: 'fall_risk', icon: '🚶', label: 'Fall Risk' },
+        { key: 'pressure_injury_risk', icon: '🟦', label: 'Pressure-Injury Risk' },
+        { key: 'allergies', icon: '⚠️', label: 'Allergies' },
+        { key: 'isolation_precautions', icon: '🦠', label: 'Isolation Precautions' },
+    ];
+    el.innerHTML = tiles.map(t => {
+        const r = safety.risks[t.key] || { count: 0, pct: 0 };
+        const cls = r.pct > 30 ? 'danger' : r.pct > 10 ? 'warn' : 'good';
+        return `
+        <div class="stats-staff-kpi-card">
+            <div class="stats-staff-kpi-icon">${t.icon}</div>
+            <div class="stats-staff-kpi-label">${t.label}</div>
+            <div class="stats-staff-kpi-value ${cls}">${r.count}</div>
+            <div class="stats-staff-kpi-sub">${r.pct}% of documented stays</div>
+        </div>`;
+    }).join('');
+}
+
 // ── Refresh (manual button + automatic on-data-change) ─────────────────────
 //
 // loadStatistics() alone only covers the Patients/Nurses/Doctors panes (one
@@ -1108,6 +1236,7 @@ function _renderDailyAnalysis(container, data) {
 const STATS_ON_DEMAND_TABS = {
     wards: loadWardCensus,
     daily: loadDailyAnalysis,
+    clinical: loadClinicalStatistics,
 };
 
 // Refreshes whatever the user is actually looking at right now: the shared

@@ -19,7 +19,7 @@ from datetime import datetime
 from db.session import SessionLocal
 from db.models import (
     DailyPatient, LogPatient, EDBed, PatientBed, Nurse, Doctor,
-    PatientNurse, PatientDoctor, Ward, WardBed,
+    PatientNurse, PatientDoctor, Ward, WardBed, PatientISBARDetails,
 )
 
 
@@ -129,6 +129,40 @@ def _read_daily():
 def _read_log():
     """Load LogPatients from SQL Server into a DataFrame shaped like the CSV-era file."""
     return _df_from(LogPatient, _LOG_COLS)
+
+
+_ISBAR_COLS = ["stay_id", "clinical_status", "immediate_concerns", "fall_risk",
+               "pressure_injury_risk", "allergies_status", "isolation_precautions",
+               "o2_support", "discharge_transfer_plan"]
+
+
+def _read_isbar():
+    """Load the small ISBAR column subset used by the clinical statistics charts."""
+    return _df_from(PatientISBARDetails, _ISBAR_COLS)
+
+
+def _value_counts_chart(df, column, exclude_blank=True):
+    """
+    Shared shape for a single-select-field distribution chart: counts of each
+    distinct non-null value in `column`, sorted descending.
+
+    Returns {"labels": [...], "counts": [...], "total": <rows with a value>} —
+    "total" is the number of ISBAR rows with this field actually recorded, not
+    the number of ISBAR rows overall, so an all-empty field still reports an
+    honest zero rather than a misleadingly non-zero denominator.
+    """
+    if len(df) == 0 or column not in df.columns:
+        return {"labels": [], "counts": [], "total": 0}
+    vals = df[column].dropna().astype(str).str.strip()
+    vals = vals[vals != ""] if exclude_blank else vals
+    if len(vals) == 0:
+        return {"labels": [], "counts": [], "total": 0}
+    counts = vals.value_counts()
+    return {
+        "labels": counts.index.tolist(),
+        "counts": [int(c) for c in counts.values.tolist()],
+        "total":  int(len(vals)),
+    }
 
 
 def _collect_wait_minutes(df):
@@ -652,6 +686,104 @@ class StatsManager:
             }
 
         return {"vitals": vitals, "count": len(daily)}
+
+    # ── ISBAR nursing-handover statistics ───────────────────────────────────
+    # Every method below reads only the small ISBAR column subset (_read_isbar)
+    # and reports counts against the documented cohort (rows that actually
+    # have that field recorded) rather than against every patient in the ED —
+    # ISBAR fields are optional, so "not recorded" must never be silently
+    # counted as a negative/zero clinical value. Empty datasets return a
+    # well-formed zero-count shape, never raise.
+
+    def clinical_status_distribution(self):
+        """Return patient counts per current clinical status (Stable/Improving/.../Critical)."""
+        return _value_counts_chart(_read_isbar(), "clinical_status")
+
+    def top_immediate_concerns(self, top_n=10):
+        """
+        Return the most frequently selected 'current immediate concerns' tokens
+        across all stays with any ISBAR data, ranked by frequency.
+
+        immediate_concerns is a comma-separated multi-select field, so a single
+        stay can contribute to multiple buckets; 'total' is the number of
+        stays that selected at least one concern (not the sum of selections).
+        """
+        df = _read_isbar()
+        if len(df) == 0 or "immediate_concerns" not in df.columns:
+            return {"labels": [], "counts": [], "total": 0}
+        tokens_per_row = df["immediate_concerns"].dropna().astype(str).apply(
+            lambda v: [t.strip() for t in v.split(",") if t.strip()]
+        )
+        tokens_per_row = tokens_per_row[tokens_per_row.apply(len) > 0]
+        if len(tokens_per_row) == 0:
+            return {"labels": [], "counts": [], "total": 0}
+        all_tokens = pd.Series([t for row in tokens_per_row for t in row])
+        counts = all_tokens.value_counts().head(top_n)
+        return {
+            "labels": counts.index.tolist(),
+            "counts": [int(c) for c in counts.values.tolist()],
+            "total":  int(len(tokens_per_row)),
+        }
+
+    def safety_risk_summary(self):
+        """
+        Return counts/percentages of documented patient-safety risks: fall
+        risk, pressure-injury risk, any recorded allergy, and any active
+        isolation precaution.
+
+        'documented_total' is the number of stays with an ISBAR row at all —
+        percentages are relative to that documented cohort, not to every ED
+        patient, since an undocumented field must never read as "no risk".
+        """
+        df = _read_isbar()
+        documented_total = int(len(df))
+        if documented_total == 0:
+            return {
+                "documented_total": 0,
+                "risks": {
+                    "fall_risk": {"count": 0, "pct": 0},
+                    "pressure_injury_risk": {"count": 0, "pct": 0},
+                    "allergies": {"count": 0, "pct": 0},
+                    "isolation_precautions": {"count": 0, "pct": 0},
+                },
+            }
+
+        def _pct(count):
+            return round(100 * count / documented_total, 1) if documented_total else 0
+
+        fall_count = int((df["fall_risk"].astype(str).str.strip() == "Yes").sum())
+        pressure_count = int((df["pressure_injury_risk"].astype(str).str.strip() == "Yes").sum())
+        allergy_count = int((df["allergies_status"].astype(str).str.strip() == "Yes").sum())
+        isolation_count = int(
+            df["isolation_precautions"].dropna().astype(str).str.strip().isin(
+                ["Contact", "Droplet", "Airborne", "Reverse"]
+            ).sum()
+        )
+
+        return {
+            "documented_total": documented_total,
+            "risks": {
+                "fall_risk":             {"count": fall_count,     "pct": _pct(fall_count)},
+                "pressure_injury_risk":  {"count": pressure_count, "pct": _pct(pressure_count)},
+                "allergies":             {"count": allergy_count,  "pct": _pct(allergy_count)},
+                "isolation_precautions": {"count": isolation_count, "pct": _pct(isolation_count)},
+            },
+        }
+
+    def o2_support_distribution(self):
+        """Return patient counts per oxygen/airway support type."""
+        return _value_counts_chart(_read_isbar(), "o2_support")
+
+    def discharge_transfer_distribution(self):
+        """
+        Return patient counts per planned discharge/transfer destination
+        (Home/Ward/ICU-HDU/OR/Rehab/Other), from the ISBAR handover field.
+
+        Distinct from the existing DailyPatient/LogPatient.destination column
+        (Home vs. Hospital Department, set by the discharge endpoints) — that
+        field uses a different, narrower vocabulary and is left untouched.
+        """
+        return _value_counts_chart(_read_isbar(), "discharge_transfer_plan")
 
     def staff_stats(self):
         """

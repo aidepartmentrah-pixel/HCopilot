@@ -24,11 +24,13 @@ from .wards_manager import WardsManager
 from .daily_patients_manager import DailyPatientsManager
 from .log_patients_manager import LogPatientsManager
 from features.timestamp_utils import validate_timestamp_order, validate_destination
+from features.patient_management.isbar_manager import ISBARManager
 
 router    = APIRouter()
 wards_mgr = WardsManager()
 daily_mgr = DailyPatientsManager()
 log_mgr   = LogPatientsManager()
+isbar_mgr = ISBARManager()
 
 
 class _WardBase(BaseModel):
@@ -413,9 +415,17 @@ async def delete_daily_patient(stay_id: int):
 
 # ── LogPatients ───────────────────────────────────────────────────────────────
 
+_LOG_LIST_BADGE_FIELDS = ["allergies_status", "fall_risk", "pressure_injury_risk",
+                          "isolation_precautions", "clinical_status"]
+
+
 @router.get("/log-patients/list")
 async def get_log_patients():
     """Return all archived (discharged) patient stays from LogPatients.csv.
+
+    Merges in the same small ISBAR badge subset as /api/patients/list (see
+    patient_management/api.py) so the compact table's risk badges work the
+    same way for discharged stays — not the full ISBAR record.
 
     Returns:
         dict: {"patients": [...], "total": <count>}
@@ -424,7 +434,13 @@ async def get_log_patients():
         HTTPException 500: On unexpected errors.
     """
     try:
-        return log_mgr.get_all()
+        result = log_mgr.get_all()
+        stay_ids = [p["stay_id"] for p in result["patients"]]
+        isbar_by_stay = isbar_mgr.get_many(stay_ids)
+        for p in result["patients"]:
+            isbar_row = isbar_by_stay.get(p["stay_id"])
+            p["isbar"] = {f: isbar_row.get(f) for f in _LOG_LIST_BADGE_FIELDS} if isbar_row else None
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -453,6 +469,13 @@ async def get_log_patient_stats():
 async def delete_log_patient(stay_id: int):
     """Remove an archived stay from LogPatients.csv and clear any lingering relation links.
 
+    Also deletes any PatientISBARDetails row for this stay_id — a discharged
+    stay's ISBAR data intentionally survives the DailyPatients -> LogPatients
+    move (see db/models.py:PatientISBARDetails), but a hard-delete of the log
+    entry itself is the end of that stay's lifecycle, so its ISBAR row must
+    not become a permanently orphaned record that a later, unrelated stay
+    reusing the same stay_id would silently inherit.
+
     Args:
         stay_id: URL path parameter — primary key of the log entry to remove.
 
@@ -465,7 +488,9 @@ async def delete_log_patient(stay_id: int):
         HTTPException 500: On unexpected errors.
     """
     try:
-        return log_mgr.delete(stay_id)
+        result = log_mgr.delete(stay_id)
+        isbar_mgr.delete(stay_id)
+        return result
     except HTTPException:
         raise
     except Exception as e:

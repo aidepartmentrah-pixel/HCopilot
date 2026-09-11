@@ -206,6 +206,104 @@ class LogPatient(Base):
     admission_ward_name = Column(String(200), nullable=True)
 
 
+class PatientISBARDetails(Base):
+    """
+    One row per stay_id — optional ISBAR nursing-handover fields (Situation /
+    Background / Assessment / Recommendation) captured during a stay, on top
+    of the core vitals already on DailyPatients/LogPatients.
+
+    Deliberately a SEPARATE table, not extra columns on DailyPatients/
+    LogPatients: PatientManager.add()/modify() (the live API path) round-trip
+    every write through DailyPatientsManager._write_df(), which deletes and
+    fully re-inserts every DailyPatients row from a hardcoded column list —
+    any column not threaded through that list is silently dropped on the next
+    edit of ANY row. A stay_id-keyed side table sidesteps that failure class
+    entirely and needs no changes to the discharge copy logic in
+    beds_display/scheduling, since stay_id is stable across the
+    DailyPatients -> LogPatients move (see ISBARManager).
+
+    stay_id is intentionally NOT a foreign key — see module docstring above
+    for the established rationale; a real FK to DailyPatients.stay_id would
+    be violated the instant a patient is discharged and that row is deleted.
+
+    Checkbox-group ("multi-select") fields are comma-separated strings of
+    fixed short tokens, matching the one existing precedent in this schema
+    (DailyPatient.bed_history) rather than introducing a new JSON column
+    type. "Other" free text is always a separate `<field>_other` column,
+    never concatenated into the multi-select value.
+    """
+    __tablename__ = "PatientISBARDetails"
+
+    stay_id = Column(Integer, primary_key=True, autoincrement=False)
+
+    # ── Initial Vital Signs additions ───────────────────────────────────────
+    blood_glucose       = Column(Float, nullable=True)
+    o2_support          = Column(String(50), nullable=True)
+    o2_flow_rate        = Column(Float, nullable=True)
+    vitals_measured_at  = Column(String(30), nullable=True)
+    vitals_recorded_by  = Column(String(200), nullable=True)
+
+    # ── Situation ────────────────────────────────────────────────────────────
+    reason_for_admission     = Column(String(1000), nullable=True)
+    current_diagnosis        = Column(String(1000), nullable=True)
+    clinical_status          = Column(String(30), nullable=True)
+    immediate_concerns       = Column(String(500), nullable=True)
+    immediate_concerns_other = Column(String(300), nullable=True)
+
+    # ── Background ───────────────────────────────────────────────────────────
+    past_medical_history       = Column(String(500), nullable=True)
+    past_medical_history_other = Column(String(300), nullable=True)
+    surgical_history_flag      = Column(String(10), nullable=True)
+    surgical_history_text      = Column(String(1000), nullable=True)
+    allergies_status           = Column(String(30), nullable=True)
+    allergy_types               = Column(String(200), nullable=True)
+    allergy_substance          = Column(String(500), nullable=True)
+    allergy_reaction           = Column(String(500), nullable=True)
+    isolation_precautions      = Column(String(30), nullable=True)
+    high_alert_meds             = Column(String(300), nullable=True)
+    high_alert_meds_other       = Column(String(300), nullable=True)
+    recent_procedures           = Column(String(300), nullable=True)
+    recent_procedures_other     = Column(String(300), nullable=True)
+    recent_procedure_datetime   = Column(String(30), nullable=True)
+
+    # ── Focused Assessment ───────────────────────────────────────────────────
+    neuro_status          = Column(String(30), nullable=True)
+    telemetry              = Column(String(10), nullable=True)
+    edema                   = Column(String(10), nullable=True)
+    peripheral_pulses       = Column(String(10), nullable=True)
+    diet                    = Column(String(200), nullable=True)
+    npo                      = Column(String(10), nullable=True)
+    swallow_assessment       = Column(String(20), nullable=True)
+    last_bowel_movement      = Column(String(100), nullable=True)
+    voiding                   = Column(String(20), nullable=True)
+    urinary_catheter          = Column(String(10), nullable=True)
+    wounds                    = Column(String(10), nullable=True)
+    fall_risk                 = Column(String(10), nullable=True)
+    pressure_injury_risk      = Column(String(10), nullable=True)
+    mobility_aids             = Column(String(10), nullable=True)
+    lines_tubes_drains        = Column(String(300), nullable=True)
+    intake_ml                 = Column(Float, nullable=True)
+    output_ml                 = Column(Float, nullable=True)
+    critical_lab_results      = Column(String(1000), nullable=True)
+    pending_labs               = Column(String(1000), nullable=True)
+    pending_imaging            = Column(String(1000), nullable=True)
+
+    # ── Recommendation & Handover ───────────────────────────────────────────
+    nursing_priorities            = Column(String(500), nullable=True)
+    nursing_priorities_other      = Column(String(300), nullable=True)
+    meds_due_next_shift           = Column(String(1000), nullable=True)
+    pending_medical_review        = Column(String(1000), nullable=True)
+    consultations                 = Column(String(1000), nullable=True)
+    discharge_transfer_plan       = Column(String(30), nullable=True)
+    discharge_transfer_plan_other = Column(String(300), nullable=True)
+    outstanding_tasks             = Column(String(500), nullable=True)
+    outstanding_tasks_other       = Column(String(300), nullable=True)
+    outgoing_nurse                = Column(String(200), nullable=True)
+    incoming_nurse                = Column(String(200), nullable=True)
+    handover_datetime             = Column(String(30), nullable=True)
+    receiver_ack                  = Column(String(10), nullable=True)
+
+
 class WardDailyCensus(Base):
     """
     One row per (census_date, ward) — a permanent daily snapshot of how many

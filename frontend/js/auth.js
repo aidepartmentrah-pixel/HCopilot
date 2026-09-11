@@ -49,6 +49,7 @@ var HCOPILOT_STATISTICS_TABS = [
     { id: 'doctors',  label: '🩺 Doctors'  },
     { id: 'wards',    label: '🏢 Wards'    },
     { id: 'daily',    label: '📅 Daily Analysis' },
+    { id: 'clinical', label: '🩹 Clinical' },
 ];
 
 // Ordered list used for nav filtering and the section-picker in user management.

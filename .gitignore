@@ -21,3 +21,11 @@ release/
 # Packager output — fully generated, never hand-authored
 /release_packager/
 /.rah/
+
+# Frontend E2E test tooling (Playwright) — dev/test-only, never part of the
+# production image (see frontend/Dockerfile/nginx.conf, which serve the
+# plain HTML/CSS/JS directly with no build step or node_modules).
+frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
+frontend/tests/screenshots/

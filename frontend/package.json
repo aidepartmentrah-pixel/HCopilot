@@ -1,0 +1,11 @@
+{
+  "name": "hcopilot-frontend-e2e",
+  "private": true,
+  "description": "Playwright end-to-end tests for the HCopilot frontend. Dev/test-only — not part of the production Docker image (see Dockerfile/nginx.conf, which serve the plain HTML/CSS/JS in this directory with no build step).",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

@@ -56,6 +56,44 @@ function _formatDatetime(v) {
     } catch (_) { return v; }
 }
 
+// Compact "BP 120/80 · HR 82 · SpO2 98%" cell, reusing the same clinical
+// color-coding already used by the wide-table hrCell/o2Cell helpers rather
+// than inventing new thresholds. Temperature/RR stay available via the
+// cell's title tooltip rather than as separate columns.
+function vitalsSummaryCell(p) {
+    const dash = '<span class="s-null-dash">–</span>';
+    if (p.sbp == null && p.dbp == null && p.heartrate == null && p.o2sat == null) return dash;
+    const parts = [];
+    if (p.sbp != null || p.dbp != null) parts.push('BP ' + (p.sbp ?? '–') + '/' + (p.dbp ?? '–'));
+    if (p.heartrate != null) {
+        const cls = (p.heartrate < 60 || p.heartrate > 100) ? 's-vital-warn' : 's-vital-ok';
+        parts.push('<span class="' + cls + '">HR ' + p.heartrate + '</span>');
+    }
+    if (p.o2sat != null) {
+        const cls = p.o2sat < 95 ? 's-vital-warn' : (p.o2sat >= 98 ? 's-vital-ok' : '');
+        parts.push('<span class="' + cls + '">SpO₂ ' + p.o2sat + '%</span>');
+    }
+    const title = 'Temp ' + (p.temperature != null ? p.temperature + '°C' : '–') +
+                  ' · RR ' + (p.resprate != null ? p.resprate : '–');
+    return '<span class="pat-vitals-cell" title="' + title + '">' + parts.join(' · ') + '</span>';
+}
+
+// Only renders badges that actually apply — no empty placeholder chips —
+// from the small ISBAR subset merged into /list by the backend.
+function riskBadgesCell(isbar) {
+    if (!isbar) return '';
+    const badges = [];
+    if (isbar.allergies_status === 'Yes') badges.push(['allergy', '⚠️ Allergy']);
+    if (isbar.fall_risk === 'Yes') badges.push(['fall', '🚶 Fall Risk']);
+    if (isbar.pressure_injury_risk === 'Yes') badges.push(['pressure', '🟦 Pressure Risk']);
+    if (isbar.isolation_precautions && isbar.isolation_precautions !== 'None') {
+        badges.push(['isolation', '🦠 ' + isbar.isolation_precautions]);
+    }
+    if (badges.length === 0) return '';
+    return '<div class="pat-badges-cell">' + badges.map(([cls, label]) =>
+        '<span class="pat-risk-badge ' + cls + '">' + label + '</span>').join('') + '</div>';
+}
+
 function patAutoOccupation() {
     const arr = document.getElementById('pat-arrival-time').value;
     const occ = document.getElementById('pat-bed-occupation-time');
@@ -66,6 +104,69 @@ function peditAutoOccupation() {
     const arr = document.getElementById('pedit-arrival-time').value;
     const occ = document.getElementById('pedit-bed-occupation-time');
     if (arr && !occ.value) occ.value = arr;
+}
+
+// ── Acuity / pain scale buttons + conditional O2 flow rate (add + edit) ──────
+// Shared by the inline add form (prefix "pat") and the edit modal (prefix
+// "pedit") — both write into the same hidden input id so the existing
+// submitPatientForm()/saveEditPatient() field reads are unaffected.
+
+const O2_SUPPORT_NEEDS_FLOW = ['nasal_cannula', 'simple_mask', 'non_rebreather'];
+
+function _isbarPrefix(mode) { return mode === 'edit' ? 'pedit' : 'pat'; }
+
+function selectPatAcuity(mode, val) {
+    const prefix = _isbarPrefix(mode);
+    document.getElementById(prefix + '-acuity').value = val;
+    document.querySelectorAll('#' + prefix + '-acuity-scale .pat-scale-btn').forEach(b => {
+        b.classList.toggle('selected', parseInt(b.dataset.acuity, 10) === val);
+    });
+    if (mode === 'add') isbarAddDirty = true;
+}
+
+function selectPatPain(mode, val) {
+    const prefix = _isbarPrefix(mode);
+    document.getElementById(prefix + '-pain').value = val;
+    document.querySelectorAll('#' + prefix + '-pain-scale .pat-scale-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.pain === String(val));
+    });
+    if (mode === 'add') isbarAddDirty = true;
+}
+
+function toggleO2FlowRate(mode) {
+    const prefix = _isbarPrefix(mode);
+    const support = document.getElementById(prefix + '-o2-support').value;
+    const wrap = document.getElementById(prefix + '-o2-flow-wrap');
+    wrap.hidden = !O2_SUPPORT_NEEDS_FLOW.includes(support);
+    if (wrap.hidden) document.getElementById(prefix + '-o2-flow-rate').value = '';
+}
+
+// Collects the hand-written "Initial Vital Signs" additions (not part of the
+// metadata-driven sections) into the shape ISBARDetails expects.
+function collectVitalsAdditions(mode) {
+    const prefix = _isbarPrefix(mode);
+    const val = id => { const el = document.getElementById(prefix + '-' + id); return el ? el.value.trim() : ''; };
+    const out = {};
+    if (val('blood-glucose') !== '') out.blood_glucose = parseFloat(val('blood-glucose'));
+    if (val('o2-support') !== '') out.o2_support = val('o2-support');
+    if (val('o2-flow-rate') !== '') out.o2_flow_rate = parseFloat(val('o2-flow-rate'));
+    if (val('vitals-measured-at') !== '') out.vitals_measured_at = val('vitals-measured-at');
+    if (val('vitals-recorded-by') !== '') out.vitals_recorded_by = val('vitals-recorded-by');
+    return out;
+}
+
+function resetVitalsAdditions(mode) {
+    const prefix = _isbarPrefix(mode);
+    ['blood-glucose', 'o2-support', 'o2-flow-rate'].forEach(id => {
+        const el = document.getElementById(prefix + '-' + id);
+        if (el) el.value = '';
+    });
+    const wrap = document.getElementById(prefix + '-o2-flow-wrap');
+    if (wrap) wrap.hidden = true;
+    document.querySelectorAll('#' + prefix + '-acuity-scale .pat-scale-btn, #' + prefix + '-pain-scale .pat-scale-btn')
+        .forEach(b => b.classList.remove('selected'));
+    document.getElementById(prefix + '-acuity').value = '';
+    document.getElementById(prefix + '-pain').value = '';
 }
 
 // ── Auto-ID + Arrival Time Initialization ────────────────────────────────────
@@ -83,6 +184,19 @@ async function loadNextPatientIds() {
 function initPatientForm() {
     loadNextPatientIds();
     document.getElementById('pat-arrival-time').value = _currentDatetimeLocal();
+
+    // Mount the ISBAR accordion + default the "auto" vitals fields exactly
+    // once — initPatientForm() re-runs on every loadPatients() (including
+    // from unrelated onDataChange events elsewhere in the app), so this must
+    // not repeat or it would silently wipe an in-progress ISBAR entry.
+    const mount = document.getElementById('isbar-accordion-add');
+    if (mount && !mount.dataset.mounted) {
+        mountIsbarAccordion('add');
+        mount.dataset.mounted = '1';
+        document.getElementById('pat-vitals-measured-at').value = _currentDatetimeLocal();
+        const u = typeof currentUser === 'function' ? currentUser() : null;
+        document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
+    }
 }
 
 // ── Load & Render ─────────────────────────────────────────────────────────────
@@ -219,21 +333,6 @@ function renderLogPatientsTable(patients) {
         return '<span class="s-acuity ' + cls + '" title="' + (labels[lvl] || lvl) + '">' + v + '</span>';
     };
 
-    const o2Cell   = v => v == null ? dash : '<span class="' + (v < 95 ? 's-vital-warn' : v >= 98 ? 's-vital-ok' : '') + '">' + v + '%</span>';
-    const hrCell   = v => v == null ? dash : '<span class="' + ((v < 60 || v > 100) ? 's-vital-warn' : 's-vital-ok') + '">' + v + '</span>';
-    const tempCell = v => v == null ? dash : '<span class="' + ((v < 35.5 || v > 38.0) ? 's-vital-warn' : '') + '">' + v + '°C</span>';
-    const complaint = v => {
-        if (v == null) return dash;
-        const s = String(v);
-        return s.length > 22 ? '<span title="' + s.replace(/"/g, '&quot;') + '">' + s.slice(0, 22) + '…</span>' : s;
-    };
-
-    const genderBadge = v => {
-        if (!v) return dash;
-        const cls = v === 'Male' ? 'pat-gender-m' : v === 'Female' ? 'pat-gender-f' : 'pat-gender-o';
-        return '<span class="pat-gender-badge ' + cls + '">' + v + '</span>';
-    };
-
     const destinationBadge = v => {
         if (!v) return dash;
         const isHome = v === 'Home';
@@ -244,27 +343,17 @@ function renderLogPatientsTable(patients) {
     };
 
     const rows = patients.map(p =>
-        '<tr>' +
-        '<td class="s-td-id">' + p.subject_id + '</td>' +
+        '<tr class="pat-row" data-view-stayid="' + p.stay_id + '">' +
+        '<td><div style="font-weight:600">' + fmt(p.name) + '</div><span class="s-td-id" style="font-size:11px">#' + p.subject_id + '</span></td>' +
         '<td class="s-td-id">' + p.stay_id + '</td>' +
-        '<td>' + fmt(p.name) + '</td>' +
-        '<td>' + genderBadge(p.gender) + '</td>' +
-        '<td>' + fmt(p.age) + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.arrival_time) + '</td>' +
-        '<td class="pat-td-arrival">' + _formatDatetime(p.departure_time) + '</td>' +
         '<td>' + destinationBadge(p.destination) + '</td>' +
-        '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : dash) + '</td>' +
-        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
-        '<td>' + tempCell(p.temperature) + '</td>' +
-        '<td>' + hrCell(p.heartrate) + '</td>' +
-        '<td>' + fmt(p.resprate) + '</td>' +
-        '<td>' + o2Cell(p.o2sat) + '</td>' +
-        '<td>' + fmt(p.sbp) + '</td>' +
-        '<td>' + fmt(p.dbp) + '</td>' +
-        '<td>' + fmt(p.pain) + '</td>' +
         '<td>' + acuityBadge(p.acuity) + '</td>' +
-        '<td>' + complaint(p.chiefcomplaint) + '</td>' +
+        '<td>' + vitalsSummaryCell(p) + '</td>' +
+        '<td>' + riskBadgesCell(p.isbar) + '</td>' +
         '<td class="s-td-actions">' +
+            '<button class="s-action-btn s-view-btn" data-action="view-log-patient-details" ' +
+                'data-stayid="' + p.stay_id + '">👁️ View</button>' +
             '<button class="s-action-btn s-edit-btn" data-action="edit-log-patient" ' +
                 'data-row=\'' + _safeAttr(JSON.stringify(p)) + '\'>✏️ Edit</button>' +
             '<button class="s-action-btn s-del-btn" data-action="delete-log-patient" ' +
@@ -276,11 +365,9 @@ function renderLogPatientsTable(patients) {
     container.innerHTML =
         '<div class="s-table-wrap"><table class="s-table">' +
         '<thead><tr>' +
-        '<th>Patient ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
-        '<th>Arrival Time</th><th>Departure Time</th><th>Destination</th><th>Bed Occupation</th><th>Bed History</th>' +
-        '<th>Temp</th><th>HR</th><th>RR</th>' +
-        '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
-        '<th style="width:170px">Actions</th>' +
+        '<th>Patient</th><th>Stay ID</th><th>Arrival</th><th>Destination</th><th>Acuity</th>' +
+        '<th>Vitals</th><th>Flags</th>' +
+        '<th style="width:220px">Actions</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
         '</table></div>' +
@@ -333,32 +420,6 @@ function renderPatientsTable(patients) {
         return '<span class="s-acuity ' + cls + '" title="' + (labels[lvl] || lvl) + '">' + v + '</span>';
     };
 
-    const o2Cell = v => {
-        if (v == null) return dash;
-        const cls = v < 95 ? 's-vital-warn' : (v >= 98 ? 's-vital-ok' : '');
-        return '<span class="' + cls + '">' + v + '%</span>';
-    };
-
-    const hrCell = v => {
-        if (v == null) return dash;
-        const cls = (v < 60 || v > 100) ? 's-vital-warn' : 's-vital-ok';
-        return '<span class="' + cls + '">' + v + '</span>';
-    };
-
-    const tempCell = v => {
-        if (v == null) return dash;
-        const cls = (v < 35.5 || v > 38.0) ? 's-vital-warn' : '';
-        return '<span class="' + cls + '">' + v + '°C</span>';
-    };
-
-    const complaint = v => {
-        if (v == null) return dash;
-        const s = String(v);
-        return s.length > 22
-            ? '<span title="' + s.replace(/"/g, '&quot;') + '">' + s.slice(0, 22) + '…</span>'
-            : s;
-    };
-
     const bedCell = p => {
         const b = patientBedMap[p.patient_id];
         if (!b) return dash;
@@ -367,51 +428,31 @@ function renderPatientsTable(patients) {
                '<span class="bed-type-badge type-' + btype.toLowerCase() + '">' + btype + '</span>';
     };
 
-    const genderBadge = v => {
-        if (!v) return dash;
-        const cls = v === 'Male' ? 'pat-gender-m' : v === 'Female' ? 'pat-gender-f' : 'pat-gender-o';
-        return '<span class="pat-gender-badge ' + cls + '">' + v + '</span>';
-    };
-
-    const rows = patients.map(p => {
-        const bed = patientBedMap[p.patient_id];
-        return '<tr>' +
-        '<td class="s-td-id">' + p.patient_id + '</td>' +
+    const rows = patients.map(p =>
+        '<tr class="pat-row" data-view-stayid="' + p.stay_id + '">' +
+        '<td><div style="font-weight:600">' + fmt(p.name) + '</div><span class="s-td-id" style="font-size:11px">#' + p.patient_id + '</span></td>' +
         '<td class="s-td-id">' + p.stay_id + '</td>' +
-        '<td>' + fmt(p.name) + '</td>' +
-        '<td>' + genderBadge(p.gender) + '</td>' +
-        '<td>' + fmt(p.age) + '</td>' +
         '<td class="pat-td-arrival">' + _formatDatetime(p.arrival_time) + '</td>' +
-        '<td class="pat-td-arrival">' + _formatDatetime(p.departure_time) + '</td>' +
-        '<td>' + (p.bed_occupation_time != null ? p.bed_occupation_time : '<span class="s-null-dash">–</span>') + '</td>' +
         '<td>' + bedCell(p) + '</td>' +
-        '<td class="pat-td-bedhist">' + (p.bed_history ? p.bed_history : dash) + '</td>' +
-        '<td>' + tempCell(p.temperature) + '</td>' +
-        '<td>' + hrCell(p.heartrate) + '</td>' +
-        '<td>' + fmt(p.resprate) + '</td>' +
-        '<td>' + o2Cell(p.o2sat) + '</td>' +
-        '<td>' + fmt(p.sbp) + '</td>' +
-        '<td>' + fmt(p.dbp) + '</td>' +
-        '<td>' + fmt(p.pain) + '</td>' +
         '<td>' + acuityBadge(p.acuity) + '</td>' +
-        '<td>' + complaint(p.chiefcomplaint) + '</td>' +
+        '<td>' + vitalsSummaryCell(p) + '</td>' +
+        '<td>' + riskBadgesCell(p.isbar) + '</td>' +
         '<td class="s-td-actions">' +
+            '<button class="s-action-btn s-view-btn" data-action="view-patient-details" ' +
+                'data-stayid="' + p.stay_id + '">👁️ View</button>' +
             '<button class="s-action-btn s-edit-btn" data-action="edit-patient" ' +
                 'data-row=\'' + _safeAttr(JSON.stringify(p)) + '\'>✏️ Edit</button>' +
             '<button class="s-action-btn s-del-btn" data-action="delete-patient" ' +
                 'data-stayid="' + p.stay_id + '">🗑️ Delete</button>' +
         '</td>' +
-        '</tr>';
-    }).join('');
+        '</tr>'
+    ).join('');
 
     container.innerHTML =
         '<div class="s-table-wrap"><table class="s-table">' +
         '<thead><tr>' +
-        '<th>Patient ID</th><th>Stay ID</th><th>Name</th><th>Gender</th><th>Age</th>' +
-        '<th>Arrival Time</th><th>Departure Time</th><th>Bed Occupation</th>' +
-        '<th>Bed</th><th>Bed History</th>' +
-        '<th>Temp</th><th>HR</th><th>RR</th>' +
-        '<th>O₂ Sat</th><th>SBP</th><th>DBP</th><th>Pain</th><th>Acuity</th><th>Chief Complaint</th>' +
+        '<th>Patient</th><th>Stay ID</th><th>Arrival</th><th>Bed</th><th>Acuity</th>' +
+        '<th>Vitals</th><th>Flags</th>' +
         '<th style="width:220px">Actions</th>' +
         '</tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
@@ -428,10 +469,24 @@ document.addEventListener('click', function(e) {
     const editLogBtn    = e.target.closest('[data-action="edit-log-patient"]');
     const delBtn        = e.target.closest('[data-action="delete-patient"]');
     const delLogBtn     = e.target.closest('[data-action="delete-log-patient"]');
+    const viewBtn       = e.target.closest('[data-action="view-patient-details"]');
+    const viewLogBtn    = e.target.closest('[data-action="view-log-patient-details"]');
     if (editBtn)    openEditPatientModal(JSON.parse(editBtn.dataset.row),    'daily');
     if (editLogBtn) openEditPatientModal(JSON.parse(editLogBtn.dataset.row), 'log');
     if (delBtn)     confirmDeletePatient(parseInt(delBtn.dataset.stayid),    'daily');
     if (delLogBtn)  confirmDeletePatient(parseInt(delLogBtn.dataset.stayid), 'log');
+    if (viewBtn || viewLogBtn) {
+        openPatientDetailsModal(parseInt((viewBtn || viewLogBtn).dataset.stayid));
+        return;
+    }
+
+    // Row click (excluding the Actions cell, to avoid double-triggering with
+    // its own buttons) also opens Patient Details — the primary "inspect
+    // this patient" path per the compact-table design.
+    const row = e.target.closest('.pat-row');
+    if (row && !e.target.closest('.s-td-actions')) {
+        openPatientDetailsModal(parseInt(row.dataset.viewStayid));
+    }
 });
 
 // ── Inline Add Form ───────────────────────────────────────────────────────────
@@ -452,6 +507,11 @@ function clearPatientForm() {
      'pat-temperature','pat-heartrate','pat-resprate',
      'pat-o2sat','pat-sbp','pat-dbp','pat-pain','pat-acuity','pat-chiefcomplaint']
         .forEach(id => { document.getElementById(id).value = ''; });
+    resetVitalsAdditions('add');
+    resetIsbarState('add');
+    document.getElementById('pat-vitals-measured-at').value = _currentDatetimeLocal();
+    const u = typeof currentUser === 'function' ? currentUser() : null;
+    document.getElementById('pat-vitals-recorded-by').value = u ? (u.name || u.username || '') : '';
     setPatAddError('');
     initPatientForm();
 }
@@ -511,6 +571,8 @@ async function submitPatientForm() {
         acuity,
         chiefcomplaint
     };
+    const isbarPayload = buildIsbarPayload('add', collectVitalsAdditions('add'));
+    if (isbarPayload) payload.isbar = isbarPayload;
 
     const btn = document.getElementById('pat-add-btn');
     btn.disabled = true; btn.textContent = 'Adding…';
@@ -562,13 +624,44 @@ function openEditPatientModal(row, source) {
     document.getElementById('pedit-o2sat').value               = row.o2sat          != null ? row.o2sat          : '';
     document.getElementById('pedit-sbp').value                 = row.sbp            != null ? row.sbp            : '';
     document.getElementById('pedit-dbp').value                 = row.dbp            != null ? row.dbp            : '';
-    document.getElementById('pedit-pain').value                = row.pain           != null ? row.pain           : '';
-    document.getElementById('pedit-acuity').value              = row.acuity         != null ? row.acuity         : '';
     document.getElementById('pedit-chiefcomplaint').value      = row.chiefcomplaint != null ? row.chiefcomplaint : '';
+    resetVitalsAdditions('edit');
+    const painStr = row.pain != null ? String(row.pain) : '';
+    if (['0','1','2','3','4','5','6','7','8','9','10'].includes(painStr)) {
+        selectPatPain('edit', painStr);
+    } else {
+        document.getElementById('pedit-pain').value = painStr; // free-text legacy value outside 0-10
+    }
+    if (row.acuity != null) selectPatAcuity('edit', Math.round(row.acuity));
     const destGroup = document.getElementById('pedit-destination-group');
     if (destGroup) destGroup.style.display = patEditSource === 'log' ? '' : 'none';
     splitDestination('pedit-destination', 'pedit-destination-detail', row.destination);
     setPatEditError('');
+
+    // ISBAR editing is only offered for active (daily) stays for now — see
+    // data_management/api.py's log-patients/modify endpoint, which doesn't
+    // yet accept an isbar payload (intentionally deferred).
+    const isbarWrap = document.getElementById('pedit-isbar-wrap');
+    if (isbarWrap) isbarWrap.style.display = patEditSource === 'log' ? 'none' : '';
+    if (patEditSource !== 'log') {
+        mountIsbarAccordion('edit');
+        fetch('/api/patients/' + row.stay_id + '/details')
+            .then(r => r.ok ? r.json() : null)
+            .then(details => {
+                if (patEditStayId !== row.stay_id) return; // modal moved on to a different stay
+                if (details && details.isbar) {
+                    loadIsbarStateFromRecord('edit', details.isbar);
+                    const v = details.isbar;
+                    if (v.blood_glucose != null) document.getElementById('pedit-blood-glucose').value = v.blood_glucose;
+                    if (v.o2_support) { document.getElementById('pedit-o2-support').value = v.o2_support; toggleO2FlowRate('edit'); }
+                    if (v.o2_flow_rate != null) document.getElementById('pedit-o2-flow-rate').value = v.o2_flow_rate;
+                    if (v.vitals_measured_at) document.getElementById('pedit-vitals-measured-at').value = String(v.vitals_measured_at).slice(0, 16);
+                    if (v.vitals_recorded_by) document.getElementById('pedit-vitals-recorded-by').value = v.vitals_recorded_by;
+                }
+            })
+            .catch(() => {});
+    }
+
     document.getElementById('patient-edit-modal').style.display = 'block';
 }
 
@@ -636,6 +729,9 @@ async function saveEditPatient() {
     };
     if (patEditSource === 'log') {
         payload.destination = composeDestination('pedit-destination', 'pedit-destination-detail');
+    } else {
+        const isbarPayload = buildIsbarPayload('edit', collectVitalsAdditions('edit'));
+        if (isbarPayload) payload.isbar = isbarPayload;
     }
 
     const btn = document.getElementById('save-patient-edit-btn');
