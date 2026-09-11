@@ -119,6 +119,16 @@
 
 .isbar-accordion { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); }
 
+/* Sections 3-6 are injected as one block into this container (a single flex
+   item of .isbar-accordion above) — without its own gap they'd touch each
+   other with only a border line between them, while sections 1-2 (siblings
+   of this container) get the outer gap. Same gap value everywhere. */
+#isbar-accordion-add, #isbar-accordion-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
 .isbar-section {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -344,19 +354,29 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 }
 .isbar-chip.selected::before { content: '\2713'; font-weight: 700; }
 
-/* ── Vitals-section additions (hand-written in index.html) ──────────────── */
+/* ── Choice-control variants ──────────────────────────────────────────────
+   Three shapes for three different kinds of choice, driven by each field's
+   `choiceStyle` in patient-isbar-fields.js — not one pill style forced onto
+   everything. .isbar-chip(-group) above is the default (short single/multi
+   choice); these two are the explicit opt-in variants. */
 
-.isbar-vitals-o2-flow { transition: opacity 0.15s; }
-.isbar-vitals-o2-flow[hidden] { display: none; }
-
-.pat-pain-scale, .pat-acuity-scale {
-    display: flex; flex-wrap: wrap; gap: 6px;
-}
-.pat-scale-btn {
-    min-width: 32px;
-    padding: 7px 10px;
+/* Segmented — binary/ternary exclusive choice (Yes/No, Yes/No/NKA): one
+   connected control, same visual language as the Pain/Acuity scale so a
+   "this or that" choice always reads the same way across the app. */
+.isbar-choice-segmented {
+    display: flex;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    overflow: hidden;
+    width: fit-content;
+    max-width: 100%;
+}
+.isbar-seg-btn {
+    flex: 1 1 0;
+    min-width: 56px;
+    padding: 7px 14px;
+    border: none;
+    border-right: 1px solid var(--color-border);
     background: var(--color-surface);
     font-size: 12.5px;
     font-weight: 600;
@@ -364,17 +384,171 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     cursor: pointer;
     transition: all 0.12s;
 }
-.pat-scale-btn:hover { border-color: #b9bdf0; color: var(--color-text); }
-.pat-scale-btn.selected {
+.isbar-seg-btn:last-child { border-right: none; }
+.isbar-seg-btn:hover { background: #f5f6fa; color: var(--color-text); }
+.isbar-seg-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; position: relative; z-index: 1; }
+.isbar-seg-btn.selected {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+/* Tiles — long multi-selection (6+ options): full-width responsive grid of
+   bordered tiles with a real checkbox glyph, not a vertical list of pills. */
+.isbar-choice-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+}
+.isbar-tile-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    font-size: 13px;
+    color: var(--color-text);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+.isbar-tile-btn:hover { border-color: #b9bdf0; background: #fafbff; }
+.isbar-tile-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.isbar-tile-btn.selected {
     background: var(--color-primary-soft);
     border-color: var(--color-primary);
-    color: var(--color-primary-hover);
-    font-weight: 700;
+    font-weight: 600;
 }
+.isbar-tile-check {
+    flex: 0 0 auto;
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 4px;
+    background: var(--color-surface);
+    position: relative;
+}
+.isbar-tile-btn.selected .isbar-tile-check {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+}
+.isbar-tile-btn.selected .isbar-tile-check::after {
+    content: '';
+    position: absolute;
+    left: 5px; top: 1px;
+    width: 5px; height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Tiles span the full section width regardless of the section's own column
+   count, matching the free-text-field full-span rule from Wave 2. */
+.isbar-field:has(.isbar-choice-tiles) { grid-column: 1 / -1; }
+
+/* ── Vitals-section additions (hand-written in index.html) ──────────────── */
+
+.isbar-vitals-o2-flow { transition: opacity 0.15s; }
+.isbar-vitals-o2-flow[hidden] { display: none; }
+
+/* Connected segmented scale (Pain 0-10, Acuity 1-5) — one continuous bar
+   colored by severity zone, so the control itself communicates "this end is
+   worse" before the user reads a single label. Zone is a static property of
+   each cell (data-zone="low|mid|high" in the HTML), not computed in JS. */
+.isbar-scale {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    width: 100%;
+}
+.pat-scale-btn {
+    flex: 1 1 0;
+    min-height: 42px;
+    padding: 8px 6px;
+    border: none;
+    border-right: 1px solid rgba(0,0,0,0.06);
+    background: var(--color-surface);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+}
+.pat-scale-btn:last-child { border-right: none; }
+.pat-scale-btn:hover { filter: brightness(0.97); }
+.pat-scale-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; position: relative; z-index: 1; }
+
+.pat-scale-btn[data-zone="low"]  { background: var(--color-success-soft); color: #12523f; }
+.pat-scale-btn[data-zone="mid"]  { background: var(--color-warning-soft); color: #7a4a0c; }
+.pat-scale-btn[data-zone="high"] { background: var(--color-danger-soft);  color: #862929; }
+
+.pat-scale-btn.selected {
+    color: #fff;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6);
+    position: relative;
+    z-index: 1;
+}
+.pat-scale-btn.selected[data-zone="low"]  { background: var(--color-success); }
+.pat-scale-btn.selected[data-zone="mid"]  { background: var(--color-warning); }
+.pat-scale-btn.selected[data-zone="high"] { background: var(--color-danger); }
+
+.isbar-scale-zones {
+    display: flex;
+    margin-top: 6px;
+    gap: 2px;
+}
+.isbar-scale-zone-label {
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding-top: 4px;
+    border-top: 2px solid;
+}
+.isbar-scale-zone-label.zone-low  { color: var(--color-success); border-top-color: var(--color-success); }
+.isbar-scale-zone-label.zone-mid  { color: var(--color-warning); border-top-color: var(--color-warning); }
+.isbar-scale-zone-label.zone-high { color: var(--color-danger);  border-top-color: var(--color-danger); }
 
 .pat-bp-combined { display: flex; align-items: center; gap: 6px; }
 .pat-bp-combined input { text-align: center; }
 .pat-bp-sep { color: #9ca3af; font-weight: 700; }
+
+/* Measurement metadata strip (Measured At + Recorded By) — read as one line
+   of muted metadata, not two more clinical-looking input cards. The inputs
+   stay real and focusable (a nurse can correct an auto-filled value) but are
+   visually demoted: no border/background of their own, small leading icon. */
+.isbar-meta-strip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #f5f6fa;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-top: 2px;
+}
+.isbar-meta-item { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.isbar-meta-icon { width: 15px; height: 15px; flex: 0 0 auto; color: var(--color-text-muted); }
+.isbar-meta-label { font-size: 12.5px; color: var(--color-text-muted); white-space: nowrap; }
+.isbar-meta-sep { color: #c7cbd4; }
+.isbar-meta-input {
+    border: none;
+    background: transparent;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text);
+    padding: 2px 4px;
+    border-radius: 4px;
+    min-width: 0;
+}
+.isbar-meta-input:hover { background: rgba(0,0,0,0.04); }
+.isbar-meta-input:focus {
+    outline: none;
+    background: var(--color-surface);
+    box-shadow: 0 0 0 2px var(--color-primary);
+}
+.isbar-meta-input[type="text"] { width: 160px; }
 
 /* ── Patient Details modal ──────────────────────────────────────────────── */
 

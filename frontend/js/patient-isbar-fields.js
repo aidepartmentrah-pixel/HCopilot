@@ -49,6 +49,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'immediate_concerns', label: 'Current Immediate Concerns', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'respiratory_distress', label: 'Respiratory distress' },
           { value: 'chest_pain', label: 'Chest pain' },
@@ -75,6 +76,7 @@ const ISBAR_METADATA_SECTIONS = [
     fields: [
       {
         id: 'past_medical_history', label: 'Past Medical History', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'hypertension', label: 'Hypertension' },
           { value: 'diabetes', label: 'Diabetes' },
@@ -95,6 +97,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'surgical_history_flag', label: 'Surgical / Procedure History', type: 'radio-group', requiredTier: 'optional',
+        choiceStyle: 'segmented',
         options: ['Yes', 'No'],
       },
       {
@@ -103,6 +106,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'allergies_status', label: 'Allergies', type: 'radio-group', requiredTier: 'optional',
+        choiceStyle: 'segmented',
         options: ['Yes', 'No', 'NKA'],
         optionLabels: { NKA: 'No known allergies' },
       },
@@ -130,6 +134,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'high_alert_meds', label: 'Current High-Alert Medications', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'insulin', label: 'Insulin' },
           { value: 'anticoagulants', label: 'Anticoagulants' },
@@ -146,6 +151,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'recent_procedures', label: 'Recent Procedures / Events (last 24-48h)', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'surgery', label: 'Surgery' },
           { value: 'intubation', label: 'Intubation' },
@@ -183,26 +189,27 @@ const ISBAR_METADATA_SECTIONS = [
     fields: [
       { id: 'neuro_status', label: 'Neurological Status', type: 'radio-group', requiredTier: 'optional',
         options: ['Alert', 'Oriented', 'Confused', 'Drowsy', 'Unresponsive'] },
-      { id: 'telemetry', label: 'Telemetry', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
-      { id: 'edema', label: 'Edema', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
-      { id: 'peripheral_pulses', label: 'Peripheral Pulses', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
+      { id: 'telemetry', label: 'Telemetry', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
+      { id: 'edema', label: 'Edema', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
+      { id: 'peripheral_pulses', label: 'Peripheral Pulses', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
 
       { id: 'diet', label: 'Diet', type: 'text', requiredTier: 'optional' },
-      { id: 'npo', label: 'NPO', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
+      { id: 'npo', label: 'NPO', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
       { id: 'swallow_assessment', label: 'Swallow Assessment', type: 'radio-group', requiredTier: 'optional',
         options: ['Passed', 'Failed', 'Pending'] },
       { id: 'last_bowel_movement', label: 'Last Bowel Movement', type: 'text', requiredTier: 'optional' },
 
       { id: 'voiding', label: 'Voiding', type: 'radio-group', requiredTier: 'optional', options: ['Independent', 'Assisted'] },
-      { id: 'urinary_catheter', label: 'Urinary Catheter', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
-      { id: 'wounds', label: 'Wounds', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
+      { id: 'urinary_catheter', label: 'Urinary Catheter', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
+      { id: 'wounds', label: 'Wounds', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
 
-      { id: 'fall_risk', label: 'Fall Risk', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
-      { id: 'pressure_injury_risk', label: 'Pressure-Injury / Bed-Sore Risk', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
-      { id: 'mobility_aids', label: 'Mobility Aids', type: 'radio-group', requiredTier: 'optional', options: ['Yes', 'No'] },
+      { id: 'fall_risk', label: 'Fall Risk', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
+      { id: 'pressure_injury_risk', label: 'Pressure-Injury / Bed-Sore Risk', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
+      { id: 'mobility_aids', label: 'Mobility Aids', type: 'radio-group', requiredTier: 'optional', choiceStyle: 'segmented', options: ['Yes', 'No'] },
 
       {
         id: 'lines_tubes_drains', label: 'Lines / Tubes / Drains', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'peripheral_iv', label: 'Peripheral IV' },
           { value: 'central_line_picc', label: 'Central Line / PICC' },
@@ -229,6 +236,7 @@ const ISBAR_METADATA_SECTIONS = [
     fields: [
       {
         id: 'nursing_priorities', label: 'Nursing Priorities for Next Shift', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'frequent_vitals', label: 'Frequent vital signs' },
           { value: 'continuous_spo2', label: 'Continuous SpO₂ monitoring' },
@@ -267,6 +275,7 @@ const ISBAR_METADATA_SECTIONS = [
       },
       {
         id: 'outstanding_tasks', label: 'Outstanding Tasks / To-Do', type: 'checkbox-group', requiredTier: 'optional',
+        choiceStyle: 'tiles',
         options: [
           { value: 'medication_admin', label: 'Medication administration' },
           { value: 'blood_sampling', label: 'Blood sampling' },
