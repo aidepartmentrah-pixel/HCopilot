@@ -38,6 +38,7 @@ var HCOPILOT_SETTINGS_TABS = [
     { id: 'datasets',       label: '📂 Datasets',        group: 'Data'       },
     { id: 'relations',      label: '🔗 Relations',       group: 'Data'       },
     { id: 'models',         label: '🤖 Models',          group: 'System'     },
+    { id: 'training',       label: '🧠 Training',        group: 'System'     },
     { id: 'features',       label: '⚙️ Features',        group: 'System'     },
     { id: 'reset',          label: '⚠️ Reset',           group: null         },
 ];

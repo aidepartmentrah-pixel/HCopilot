@@ -42,7 +42,7 @@ var STAB_GROUPS = {
     'stabg-patients':  ['daily-patients', 'log-patients'],
     'stabg-sched':     ['shifts', 'groups'],
     'stabg-data':      ['datasets', 'relations'],
-    'stabg-system':    ['models', 'features'],
+    'stabg-system':    ['models', 'training', 'features'],
 };
 
 // ── Section navigation ────────────────────────────────────────────────────────
@@ -315,6 +315,7 @@ function showSettingsTab(tab) {
 
     // ── Lazy loaders — only triggered on first visit to each tab ──
     if (tab === 'models')       { loadModelFiles(); }
+    if (tab === 'training')     { loadModelTraining(); }
     if (tab === 'relations')    { loadRelationsSettings(); }
     if (tab === 'log-patients') { loadLogPatientsSettings(); }
     if (tab === 'shifts')       { loadShiftsSettings(); }

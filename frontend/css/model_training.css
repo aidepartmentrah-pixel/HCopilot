@@ -1,0 +1,67 @@
+/* model_training.css — Settings → Training tab.
+ *
+ * Only styles not already covered by base.css (.stats-grid/.stat-card/
+ * .loading/.spinner/.empty-state/.error-state), settings.css (.s-btn*,
+ * .s-table*, .s-action-btn), modals.css (.bfm-*/.bdm-*), and models.css
+ * (.model-path, reused verbatim for run-id pills here).
+ */
+
+.settings-training-body { padding: 20px; }
+
+.training-section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #333;
+    margin: 0 0 14px;
+}
+
+.training-history-title { margin-top: 32px; }
+
+.training-live-meta {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 14px;
+}
+
+/* Table action-button color variants — Delete reuses .s-del-btn as-is */
+.s-export-btn  { background: #eff6ff; color: #1d4ed8; }
+.s-export-btn:hover  { background: #1d4ed8; color: #fff; }
+
+.s-promote-btn { background: #f0fdf4; color: #15803d; }
+.s-promote-btn:hover { background: #15803d; color: #fff; }
+
+/* Status / live badges */
+.mt-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.mt-status-completed { background: #eff6ff; color: #1d4ed8; }
+.mt-status-failed    { background: #fef2f2; color: #dc2626; }
+.mt-status-running   { background: #fffbeb; color: #92400e; }
+
+.mt-live-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #ecfdf5;
+    color: #065f46;
+    margin-left: 6px;
+}
+
+/* Train button busy state */
+#train-now-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* Small inline spinner variant for use inside the Train button */
+.spinner-sm {
+    width: 14px;
+    height: 14px;
+    border-width: 2px;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 6px 0 0;
+}

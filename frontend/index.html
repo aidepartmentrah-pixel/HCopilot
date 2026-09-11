@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/flow_prediction.css">
     <link rel="stylesheet" href="css/beds.css">
     <link rel="stylesheet" href="css/models.css">
+    <link rel="stylesheet" href="css/model_training.css">
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/settings.css">
     <link rel="stylesheet" href="css/patients.css">
@@ -1826,6 +1827,7 @@
                     </button>
                     <div class="stab-group-items">
                         <button class="settings-tab" data-tab="models" onclick="showSettingsTab('models')">🤖<span class="stab-label"> Models</span></button>
+                        <button class="settings-tab" data-tab="training" onclick="showSettingsTab('training')">🧠<span class="stab-label"> Training</span></button>
                         <button class="settings-tab" data-tab="features" onclick="showSettingsTab('features')">🎛️<span class="stab-label"> Features</span></button>
                     </div>
                 </div>
@@ -2470,6 +2472,70 @@
                     </div>
                 </div>
 
+                <!-- ── Model Training Card ─────────────────────────────── -->
+                <div class="settings-card" data-settings-tab="training" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🧠 Model Training</h3>
+                            <p>Retrain the Flow Prediction model and manage its training run history</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadModelTraining()">🔄 Refresh</button>
+                            <button class="s-btn s-btn-primary" id="train-now-btn" onclick="startTraining()">🚀 Train Now</button>
+                        </div>
+                    </div>
+                    <div class="settings-training-body">
+                        <h4 class="training-section-title">Currently Live Model</h4>
+                        <div id="training-live-stats">
+                            <div class="loading"><div class="spinner"></div>Loading live model status...</div>
+                        </div>
+
+                        <h4 class="training-section-title training-history-title">Training Run History</h4>
+                        <div id="training-history-container">
+                            <div class="loading"><div class="spinner"></div>Loading training history...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Run Delete Confirmation Modal -->
+                <div id="training-delete-modal" class="modal">
+                    <div class="modal-content bdm-content">
+                        <div class="bdm-header">
+                            <div class="bdm-trash-icon">&#x1F5D1;</div>
+                            <button class="bfm-close bdm-x" onclick="closeTrainingDeleteModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <h3 class="bdm-title">Delete Training Run?</h3>
+                            <p class="bdm-msg">You are about to permanently delete run <strong id="delete-run-label"></strong>.</p>
+                            <p class="bdm-warn">This removes the run's history record and its saved model file. This action cannot be undone.</p>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeTrainingDeleteModal()">Cancel</button>
+                            <button class="modal-btn delete-confirm-btn" onclick="doDeleteRun()">Delete Run</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Run Promote Confirmation Modal -->
+                <div id="training-promote-modal" class="modal">
+                    <div class="modal-content bfm-content" style="max-width:420px">
+                        <div class="bfm-header">
+                            <div class="bfm-header-left">
+                                <span class="bfm-header-icon">⬆️</span>
+                                <h2>Promote Run to Live?</h2>
+                            </div>
+                            <button class="bfm-close" onclick="closeTrainingPromoteModal()">&#x2715;</button>
+                        </div>
+                        <div class="bfm-body">
+                            <p class="bdm-msg">Run <strong id="promote-run-label"></strong> will become the model that serves live Flow Prediction forecasts. No retraining happens — this redeploys the run's existing saved file.</p>
+                        </div>
+                        <div class="bfm-footer">
+                            <button class="modal-btn cancel-btn" onclick="closeTrainingPromoteModal()">Cancel</button>
+                            <button class="s-btn s-btn-primary" onclick="doPromoteRun()">Promote to Live</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── Features Card ─────────────────────────────────── -->
                 <div class="settings-card" data-settings-tab="features" style="display:none">
                     <div class="settings-card-top">
@@ -2901,6 +2967,7 @@
     <script src="js/simulation.js"></script>
     <script src="js/unurgent.js"></script>
     <script src="js/model_files.js"></script>
+    <script src="js/model_training.js"></script>
     <script src="js/statistics.js"></script>
     <script src="js/settings_reset.js"></script>
     <script src="js/auth.js"></script>
