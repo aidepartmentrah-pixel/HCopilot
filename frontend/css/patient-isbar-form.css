@@ -272,6 +272,14 @@ details[open] > .pat-add-top-chevron { transform: rotate(-135deg); }
 }
 .isbar-required-mark { color: var(--color-danger); margin-left: 2px; }
 
+/* A field flagged missing under the "fill it all once started" rule — same
+   danger color as .isbar-required-mark, applied to the input itself so the
+   nurse can spot exactly which of many fields in a section still needs
+   attention, not just a section-level count. */
+.isbar-field-missing .isbar-input,
+.isbar-field-missing .isbar-choice-segmented,
+.isbar-field-missing .isbar-tile-btn { border-color: var(--color-danger); }
+
 .isbar-field-boolean { grid-column: 1 / -1; }
 .isbar-boolean-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--color-text); cursor: pointer; }
 

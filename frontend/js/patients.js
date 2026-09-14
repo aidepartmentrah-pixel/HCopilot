@@ -318,8 +318,10 @@ function refreshPatientCoreSectionStatus() {
 function updatePatAddRequiredRemaining() {
     const el = document.getElementById('pat-add-required-remaining');
     if (!el) return;
-    const requiredIds = ['pat-name', 'pat-gender', 'pat-age', 'pat-arrival-time', 'pat-chiefcomplaint', 'pat-acuity',
-        'pat-temperature', 'pat-heartrate', 'pat-resprate', 'pat-o2sat', 'pat-sbp', 'pat-dbp', 'pat-pain'];
+    // Only Patient & Arrival is unconditionally required to add a patient —
+    // Vitals and the ISBAR sections are optional-but-all-or-nothing once
+    // started (see their own section status pills for that).
+    const requiredIds = ['pat-name', 'pat-gender', 'pat-age', 'pat-arrival-time', 'pat-chiefcomplaint', 'pat-acuity'];
     const remaining = requiredIds.filter(id => !document.getElementById(id).value).length;
     el.textContent = remaining > 0 ? `Required fields remaining: ${remaining}` : 'All required fields complete';
 }
@@ -653,6 +655,46 @@ function failPatAddValidation(msg, fieldId) {
     if (sectionId) openIsbarSection('add', sectionId);
 }
 
+// Vitals is optional overall but "fill it all once started" (mirrors the
+// backend's check_vitals_group in patient_management/api.py) — only Patient
+// & Arrival is unconditionally required. Returns {key, msg} on failure
+// (key is the bare field name, e.g. 'temperature' — callers prefix it with
+// their own DOM id scheme), or null if the group is either untouched or
+// fully valid.
+function validateVitalsGroup(vals) {
+    const checks = [
+        ['temperature', vals.temperature, 26, 46, '°C', 'Temperature'],
+        ['heartrate',   vals.heartrate,   20, 300, 'bpm', 'Heart rate'],
+        ['resprate',    vals.resprate,    4, 100, 'breaths/min', 'Resp. rate'],
+        ['o2sat',       vals.o2sat,       0, 100, '%', 'O₂ saturation'],
+        ['sbp',         vals.sbp,         40, 300, 'mmHg', 'SBP'],
+        ['dbp',         vals.dbp,         20, 200, 'mmHg', 'DBP'],
+    ];
+    const anyFilled = checks.some(c => c[1] !== null) || !!vals.pain;
+    if (!anyFilled) return null;
+    for (const [key, v, min, max, unit, label] of checks) {
+        if (v === null) return { key, msg: `${label} is required once any vital is entered.` };
+        if (v < min || v > max) return { key, msg: `${label} must be between ${min} and ${max} ${unit}.` };
+    }
+    if (!vals.pain) return { key: 'pain', msg: 'Pain is required once any vital is entered.' };
+    return null;
+}
+
+// Pre-submit check for the 4 ISBAR metadata sections' "fill it all once
+// started" rule — gives immediate feedback instead of waiting for the
+// backend's mirrored check_isbar validator to 422. Returns {sectionId, msg}
+// on the first incomplete section found, or null if all are fine.
+function validateIsbarSectionsCompleteness(mode) {
+    for (const section of ISBAR_METADATA_SECTIONS) {
+        const missing = isbarSectionMissingFields(mode, section.id);
+        if (missing.length > 0) {
+            return { sectionId: section.id,
+                msg: `${section.title} is incomplete — fill in the ${missing.length} remaining field${missing.length > 1 ? 's' : ''}, or clear the section entirely.` };
+        }
+    }
+    return null;
+}
+
 function clearPatientForm() {
     ['pat-name','pat-gender','pat-age',
      'pat-departure-time','pat-bed-occupation-time',
@@ -694,15 +736,16 @@ async function submitPatientForm() {
     if (!gender)               { failPatAddValidation('Gender is required.', 'pat-gender'); return; }
     if (age    === null || age    < 0)                      { failPatAddValidation('Age is required and must be a positive number.', 'pat-age'); return; }
     if (!arrival)              { failPatAddValidation('Arrival time is required.', 'pat-arrival-time'); return; }
-    if (temp   === null || temp   < 26  || temp   > 46)  { failPatAddValidation('Temperature is required and must be between 26 and 46 °C.', 'pat-temperature'); return; }
-    if (hr     === null || hr     < 20  || hr     > 300) { failPatAddValidation('Heart rate is required and must be between 20 and 300 bpm.', 'pat-heartrate'); return; }
-    if (rr     === null || rr     < 4   || rr     > 100) { failPatAddValidation('Resp. rate is required and must be between 4 and 100.', 'pat-resprate'); return; }
-    if (o2     === null || o2     < 0   || o2     > 100) { failPatAddValidation('O₂ saturation is required and must be between 0 and 100 %.', 'pat-o2sat'); return; }
-    if (sbp    === null || sbp    < 40  || sbp    > 300) { failPatAddValidation('SBP is required and must be between 40 and 300 mmHg.', 'pat-sbp'); return; }
-    if (dbp    === null || dbp    < 20  || dbp    > 200) { failPatAddValidation('DBP is required and must be between 20 and 200 mmHg.', 'pat-dbp'); return; }
-    if (!pain)                 { failPatAddValidation('Pain is required.', 'pat-pain'); return; }
     if (acuity === null || acuity < 1   || acuity > 5)   { failPatAddValidation('Acuity is required and must be between 1 and 5.', 'pat-acuity'); return; }
     if (!chiefcomplaint)       { failPatAddValidation('Chief complaint is required.', 'pat-chiefcomplaint'); return; }
+
+    // Initial Vital Signs is optional but "fill it all once started".
+    const vitalsErr = validateVitalsGroup({ temperature: temp, heartrate: hr, resprate: rr, o2sat: o2, sbp, dbp, pain });
+    if (vitalsErr) { failPatAddValidation(vitalsErr.msg, 'pat-' + vitalsErr.key); return; }
+
+    // The 4 ISBAR metadata sections are optional but "fill it all once started".
+    const sectionErr = validateIsbarSectionsCompleteness('add');
+    if (sectionErr) { failPatAddValidation(sectionErr.msg, null); openIsbarSection('add', sectionErr.sectionId); return; }
 
     const payload = {
         patient_id:          patientId,
@@ -869,15 +912,24 @@ async function saveEditPatient() {
     if (!gender)                { setPatEditError('Gender is required.'); return; }
     if (age    === null || age    < 0)                      { setPatEditError('Age is required and must be a positive number.'); return; }
     if (!arrival)               { setPatEditError('Arrival time is required.'); return; }
-    if (temp   === null || temp   < 26  || temp   > 46)  { setPatEditError('Temperature is required and must be between 26 and 46 °C.'); return; }
-    if (hr     === null || hr     < 20  || hr     > 300) { setPatEditError('Heart rate is required and must be between 20 and 300 bpm.'); return; }
-    if (rr     === null || rr     < 4   || rr     > 100) { setPatEditError('Resp. rate is required and must be between 4 and 100.'); return; }
-    if (o2     === null || o2     < 0   || o2     > 100) { setPatEditError('O₂ sat is required and must be between 0 and 100 %.'); return; }
-    if (sbp    === null || sbp    < 40  || sbp    > 300) { setPatEditError('SBP is required and must be between 40 and 300 mmHg.'); return; }
-    if (dbp    === null || dbp    < 20  || dbp    > 200) { setPatEditError('DBP is required and must be between 20 and 200 mmHg.'); return; }
-    if (!pain)                  { setPatEditError('Pain is required.'); return; }
     if (acuity === null || acuity < 1   || acuity > 5)   { setPatEditError('Acuity is required and must be between 1 and 5.'); return; }
     if (!chiefcomplaint)        { setPatEditError('Chief complaint is required.'); return; }
+
+    // Initial Vital Signs is optional but "fill it all once started".
+    const vitalsErr = validateVitalsGroup({ temperature: temp, heartrate: hr, resprate: rr, o2sat: o2, sbp, dbp, pain });
+    if (vitalsErr) { setPatEditError(vitalsErr.msg); return; }
+
+    if (patEditSource !== 'log') {
+        // The 4 ISBAR metadata sections are optional but "fill it all once
+        // started" — only meaningful for the daily/active edit path (log
+        // patients don't carry live ISBAR data here).
+        const sectionErr = validateIsbarSectionsCompleteness('edit');
+        if (sectionErr) {
+            setPatEditError(sectionErr.msg);
+            openIsbarSection('edit', sectionErr.sectionId);
+            return;
+        }
+    }
 
     // Log patients API expects subject_id; daily patients API expects patient_id
     const idField = patEditSource === 'log' ? 'subject_id' : 'patient_id';

@@ -33,14 +33,28 @@ test.describe('Patient Details view', () => {
         arrival_time: '2026-01-01T08:00', chiefcomplaint: 'Shortness of breath',
         temperature: 37.8, heartrate: 88, resprate: 20, o2sat: 93, sbp: 132, dbp: 84,
         pain: '4', acuity: 2,
+        // Every field below is required together within its section under the
+        // "fill it all once started" rule (see check_isbar's
+        // _group_all_or_nothing calls) — each of the 4 sections here is
+        // touched, so each must be fully completed.
         isbar: {
+          reason_for_admission: 'Progressive dyspnea', current_diagnosis: 'Possible pneumonia',
           clinical_status: 'Deteriorating',
           immediate_concerns: 'respiratory_distress,sepsis',
+          surgical_history_flag: 'No',
           allergies_status: 'Yes', allergy_substance: 'Latex', allergy_reaction: 'Hives',
           isolation_precautions: 'Contact',
-          fall_risk: 'Yes', pressure_injury_risk: 'No',
+          neuro_status: 'Alert', telemetry: 'Yes', edema: 'No', peripheral_pulses: 'Yes',
+          diet: 'Regular', npo: 'No', swallow_assessment: 'Passed', last_bowel_movement: 'Today',
+          voiding: 'Independent', urinary_catheter: 'No', wounds: 'No',
+          fall_risk: 'Yes', pressure_injury_risk: 'No', mobility_aids: 'No',
+          intake_ml: 400, output_ml: 250,
+          critical_lab_results: 'None', pending_labs: 'ABG', pending_imaging: 'Chest X-ray',
+          meds_due_next_shift: 'Ceftriaxone 1g', pending_medical_review: 'Pulmonology',
+          consultations: 'Pulmonology',
           discharge_transfer_plan: 'icu_hdu',
-          outgoing_nurse: 'PLAYWRIGHT_NURSE',
+          outgoing_nurse: 'PLAYWRIGHT_NURSE', incoming_nurse: 'PLAYWRIGHT_NURSE_2',
+          handover_datetime: '2026-01-01T20:00',
         },
       },
     });

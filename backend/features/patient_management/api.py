@@ -29,13 +29,18 @@ class _PatientBase(BaseModel):
     arrival_time: str
     departure_time: Optional[str] = None
     bed_occupation_time: Optional[str] = None
-    temperature: float
-    heartrate:   float
-    resprate:    float
-    o2sat:       float
-    sbp:         float
-    dbp:         float
-    pain:        str
+    # Initial Vital Signs is optional overall (only Patient & Arrival is a hard
+    # requirement to add a patient), but once any one of these 7 is filled the
+    # rest must be too — see check_vitals_group below. Blood glucose / O2
+    # support stay independently optional even then (situational, not part of
+    # the universal vitals set).
+    temperature: Optional[float] = None
+    heartrate:   Optional[float] = None
+    resprate:    Optional[float] = None
+    o2sat:       Optional[float] = None
+    sbp:         Optional[float] = None
+    dbp:         Optional[float] = None
+    pain:        Optional[str] = None
     acuity:      float
     chiefcomplaint: str
 
@@ -46,7 +51,7 @@ class _PatientBase(BaseModel):
             raise ValueError('must be a positive integer')
         return v
 
-    @field_validator('name', 'gender', 'arrival_time', 'pain', 'chiefcomplaint')
+    @field_validator('name', 'gender', 'arrival_time', 'chiefcomplaint')
     @classmethod
     def check_required_str(cls, v: str) -> str:
         if not v or not v.strip():
@@ -110,6 +115,19 @@ class _PatientBase(BaseModel):
             raise ValueError('expected between 1 (Immediate) and 5 (Non-Urgent)')
         return v
 
+    @model_validator(mode="after")
+    def check_vitals_group(self):
+        # "Fill it all once started": Initial Vital Signs has no top-level
+        # requirement, but a patient with 2 of 7 vitals recorded is worse than
+        # either 0 or 7 — so once any one is present, the rest must be too.
+        vitals = {"temperature": self.temperature, "heartrate": self.heartrate, "resprate": self.resprate,
+                  "o2sat": self.o2sat, "sbp": self.sbp, "dbp": self.dbp, "pain": self.pain}
+        filled = {k: v for k, v in vitals.items() if v not in (None, "")}
+        if filled and len(filled) < len(vitals):
+            missing = ", ".join(k for k in vitals if k not in filled)
+            raise ValueError(f"Initial Vital Signs is incomplete once started — missing: {missing}")
+        return self
+
 
 # ── ISBAR nursing-handover fields ───────────────────────────────────────────
 # Every field here is optional (see plan decision: today's required fields
@@ -155,6 +173,22 @@ def _split_csv(v: Optional[str]) -> list[str]:
     if not v:
         return []
     return [t.strip() for t in v.split(",") if t.strip()]
+
+
+def _group_all_or_nothing(section_label: str, fields: list[tuple[str, object]], also_touched: tuple = ()):
+    # "Fill it all once started" — mirrors the frontend's per-section rule
+    # (see patient-isbar-form.js updateIsbarSectionStatus). `fields` holds
+    # only currently-visible, non-exempt fields (checkbox-group/boolean and
+    # conditionally-hidden fields are excluded by the caller); `also_touched`
+    # carries the raw values of exempt fields that still count toward "was
+    # this section touched at all" even though they don't have to be filled
+    # themselves (an empty multi-select or unchecked box is a legitimate
+    # answer, not "not answered yet").
+    filled = [label for label, v in fields if v not in (None, "")]
+    touched = bool(filled) or any(v not in (None, "", []) for v in also_touched)
+    if touched and len(filled) < len(fields):
+        missing = ", ".join(label for label, v in fields if v in (None, ""))
+        raise ValueError(f"{section_label} is incomplete — fill in: {missing} (or leave the whole section blank)")
 
 
 def _check_allowed(field: str, v: Optional[str], allowed: set[str], multi: bool = False):
@@ -289,6 +323,60 @@ class ISBARDetails(BaseModel):
         if self.discharge_transfer_plan == "other":
             if not (self.discharge_transfer_plan_other and self.discharge_transfer_plan_other.strip()):
                 raise ValueError("discharge_transfer_plan_other is required when discharge_transfer_plan is 'other'")
+
+        # Section completeness ("fill it all once started")
+        _group_all_or_nothing("Situation", [
+            ("reason_for_admission", self.reason_for_admission),
+            ("current_diagnosis", self.current_diagnosis),
+            ("clinical_status", self.clinical_status),
+        ] + ([("immediate_concerns_other", self.immediate_concerns_other)]
+             if "other" in _split_csv(self.immediate_concerns) else []),
+            also_touched=(self.immediate_concerns,))
+
+        _group_all_or_nothing("Background", [
+            ("surgical_history_flag", self.surgical_history_flag),
+            ("allergies_status", self.allergies_status),
+            ("isolation_precautions", self.isolation_precautions),
+        ] + ([("surgical_history_text", self.surgical_history_text)] if self.surgical_history_flag == "Yes" else [])
+          + ([("allergy_substance", self.allergy_substance), ("allergy_reaction", self.allergy_reaction)]
+             if self.allergies_status == "Yes" else [])
+          + ([("past_medical_history_other", self.past_medical_history_other)]
+             if "other" in _split_csv(self.past_medical_history) else [])
+          + ([("high_alert_meds_other", self.high_alert_meds_other)]
+             if "other" in _split_csv(self.high_alert_meds) else [])
+          + ([("recent_procedures_other", self.recent_procedures_other)]
+             if "other" in _split_csv(self.recent_procedures) else [])
+          + ([("recent_procedure_datetime", self.recent_procedure_datetime)] if self.recent_procedures else []),
+            also_touched=(self.past_medical_history, self.allergy_types, self.high_alert_meds, self.recent_procedures))
+
+        _group_all_or_nothing("Focused Assessment", [
+            ("neuro_status", self.neuro_status), ("telemetry", self.telemetry),
+            ("edema", self.edema), ("peripheral_pulses", self.peripheral_pulses),
+            ("diet", self.diet), ("npo", self.npo),
+            ("swallow_assessment", self.swallow_assessment), ("last_bowel_movement", self.last_bowel_movement),
+            ("voiding", self.voiding), ("urinary_catheter", self.urinary_catheter), ("wounds", self.wounds),
+            ("fall_risk", self.fall_risk), ("pressure_injury_risk", self.pressure_injury_risk),
+            ("mobility_aids", self.mobility_aids),
+            ("intake_ml", self.intake_ml), ("output_ml", self.output_ml),
+            ("critical_lab_results", self.critical_lab_results), ("pending_labs", self.pending_labs),
+            ("pending_imaging", self.pending_imaging),
+        ], also_touched=(self.lines_tubes_drains,))
+
+        _group_all_or_nothing("Recommendation & Handover", [
+            ("meds_due_next_shift", self.meds_due_next_shift),
+            ("pending_medical_review", self.pending_medical_review),
+            ("consultations", self.consultations),
+            ("discharge_transfer_plan", self.discharge_transfer_plan),
+            ("outgoing_nurse", self.outgoing_nurse),
+            ("incoming_nurse", self.incoming_nurse),
+            ("handover_datetime", self.handover_datetime),
+        ] + ([("nursing_priorities_other", self.nursing_priorities_other)]
+             if "other" in _split_csv(self.nursing_priorities) else [])
+          + ([("discharge_transfer_plan_other", self.discharge_transfer_plan_other)]
+             if self.discharge_transfer_plan == "other" else [])
+          + ([("outstanding_tasks_other", self.outstanding_tasks_other)]
+             if "other" in _split_csv(self.outstanding_tasks) else []),
+            also_touched=(self.nursing_priorities, self.outstanding_tasks, self.receiver_ack))
 
         return self
 

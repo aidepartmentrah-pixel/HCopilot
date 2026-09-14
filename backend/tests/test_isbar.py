@@ -56,8 +56,11 @@ def test_patient_add_with_full_isbar_fields_roundtrip(client):
         "fall_risk": "Yes", "pressure_injury_risk": "No", "mobility_aids": "No",
         "lines_tubes_drains": "peripheral_iv",
         "intake_ml": 500, "output_ml": 300,
+        "last_bowel_movement": "Yesterday", "critical_lab_results": "None",
+        "pending_labs": "CBC", "pending_imaging": "CXR",
         "nursing_priorities": "frequent_vitals,pain_reassessment",
         "meds_due_next_shift": "Aspirin 81mg",
+        "pending_medical_review": "Cardiology consult", "consultations": "Cardiology",
         "discharge_transfer_plan": "icu_hdu",
         "outstanding_tasks": "blood_sampling",
         "outgoing_nurse": "PYTEST_OUT", "incoming_nurse": "PYTEST_IN",
@@ -87,23 +90,31 @@ def test_isbar_edit_roundtrip(client):
         resp = client.post("/api/patients/add", json=_base_payload(patient_id, stay_id))
         assert resp.status_code == 200, resp.text
 
+        # Situation's 3 non-exempt fields (reason_for_admission/current_diagnosis/
+        # clinical_status) must all be present together — "fill it all once
+        # started" (see check_isbar's _group_all_or_nothing calls).
         modify_payload = _base_payload(patient_id, stay_id)
         del modify_payload["stay_id"]
-        modify_payload["isbar"] = {"clinical_status": "Stable", "fall_risk": "No"}
+        modify_payload["isbar"] = {
+            "reason_for_admission": "Chest pain", "current_diagnosis": "Rule out ACS",
+            "clinical_status": "Stable",
+        }
         resp = client.put(f"/api/patients/modify/{stay_id}", json=modify_payload)
         assert resp.status_code == 200, resp.text
 
         resp = client.get(f"/api/patients/{stay_id}/details")
         assert resp.json()["isbar"]["clinical_status"] == "Stable"
 
-        modify_payload["isbar"] = {"clinical_status": "Critical", "fall_risk": "Yes"}
+        modify_payload["isbar"] = {
+            "reason_for_admission": "Chest pain", "current_diagnosis": "Rule out ACS",
+            "clinical_status": "Critical",
+        }
         resp = client.put(f"/api/patients/modify/{stay_id}", json=modify_payload)
         assert resp.status_code == 200, resp.text
 
         resp = client.get(f"/api/patients/{stay_id}/details")
         body = resp.json()["isbar"]
         assert body["clinical_status"] == "Critical"
-        assert body["fall_risk"] == "Yes"
     finally:
         client.delete(f"/api/patients/delete/{stay_id}")
 
@@ -126,7 +137,10 @@ def test_isbar_edit_omitting_a_field_preserves_its_existing_value(client):
 
         modify_payload = _base_payload(patient_id, stay_id)
         del modify_payload["stay_id"]
-        modify_payload["isbar"] = {"clinical_status": "Stable"}
+        modify_payload["isbar"] = {
+            "reason_for_admission": "Chest pain", "current_diagnosis": "Rule out ACS",
+            "clinical_status": "Stable",
+        }
         resp = client.put(f"/api/patients/modify/{stay_id}", json=modify_payload)
         assert resp.status_code == 200, resp.text
 
@@ -143,7 +157,10 @@ def test_isbar_optional_fields_can_be_omitted(client):
     patient_id, stay_id = _next_ids(client)
     try:
         payload = _base_payload(patient_id, stay_id)
-        payload["isbar"] = {"clinical_status": "Stable"}
+        payload["isbar"] = {
+            "reason_for_admission": "Chest pain", "current_diagnosis": "Rule out ACS",
+            "clinical_status": "Stable",
+        }
         resp = client.post("/api/patients/add", json=payload)
         assert resp.status_code == 200, resp.text
 
@@ -199,8 +216,10 @@ def test_isbar_survives_discharge(client):
 
     try:
         payload = _base_payload(patient_id, stay_id)
-        payload["isbar"] = {"clinical_status": "Deteriorating", "fall_risk": "Yes",
-                             "discharge_transfer_plan": "ward"}
+        payload["isbar"] = {
+            "reason_for_admission": "Chest pain", "current_diagnosis": "Rule out ACS",
+            "clinical_status": "Deteriorating",
+        }
         resp = client.post("/api/patients/add", json=payload)
         assert resp.status_code == 200, resp.text
 
@@ -217,7 +236,6 @@ def test_isbar_survives_discharge(client):
         assert body["source"] == "log"
         assert body["isbar"] is not None
         assert body["isbar"]["clinical_status"] == "Deteriorating"
-        assert body["isbar"]["fall_risk"] == "Yes"
 
         resp = client.delete(f"/api/data/log-patients/delete/{stay_id}")
         assert resp.status_code == 200, resp.text
@@ -251,6 +269,89 @@ def test_existing_rows_with_null_isbar_still_readable(client):
 def test_patient_details_404_for_unknown_stay(client):
     resp = client.get("/api/patients/999999999/details")
     assert resp.status_code == 404
+
+
+def _arrival_only_payload(patient_id, stay_id):
+    # Only Patient & Arrival's fixed required fields — no vitals at all.
+    return {
+        "patient_id": patient_id, "stay_id": stay_id,
+        "name": "PYTEST_NOVITALS", "gender": "F", "age": 45,
+        "acuity": 2, "chiefcomplaint": "PYTEST",
+        "arrival_time": "2026-01-01T00:00",
+    }
+
+
+def test_patient_add_with_zero_vitals_succeeds(client):
+    # Only Patient & Arrival is unconditionally required to add a patient —
+    # Initial Vital Signs is optional overall.
+    patient_id, stay_id = _next_ids(client)
+    try:
+        resp = client.post("/api/patients/add", json=_arrival_only_payload(patient_id, stay_id))
+        assert resp.status_code == 200, resp.text
+        resp = client.get(f"/api/patients/{stay_id}/details")
+        assert resp.json()["temperature"] is None
+    finally:
+        client.delete(f"/api/patients/delete/{stay_id}")
+
+
+def test_patient_add_with_partial_vitals_rejected(client):
+    # "Fill it all once started" — recording only 1 of the 7 core vitals is
+    # rejected rather than silently accepted.
+    patient_id, stay_id = _next_ids(client)
+    payload = _arrival_only_payload(patient_id, stay_id)
+    payload["temperature"] = 37.0
+    resp = client.post("/api/patients/add", json=payload)
+    assert resp.status_code == 422, resp.text
+    resp2 = client.get(f"/api/patients/{stay_id}/details")
+    assert resp2.status_code == 404
+
+
+def test_patient_add_with_all_vitals_succeeds(client):
+    patient_id, stay_id = _next_ids(client)
+    try:
+        resp = client.post("/api/patients/add", json=_base_payload(patient_id, stay_id))
+        assert resp.status_code == 200, resp.text
+        resp = client.get(f"/api/patients/{stay_id}/details")
+        assert resp.json()["temperature"] == 37.0
+    finally:
+        client.delete(f"/api/patients/delete/{stay_id}")
+
+
+@pytest.mark.parametrize("partial_isbar", [
+    {"clinical_status": "Stable"},                       # Situation: missing reason_for_admission/current_diagnosis
+    {"immediate_concerns": "chest_pain"},                 # Situation, touched only via an exempt checkbox-group field
+    {"surgical_history_flag": "No"},                      # Background: missing allergies_status/isolation_precautions
+    {"fall_risk": "Yes"},                                 # Focused Assessment: missing ~18 sibling fields
+    {"discharge_transfer_plan": "home"},                  # Recommendation: missing sibling fields
+])
+def test_isbar_section_partial_fill_rejected(client, partial_isbar):
+    # "Fill it all once started" applies to each of the 4 ISBAR sections
+    # independently of the specific conditional-required checks above.
+    patient_id, stay_id = _next_ids(client)
+    payload = _base_payload(patient_id, stay_id)
+    payload["isbar"] = partial_isbar
+    resp = client.post("/api/patients/add", json=payload)
+    assert resp.status_code == 422, resp.text
+    resp2 = client.get(f"/api/patients/{stay_id}/details")
+    assert resp2.status_code == 404
+
+
+def test_isbar_section_untouched_is_fine(client):
+    # Confirms the rule only fires once a section is touched — an ISBAR
+    # payload that only fills Background leaves Situation/Focused/
+    # Recommendation untouched and unblocked.
+    patient_id, stay_id = _next_ids(client)
+    try:
+        payload = _base_payload(patient_id, stay_id)
+        payload["isbar"] = {
+            "surgical_history_flag": "No", "allergies_status": "No", "isolation_precautions": "None",
+        }
+        resp = client.post("/api/patients/add", json=payload)
+        assert resp.status_code == 200, resp.text
+        resp = client.get(f"/api/patients/{stay_id}/details")
+        assert resp.json()["isbar"]["allergies_status"] == "No"
+    finally:
+        client.delete(f"/api/patients/delete/{stay_id}")
 
 
 @pytest.mark.parametrize("path", [

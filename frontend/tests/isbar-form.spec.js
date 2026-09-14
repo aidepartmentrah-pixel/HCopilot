@@ -100,7 +100,11 @@ test.describe('ISBAR entry form', () => {
     await page.fill('#pat-o2-flow-rate', '2');
 
     // ── 3. Situation (+ conditional "Other" text) ──────────────────────────
+    // Situation is optional but "fill it all once started" — every field
+    // below is required together the moment any one of them is touched.
     await page.click('#isbar-details-situation-add summary');
+    await page.fill('[data-field-id="reason_for_admission"]', 'Chest pain, 2 hours duration');
+    await page.fill('[data-field-id="current_diagnosis"]', 'Rule out ACS');
     await page.click('[data-field-id="clinical_status"][data-radio-value="Close monitoring"]');
     await expect(page.locator('[data-field-id="immediate_concerns_other"]')).toHaveCount(0);
     await page.click('[data-field-id="immediate_concerns"][data-checkbox-value="chest_pain"]');
@@ -109,8 +113,11 @@ test.describe('ISBAR entry form', () => {
     await page.fill('[data-field-id="immediate_concerns_other"]', 'Palpitations');
 
     // ── 4. Background (+ conditional allergy fields) ───────────────────────
+    // Background's other required-once-started field (surgical_history_flag)
+    // must also be set — same "fill it all once started" rule as Situation.
     await page.click('#isbar-details-background-add summary');
     await expect(page.locator('[data-field-id="allergy_substance"]')).toHaveCount(0);
+    await page.click('[data-field-id="surgical_history_flag"][data-radio-value="No"]');
     await page.click('[data-field-id="allergies_status"][data-radio-value="Yes"]');
     await expect(page.locator('[data-field-id="allergy_substance"]')).toBeVisible();
     await page.fill('[data-field-id="allergy_substance"]', 'Penicillin');
@@ -125,15 +132,42 @@ test.describe('ISBAR entry form', () => {
     await expect(page.locator('[data-field-id="allergy_reaction"]')).toHaveValue('Rash');
 
     // ── 5. Focused Assessment ───────────────────────────────────────────────
+    // Focused Assessment has no checkbox-group/boolean-exempt fields besides
+    // lines_tubes_drains, so touching any one of its ~19 fields requires all
+    // the rest under "fill it all once started" — fill every one.
     await page.click('#isbar-details-focused-add summary');
-    await page.click('[data-field-id="fall_risk"][data-radio-value="Yes"]');
     await page.click('[data-field-id="neuro_status"][data-radio-value="Alert"]');
+    await page.click('[data-field-id="telemetry"][data-radio-value="No"]');
+    await page.click('[data-field-id="edema"][data-radio-value="No"]');
+    await page.click('[data-field-id="peripheral_pulses"][data-radio-value="Yes"]');
+    await page.fill('[data-field-id="diet"]', 'Regular');
+    await page.click('[data-field-id="npo"][data-radio-value="No"]');
+    await page.click('[data-field-id="swallow_assessment"][data-radio-value="Passed"]');
+    await page.fill('[data-field-id="last_bowel_movement"]', 'Today');
+    await page.click('[data-field-id="voiding"][data-radio-value="Independent"]');
+    await page.click('[data-field-id="urinary_catheter"][data-radio-value="No"]');
+    await page.click('[data-field-id="wounds"][data-radio-value="No"]');
+    await page.click('[data-field-id="fall_risk"][data-radio-value="Yes"]');
+    await page.click('[data-field-id="pressure_injury_risk"][data-radio-value="No"]');
+    await page.click('[data-field-id="mobility_aids"][data-radio-value="No"]');
+    await page.click('[data-field-id="lines_tubes_drains"][data-checkbox-value="peripheral_iv"]');
+    await page.fill('[data-field-id="intake_ml"]', '500');
+    await page.fill('[data-field-id="output_ml"]', '300');
+    await page.fill('[data-field-id="critical_lab_results"]', 'None');
+    await page.fill('[data-field-id="pending_labs"]', 'CBC');
+    await page.fill('[data-field-id="pending_imaging"]', 'CXR');
 
     // ── 6. Recommendation & Handover (+ conditional "Other" plan) ──────────
     await page.click('#isbar-details-recommendation-add summary');
+    await page.fill('[data-field-id="meds_due_next_shift"]', 'Aspirin 81mg');
+    await page.fill('[data-field-id="pending_medical_review"]', 'Cardiology consult');
+    await page.fill('[data-field-id="consultations"]', 'Cardiology');
     await page.click('[data-field-id="discharge_transfer_plan"][data-radio-value="other"]');
     await expect(page.locator('[data-field-id="discharge_transfer_plan_other"]')).toBeVisible();
     await page.fill('[data-field-id="discharge_transfer_plan_other"]', 'Transfer to partner facility');
+    await page.fill('[data-field-id="outgoing_nurse"]', 'PYTEST_OUT');
+    await page.fill('[data-field-id="incoming_nurse"]', 'PYTEST_IN');
+    await page.fill('[data-field-id="handover_datetime"]', '2026-01-01T07:00');
     await page.check('[data-field-id="receiver_ack"]');
 
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'entry-form-expanded.png'), fullPage: true });

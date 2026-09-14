@@ -105,6 +105,8 @@ function renderIsbarSectionBody(mode, sectionId) {
     if (!section || !container) return;
     const state = isbarState[mode];
 
+    const missingIds = isbarSectionMissingFields(mode, sectionId);
+
     let html = '';
     let lastSubheading = null;
     section.fields.forEach(field => {
@@ -114,11 +116,13 @@ function renderIsbarSectionBody(mode, sectionId) {
             html += `<h4 class="isbar-subheading">${lastSubheading}</h4>`;
         }
         const value = state[field.id];
-        const requiredMark = field.requiredTier === 'conditional' ? '<span class="isbar-required-mark">*</span>' : '';
+        const isMissing = missingIds.includes(field.id);
+        const requiredMark = (field.requiredTier === 'conditional' || isMissing) ? '<span class="isbar-required-mark">*</span>' : '';
+        const missingClass = isMissing ? ' isbar-field-missing' : '';
         if (field.type === 'boolean') {
             html += `<div class="isbar-field isbar-field-boolean">${isbarFieldInputHtml(field, mode, value)}</div>`;
         } else {
-            html += `<div class="isbar-field">
+            html += `<div class="isbar-field${missingClass}">
                 <label>${field.label}${requiredMark}</label>
                 ${isbarFieldInputHtml(field, mode, value)}
             </div>`;
@@ -210,11 +214,29 @@ function _applyIsbarSectionStatus(detailsEl, statusEl, status, badgeText, detail
     statusEl.innerHTML = badge + detail;
 }
 
+// "Fill it all once started": checkbox-group and boolean fields are exempt
+// from being required (an empty multi-select or unchecked box is a
+// legitimate answer, not "not answered yet"), but still count toward whether
+// the section counts as touched at all. Mirrors the backend's
+// _group_all_or_nothing in patient_management/api.py exactly — every visible
+// field there maps 1:1 to a visible field here via isbarFieldVisible().
+function isbarSectionMissingFields(mode, sectionId) {
+    const section = ISBAR_METADATA_SECTIONS.find(s => s.id === sectionId);
+    if (!section) return [];
+    const state = isbarState[mode];
+    const visibleFields = section.fields.filter(f => isbarFieldVisible(f, state));
+    const isFilled = f => state[f.id] !== undefined && state[f.id] !== '';
+    const touched = visibleFields.some(isFilled);
+    if (!touched) return [];
+    return visibleFields
+        .filter(f => f.type !== 'checkbox-group' && f.type !== 'boolean')
+        .filter(f => !isFilled(f))
+        .map(f => f.id);
+}
+
 // Optional sections (Situation/Background/Focused Assessment/Recommendation)
-// have no top-level required fields, so "complete" would be a meaningless
-// claim here — reaching "no outstanding conditional requirement" is shown as
-// progress (blue), not complete (green). Green is reserved for the two
-// sections that have real required-tier fields (Patient & Arrival, Vitals).
+// reach a genuine 'complete' (green) once every required-once-started field
+// is filled — same visual treatment as Patient & Arrival/Vitals below.
 function updateIsbarSectionStatus(mode, sectionId) {
     if (!sectionId) return;
     const section = ISBAR_METADATA_SECTIONS.find(s => s.id === sectionId);
@@ -225,15 +247,15 @@ function updateIsbarSectionStatus(mode, sectionId) {
 
     const visibleFields = section.fields.filter(f => isbarFieldVisible(f, state));
     const filled = visibleFields.filter(f => state[f.id] !== undefined && state[f.id] !== '');
-    const missingRequired = visibleFields.filter(f =>
-        f.requiredTier === 'conditional' && (state[f.id] === undefined || state[f.id] === ''));
+    const missing = isbarSectionMissingFields(mode, sectionId);
 
-    if (missingRequired.length > 0) {
-        _applyIsbarSectionStatus(detailsEl, statusEl, 'error', 'Missing info');
-        return;
-    }
     if (filled.length === 0) {
         _applyIsbarSectionStatus(detailsEl, statusEl, 'none', 'Not started');
+        return;
+    }
+    if (missing.length > 0) {
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'error', 'Missing info',
+            `${missing.length} field${missing.length > 1 ? 's' : ''} remaining`);
         return;
     }
     const summaryParts = filled.slice(0, 3).map(f => {
@@ -244,7 +266,7 @@ function updateIsbarSectionStatus(mode, sectionId) {
         if (f.type === 'boolean') return f.label;
         return String(state[f.id]).slice(0, 24);
     });
-    _applyIsbarSectionStatus(detailsEl, statusEl, 'progress', 'In progress', summaryParts.join(' · '));
+    _applyIsbarSectionStatus(detailsEl, statusEl, 'complete', 'Complete', summaryParts.join(' · '));
 }
 
 // Patient & Arrival / Initial Vital Signs have real required-tier fields, so
@@ -272,7 +294,11 @@ function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, has
         _applyIsbarSectionStatus(detailsEl, statusEl, 'complete', 'Complete', summaryText);
         return;
     }
-    _applyIsbarSectionStatus(detailsEl, statusEl, 'progress', `${filledRequired.length} of ${requiredIds.length} complete`, summaryText);
+    // Started but incomplete — for Patient & Arrival this was always
+    // submit-blocking; for Vitals (optional-but-all-or-nothing as of the
+    // section-completeness rule) it now blocks submission too, so both show
+    // the same 'error' treatment rather than a neutral "N of M" progress pill.
+    _applyIsbarSectionStatus(detailsEl, statusEl, 'error', `${filledRequired.length} of ${requiredIds.length} complete`, summaryText);
 }
 
 // ── Build payload / reset ────────────────────────────────────────────────
