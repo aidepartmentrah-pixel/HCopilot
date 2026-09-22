@@ -1,0 +1,112 @@
+/* HCopilot design tokens — Indigo + Slate direction (New Frontend Master
+ * Prompt §5/§6/§10/§11/§38). Palette values are the master prompt's own
+ * §6 starting point, used as-is; tune only for contrast, not direction. */
+
+:root {
+  /* Brand — selected / interactive / primary action only, never a
+     clinical/operational state (see semantic colors below). */
+  --brand-50: #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+
+  /* Slate — neutral text, borders, surfaces. */
+  --slate-950: #0f172a;
+  --slate-800: #1e293b;
+  --slate-700: #334155;
+  --slate-500: #64748b;
+  --slate-300: #cbd5e1;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --slate-50: #f8fafc;
+
+  --surface: #ffffff;
+  --canvas: #f8fafc;
+
+  /* Semantic / clinical state colors — never reuse brand indigo for these. */
+  /* Darkened from the master prompt's own §6 starting values — real,
+     computed WCAG contrast check (NF8.2) found the originals failed AA
+     (4.5:1) for small text on their -bg tint at badge/label sizes
+     (success 3.15:1, warning 3.07:1, danger 4.41:1) — the master prompt's
+     own §6 explicitly allows "minor tuning... if it improves contrast."
+     These pass AA at 4.5+:1 against their unchanged -bg tints. */
+  --success: #12823b;
+  --success-bg: #f0fdf4;
+  --warning: #ae5f05;
+  --warning-bg: #fffbeb;
+  --danger: #d82525;
+  --danger-bg: #fef2f2;
+  --critical: #b91c1c;
+
+  /* Occupied / waiting are muted, not saturated — distinct from success/danger. */
+  --occupied: #e11d48;
+  --occupied-bg: #fff1f2;
+  --waiting: #7c3aed;
+  --waiting-bg: #f5f3ff;
+
+  /* Text roles. */
+  --text-primary: var(--slate-950);
+  --text-secondary: var(--slate-500);
+  --text-on-brand: #ffffff;
+  --text-disabled: var(--slate-300);
+
+  /* Borders. */
+  --border-default: var(--slate-200);
+  --border-strong: var(--slate-300);
+  --border-focus: var(--brand-600);
+
+  /* Spacing scale (§11). */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Radius (§38). */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* Shadows — subtle, restrained (§12). */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.06);
+  --shadow-md: 0 2px 8px 0 rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 8px 24px -4px rgb(15 23 42 / 0.12);
+
+  /* Typography (§10). */
+  --font-family-base: 'Inter', 'Noto Sans Arabic', system-ui, sans-serif;
+  --font-family-arabic: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
+
+  --font-size-page-title: 30px;
+  --font-size-section-title: 21px;
+  --font-size-card-title: 17px;
+  --font-size-body: 14px;
+  --font-size-label: 13px;
+  --font-size-metadata: 12px;
+  --font-size-kpi: 28px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Control heights (§38). */
+  --control-height-sm: 32px;
+  --control-height-md: 40px;
+  --control-height-lg: 44px;
+
+  /* Layout. */
+  --topnav-height: 64px;
+
+  /* Z-index layers. */
+  --z-dropdown: 100;
+  --z-drawer: 200;
+  --z-modal: 300;
+  --z-toast: 400;
+
+  /* Transitions (§33 — short and restrained). */
+  --transition-fast: 120ms ease;
+  --transition-base: 180ms ease;
+}

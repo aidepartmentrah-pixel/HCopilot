@@ -1,0 +1,20 @@
+.page {
+  max-width: 900px;
+}
+
+.record {
+  background: var(--surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+@media print {
+  .noPrint {
+    display: none;
+  }
+  .record {
+    border: none;
+    padding: 0;
+  }
+}

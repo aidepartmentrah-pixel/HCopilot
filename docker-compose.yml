@@ -118,5 +118,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # New React frontend (frontend-new/) — runs alongside the old frontend
+  # above, same backend, on its own port. Additive only: never remove or
+  # modify the `frontend` service to make room for this one. See
+  # docs/development/New Frontend (React Rewrite)/0. Slicing Task Table.md.
+  frontend-new:
+    image: hcopilot-frontend-new:0.1.0
+    build:
+      context: ./frontend-new
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_NEW_PORT:-8083}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   hcopilot_sqlserver_data:

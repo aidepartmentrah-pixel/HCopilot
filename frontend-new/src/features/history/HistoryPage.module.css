@@ -1,0 +1,20 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px);
+  min-height: 480px;
+}
+
+.filters {
+  margin-bottom: var(--space-4);
+  flex-shrink: 0;
+}
+
+.splitArea {
+  flex: 1;
+  min-height: 0;
+  /* No border/radius here — DataTable already has its own (tableWrapper),
+     and the right pane gets one from ResizablePanel's own border-left.
+     Wrapping both in a second outer border would be exactly the
+     "cards nested inside cards" pattern the master prompt calls out. */
+}

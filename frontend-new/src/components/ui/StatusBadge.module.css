@@ -1,0 +1,76 @@
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.success .dot {
+  background: var(--success);
+}
+
+.warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.warning .dot {
+  background: var(--warning);
+}
+
+.danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.danger .dot {
+  background: var(--danger);
+}
+
+.critical {
+  background: var(--danger-bg);
+  color: var(--critical);
+  font-weight: var(--font-weight-semibold);
+}
+.critical .dot {
+  background: var(--critical);
+}
+
+.occupied {
+  background: var(--occupied-bg);
+  color: var(--occupied);
+}
+.occupied .dot {
+  background: var(--occupied);
+}
+
+.waiting {
+  background: var(--waiting-bg);
+  color: var(--waiting);
+}
+.waiting .dot {
+  background: var(--waiting);
+}
+
+.neutral {
+  background: var(--slate-100);
+  color: var(--text-secondary);
+}
+.neutral .dot {
+  background: var(--slate-500);
+}

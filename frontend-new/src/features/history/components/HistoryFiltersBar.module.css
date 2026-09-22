@@ -1,0 +1,12 @@
+.search {
+  flex: 1;
+  min-width: 220px;
+}
+
+/* Select/Input default to width: 100% (correct standalone in a FormField)
+   — without a constraint here, each one fills the whole flex row on its
+   own line instead of sitting side by side with its siblings. */
+.filterControl {
+  width: 160px;
+  flex-shrink: 0;
+}

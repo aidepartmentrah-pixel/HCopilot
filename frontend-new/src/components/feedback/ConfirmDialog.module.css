@@ -1,0 +1,30 @@
+.dialog {
+  width: min(420px, calc(100vw - var(--space-8)));
+  padding: var(--space-6);
+  border: none;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-primary);
+}
+
+.dialog::backdrop {
+  background: rgb(15 23 42 / 0.45);
+}
+
+.title {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-2);
+}
+
+.description {
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

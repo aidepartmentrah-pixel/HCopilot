@@ -1,0 +1,25 @@
+.layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: var(--space-6);
+  align-items: start;
+  height: calc(100vh - 220px);
+  min-height: 480px;
+}
+
+.tableSection {
+  margin-top: var(--space-8);
+}
+
+.tableTitle {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-3);
+}
+
+@media (max-width: 1024px) {
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+}

@@ -1,0 +1,47 @@
+.metricCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--slate-100);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.value {
+  font-size: var(--font-size-kpi);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.label {
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.success .icon {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.warning .icon {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.danger .icon {
+  background: var(--danger-bg);
+  color: var(--danger);
+}

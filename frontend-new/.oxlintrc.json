@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript", "oxc"],
+  "rules": {
+    "react/rules-of-hooks": "error",
+    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    // TanStack Table's instance API is a documented React Compiler
+    // incompatibility in the library itself, not a bug here — this
+    // project has no React Compiler yet, so the rule has nothing to
+    // protect against today. Revisit if/when it's adopted.
+    "react/incompatible-library": "off"
+  }
+}
