@@ -2,8 +2,8 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
-import { Select } from '@/components/forms/Select'
 import { TextArea } from '@/components/forms/TextArea'
+import { TileSingleSelect } from '@/components/forms/TileSingleSelect'
 import { DISCHARGE_PLAN_OPTIONS, NURSING_PRIORITIES_OPTIONS, OUTSTANDING_TASKS_OPTIONS } from '@/types/isbar'
 import type { IsbarFormValues } from '../schema'
 import sectionStyles from './Section.module.css'
@@ -57,20 +57,23 @@ export function RecommendationSection({ disabled }: { disabled: boolean }) {
         </FormField>
       </div>
 
-      <FormField label="Discharge / Transfer Plan" htmlFor="isbar.discharge_transfer_plan">
-        <Select
-          id="isbar.discharge_transfer_plan"
-          disabled={disabled}
-          placeholder="Select…"
-          {...register('isbar.discharge_transfer_plan')}
-        >
-          {DISCHARGE_PLAN_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o.replace(/_/g, ' ')}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Discharge / Transfer Plan" htmlFor="isbar.discharge_transfer_plan">
+          <Controller
+            name="isbar.discharge_transfer_plan"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect
+                id="isbar.discharge_transfer_plan"
+                value={field.value}
+                onChange={field.onChange}
+                options={DISCHARGE_PLAN_OPTIONS}
+                disabled={disabled}
+              />
+            )}
+          />
+        </FormField>
+      </div>
       {dischargePlan === 'other' && (
         <FormField label="Other Discharge/Transfer Plan" htmlFor="isbar.discharge_transfer_plan_other">
           <Input id="isbar.discharge_transfer_plan_other" disabled={disabled} {...register('isbar.discharge_transfer_plan_other')} />

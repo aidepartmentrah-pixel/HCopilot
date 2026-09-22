@@ -2,8 +2,8 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
-import { Select } from '@/components/forms/Select'
 import { TextArea } from '@/components/forms/TextArea'
+import { TileSingleSelect } from '@/components/forms/TileSingleSelect'
 import { YesNoToggle } from '@/components/forms/YesNoToggle'
 import { LINES_TUBES_OPTIONS, NEURO_STATUS_OPTIONS, SWALLOW_OPTIONS, VOIDING_OPTIONS } from '@/types/isbar'
 import { numericFieldOptions } from '../constants'
@@ -27,15 +27,17 @@ export function FocusedAssessmentSection({ disabled }: { disabled: boolean }) {
 
   return (
     <div className={sectionStyles.grid}>
-      <FormField label="Neuro Status" htmlFor="isbar.neuro_status">
-        <Select id="isbar.neuro_status" disabled={disabled} placeholder="Select…" {...register('isbar.neuro_status')}>
-          {NEURO_STATUS_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Neuro Status" htmlFor="isbar.neuro_status">
+          <Controller
+            name="isbar.neuro_status"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect id="isbar.neuro_status" value={field.value} onChange={field.onChange} options={NEURO_STATUS_OPTIONS} disabled={disabled} />
+            )}
+          />
+        </FormField>
+      </div>
 
       {YES_NO_FIELDS.map(([field, label]) => (
         <FormField key={field} label={label} htmlFor={`isbar.${field}`}>
@@ -52,27 +54,31 @@ export function FocusedAssessmentSection({ disabled }: { disabled: boolean }) {
       <FormField label="Diet" htmlFor="isbar.diet">
         <Input id="isbar.diet" disabled={disabled} {...register('isbar.diet')} />
       </FormField>
-      <FormField label="Swallow Assessment" htmlFor="isbar.swallow_assessment">
-        <Select id="isbar.swallow_assessment" disabled={disabled} placeholder="Select…" {...register('isbar.swallow_assessment')}>
-          {SWALLOW_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Swallow Assessment" htmlFor="isbar.swallow_assessment">
+          <Controller
+            name="isbar.swallow_assessment"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect id="isbar.swallow_assessment" value={field.value} onChange={field.onChange} options={SWALLOW_OPTIONS} disabled={disabled} />
+            )}
+          />
+        </FormField>
+      </div>
       <FormField label="Last Bowel Movement" htmlFor="isbar.last_bowel_movement">
         <Input id="isbar.last_bowel_movement" type="datetime-local" disabled={disabled} {...register('isbar.last_bowel_movement')} />
       </FormField>
-      <FormField label="Voiding" htmlFor="isbar.voiding">
-        <Select id="isbar.voiding" disabled={disabled} placeholder="Select…" {...register('isbar.voiding')}>
-          {VOIDING_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Voiding" htmlFor="isbar.voiding">
+          <Controller
+            name="isbar.voiding"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect id="isbar.voiding" value={field.value} onChange={field.onChange} options={VOIDING_OPTIONS} disabled={disabled} />
+            )}
+          />
+        </FormField>
+      </div>
       <FormField label="Intake (mL)" htmlFor="isbar.intake_ml">
         <Input id="isbar.intake_ml" type="number" disabled={disabled} {...register('isbar.intake_ml', numericFieldOptions)} />
       </FormField>

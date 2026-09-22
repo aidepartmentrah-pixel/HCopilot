@@ -1,8 +1,8 @@
 import { Controller, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
-import { Select } from '@/components/forms/Select'
 import { TextArea } from '@/components/forms/TextArea'
+import { TileSingleSelect } from '@/components/forms/TileSingleSelect'
 import { CLINICAL_STATUS_OPTIONS, IMMEDIATE_CONCERNS_OPTIONS } from '@/types/isbar'
 import type { IsbarFormValues } from '../schema'
 import sectionStyles from './Section.module.css'
@@ -23,15 +23,23 @@ export function SituationSection({ disabled }: { disabled: boolean }) {
           <TextArea id="isbar.current_diagnosis" disabled={disabled} {...register('isbar.current_diagnosis')} />
         </FormField>
       </div>
-      <FormField label="Clinical Status" htmlFor="isbar.clinical_status">
-        <Select id="isbar.clinical_status" disabled={disabled} placeholder="Select…" {...register('isbar.clinical_status')}>
-          {CLINICAL_STATUS_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Clinical Status" htmlFor="isbar.clinical_status">
+          <Controller
+            name="isbar.clinical_status"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect
+                id="isbar.clinical_status"
+                value={field.value}
+                onChange={field.onChange}
+                options={CLINICAL_STATUS_OPTIONS}
+                disabled={disabled}
+              />
+            )}
+          />
+        </FormField>
+      </div>
       <div className={sectionStyles.fullWidth}>
         <FormField label="Immediate Concerns" htmlFor="isbar.immediate_concerns">
           <Controller

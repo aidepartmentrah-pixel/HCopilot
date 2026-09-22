@@ -1,29 +1,30 @@
-.chips {
+.tiles {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
 
-.chip {
+.tile {
   height: var(--control-height-md);
   padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text-secondary);
-  font-size: var(--font-size-label);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
 }
-.chip:disabled {
+.tile:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
-.chip:not(:disabled):hover {
-  background: var(--slate-50);
+.tile:not(:disabled):hover {
+  border-color: var(--brand-600);
 }
 
 .selected {
-  background: var(--brand-50);
+  background: var(--brand-600);
   border-color: var(--brand-600);
-  color: var(--brand-700);
+  color: #fff;
 }

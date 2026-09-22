@@ -2,8 +2,8 @@ import { Controller, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
-import { Select } from '@/components/forms/Select'
 import { TextArea } from '@/components/forms/TextArea'
+import { TileSingleSelect } from '@/components/forms/TileSingleSelect'
 import { YesNoToggle } from '@/components/forms/YesNoToggle'
 import {
   ALLERGIES_STATUS_OPTIONS,
@@ -68,13 +68,20 @@ export function BackgroundSection({ disabled }: { disabled: boolean }) {
       )}
 
       <FormField label="Allergies" htmlFor="isbar.allergies_status">
-        <Select id="isbar.allergies_status" disabled={disabled} placeholder="Select…" {...register('isbar.allergies_status')}>
-          {ALLERGIES_STATUS_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
+        <Controller
+          name="isbar.allergies_status"
+          control={control}
+          render={({ field }) => (
+            <YesNoToggle
+              id="isbar.allergies_status"
+              value={field.value}
+              onChange={field.onChange}
+              options={ALLERGIES_STATUS_OPTIONS}
+              labels={{ NKA: 'No known allergies' }}
+              disabled={disabled}
+            />
+          )}
+        />
       </FormField>
       {allergiesStatus === 'Yes' && (
         <>
@@ -102,15 +109,23 @@ export function BackgroundSection({ disabled }: { disabled: boolean }) {
         </>
       )}
 
-      <FormField label="Isolation Precautions" htmlFor="isbar.isolation_precautions">
-        <Select id="isbar.isolation_precautions" disabled={disabled} placeholder="Select…" {...register('isbar.isolation_precautions')}>
-          {ISOLATION_OPTIONS.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Isolation Precautions" htmlFor="isbar.isolation_precautions">
+          <Controller
+            name="isbar.isolation_precautions"
+            control={control}
+            render={({ field }) => (
+              <TileSingleSelect
+                id="isbar.isolation_precautions"
+                value={field.value}
+                onChange={field.onChange}
+                options={ISOLATION_OPTIONS}
+                disabled={disabled}
+              />
+            )}
+          />
+        </FormField>
+      </div>
 
       <div className={sectionStyles.fullWidth}>
         <FormField label="High-Alert Medications" htmlFor="isbar.high_alert_meds">
