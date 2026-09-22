@@ -2,6 +2,7 @@ import { BarChart3, BedDouble, ClipboardPlus, History, Home, Settings } from 'lu
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { HCopilotMark } from '@/components/brand/HCopilotMark'
+import { useOperationalAlerts } from '@/features/home/useOperationalAlerts'
 import { GlobalSearch } from './GlobalSearch'
 import { NotificationBell } from './NotificationBell'
 import { UserMenu } from './UserMenu'
@@ -34,6 +35,8 @@ const NAV_ITEMS: NavItem[] = [
  * every page. Branded indigo/navy per §4, never redefined per page.
  */
 export function TopNavigation() {
+  const { alerts } = useOperationalAlerts()
+
   return (
     <header className={styles.header}>
       <NavLink to="/" className={styles.brand} end>
@@ -57,7 +60,7 @@ export function TopNavigation() {
 
       <div className={styles.shellActions}>
         <GlobalSearch />
-        <NotificationBell />
+        <NotificationBell items={alerts.map((a) => ({ id: a.id, message: a.message }))} />
         <UserMenu />
       </div>
     </header>

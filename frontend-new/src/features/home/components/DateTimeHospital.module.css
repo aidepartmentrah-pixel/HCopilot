@@ -1,0 +1,19 @@
+.wrapper {
+  text-align: right;
+}
+
+.date {
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+}
+
+.time {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.hospital {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}

@@ -1,0 +1,16 @@
+.row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+}
+@media (max-width: 900px) {
+  .row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.meta {
+  font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-regular);
+  color: var(--text-secondary);
+}

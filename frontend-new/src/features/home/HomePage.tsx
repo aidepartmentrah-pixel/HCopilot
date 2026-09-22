@@ -1,33 +1,28 @@
-import { BarChart3, BedDouble, ClipboardPlus, History } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { Card } from '@/components/ui/Card'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { DateTimeHospital } from './components/DateTimeHospital'
+import { WelcomePanel } from './components/WelcomePanel'
+import { KpiRow } from './components/KpiRow'
+import { QuickActions } from './components/QuickActions'
+import { RecentActivityPanel } from './components/RecentActivityPanel'
+import { OperationalAlertsPanel } from './components/OperationalAlertsPanel'
+import { SystemStatusPanel } from './components/SystemStatusPanel'
 import styles from './HomePage.module.css'
 
-const SHORTCUTS = [
-  { to: '/isbar', label: 'ER ISBAR Entry', description: 'Create a new structured handover', icon: <ClipboardPlus size={22} /> },
-  { to: '/live-er', label: 'Live ER', description: 'See current bed and patient placement', icon: <BedDouble size={22} /> },
-  { to: '/history', label: 'History', description: 'Search and review previous ER stays', icon: <History size={22} /> },
-  { to: '/statistics', label: 'Statistics', description: 'ER performance and patient-flow analytics', icon: <BarChart3 size={22} /> },
-]
-
+/** Operational ER overview (Dashboard spec) — replaces the old 4-shortcut launcher; answers "what's happening right now", not "where do I go". */
 export function HomePage() {
   return (
-    <>
-      <PageHeader title="HCopilot" subtitle="Emergency Department overview" />
-      <div className={styles.grid}>
-        {SHORTCUTS.map((item) => (
-          <Link key={item.to} to={item.to} className={styles.cardLink}>
-            <Card>
-              <span className={styles.icon} aria-hidden="true">
-                {item.icon}
-              </span>
-              <h2 className={styles.cardTitle}>{item.label}</h2>
-              <p className={styles.cardDescription}>{item.description}</p>
-            </Card>
-          </Link>
-        ))}
+    <div className={styles.page}>
+      <PageHeader title="HCopilot Overview" subtitle="Central workspace for ER operations and hospital insights." actions={<DateTimeHospital />} />
+
+      <WelcomePanel />
+      <KpiRow />
+      <QuickActions />
+
+      <div className={styles.lowerGrid}>
+        <RecentActivityPanel />
+        <OperationalAlertsPanel />
+        <SystemStatusPanel />
       </div>
-    </>
+    </div>
   )
 }

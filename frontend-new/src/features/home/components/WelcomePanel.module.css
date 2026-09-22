@@ -1,0 +1,53 @@
+.panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 190px;
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--shell-bg) 0%, var(--brand-700) 100%);
+  overflow: hidden;
+}
+
+.text {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+}
+
+.eyebrow {
+  font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  color: var(--shell-text-muted);
+  margin: 0 0 var(--space-1);
+}
+
+.name {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-bold);
+  color: #ffffff;
+  margin: 0 0 var(--space-2);
+}
+
+.message {
+  font-size: var(--font-size-body);
+  color: var(--shell-text-muted);
+  margin: 0;
+  max-width: 480px;
+}
+
+.artwork {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.artworkSvg {
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 100%;
+  width: auto;
+}

@@ -23,6 +23,13 @@ export default defineConfig({
         target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8090',
         changeOrigin: true,
       },
+      // Mounted at the app root in backend/app.py (not under /api), same as
+      // nginx.conf's own separate `location /health` block — proxied here
+      // too so SystemStatusPanel (V2.1) works against the dev server.
+      '/health': {
+        target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8090',
+        changeOrigin: true,
+      },
     },
   },
   preview: {
@@ -34,6 +41,10 @@ export default defineConfig({
     // every /api call 404s against Vite's own static file server.
     proxy: {
       '/api': {
+        target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8090',
+        changeOrigin: true,
+      },
+      '/health': {
         target: process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8090',
         changeOrigin: true,
       },

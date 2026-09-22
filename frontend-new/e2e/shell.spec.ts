@@ -19,12 +19,36 @@ test.describe('Application shell (V2.0)', () => {
     }
   })
 
-  test('notification bell shows an honest empty state, not a fake badge', async ({ page }) => {
+  test('notification bell reflects real operational alerts, never a bare fabricated count', async ({ page }) => {
+    // V2.1 wires the bell to the same real alert rules as Home's
+    // OperationalAlertsPanel — this demo dataset can genuinely have real
+    // alerts firing (e.g. stale demo arrival timestamps), so this doesn't
+    // assert a specific empty/non-empty state, only that whatever the bell
+    // shows is honest: a numeric badge is only ever present alongside that
+    // many real, readable messages — never a number with nothing behind it.
     await page.goto('/')
+    // Wait for the same underlying queries the bell reads from to settle
+    // (KPI row renders real values once usePatients/useBedStats resolve)
+    // before reading its state, so this doesn't race the initial
+    // items-still-loading render against the real, settled alert count.
+    await page.getByText('Active ER Patients').waitFor()
+    await expect(page.locator('main')).not.toContainText('…', { timeout: 10_000 })
+
     const bell = page.getByRole('button', { name: /notifications/i })
-    await expect(bell).toHaveAccessibleName(/none unread/i)
+    const accessibleName = (await bell.getAttribute('aria-label')) ?? ''
     await bell.click()
-    await expect(page.getByText('No new notifications.')).toBeVisible()
+
+    if (/none unread/i.test(accessibleName)) {
+      await expect(page.getByText('No new notifications.')).toBeVisible()
+    } else {
+      const unreadCountMatch = accessibleName.match(/(\d+)/)
+      expect(unreadCountMatch).not.toBeNull()
+      const panel = page.getByRole('menu')
+      await expect(panel.getByRole('listitem')).toHaveCount(Number(unreadCountMatch![1]))
+      for (const text of await panel.getByRole('listitem').allTextContents()) {
+        expect(text.trim().length).toBeGreaterThan(0)
+      }
+    }
   })
 
   test('the user menu opens and signing out returns to the login screen', async ({ page }) => {

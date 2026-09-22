@@ -1,0 +1,114 @@
+.sectionHeader {
+  margin-bottom: var(--space-3);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.sectionSubtitle {
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: var(--space-4);
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.primaryAction {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--brand-600);
+  color: #ffffff;
+  text-decoration: none;
+  transition: background-color var(--transition-fast);
+}
+.primaryAction:hover {
+  background: var(--brand-700);
+}
+
+.primaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: rgb(255 255 255 / 0.15);
+  flex-shrink: 0;
+}
+
+.primaryText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.primaryLabel {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+}
+
+.primaryDescription {
+  font-size: var(--font-size-label);
+  color: rgb(255 255 255 / 0.85);
+}
+
+.primaryArrow {
+  flex-shrink: 0;
+}
+
+.secondaryLink {
+  text-decoration: none;
+  display: block;
+}
+
+.secondaryCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 100%;
+  transition: border-color var(--transition-fast);
+}
+.secondaryLink:hover .secondaryCard {
+  border-color: var(--brand-600);
+}
+
+.secondaryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--brand-50);
+  color: var(--brand-700);
+  flex-shrink: 0;
+}
+
+.secondaryLabel {
+  display: block;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.secondaryDescription {
+  display: block;
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
