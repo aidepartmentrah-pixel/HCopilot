@@ -102,16 +102,16 @@ async def health():
 
 @app.on_event("startup")
 def _start_background_jobs():
-    # Saves today's ward census immediately, then keeps it refreshed hourly —
-    # see scheduler.py. Deliberately swallows errors: the DB may not be fully
-    # migrated yet on a cold start (db-init races backend in some deploy
-    # orders), and a failed census snapshot must never block the API itself
-    # from serving requests.
+    # Saves today's ward census and syncs live flow-prediction arrivals
+    # immediately, then keeps both refreshed hourly — see scheduler.py.
+    # Deliberately swallows errors: the DB may not be fully migrated yet on a
+    # cold start (db-init races backend in some deploy orders), and a failed
+    # snapshot/sync must never block the API itself from serving requests.
     try:
         from scheduler import start_scheduler
         start_scheduler()
     except Exception as e:
-        print(f"⚠️  ward census scheduler failed to start: {e}")
+        print(f"⚠️  background scheduler failed to start: {e}")
 
 
 @app.on_event("startup")

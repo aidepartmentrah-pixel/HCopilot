@@ -519,6 +519,12 @@ class HistoricalEdStay(Base):
     intime_synth      = Column(DateTime, nullable=False, index=True)
     outtime_synth     = Column(DateTime, nullable=True)
     season_synth      = Column(String(20), nullable=True)
+    # "synthetic" (the original imported edstays_with_synth.csv demo dataset,
+    # backfilled by migration) vs "live" (synced from this deployment's own
+    # DailyPatients/LogPatients by features/flow_prediction/live_sync.py).
+    # Training uses the full table regardless of source; display/lag-seeding
+    # prefers "live" rows once any exist — see flow_prediction/api.py.
+    source            = Column(String(20), nullable=True, index=True)
 
 
 class DailyWeather(Base):

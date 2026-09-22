@@ -39,6 +39,13 @@ from datetime import datetime, timedelta
 from db.session import SessionLocal
 from db.models import HistoricalEdStay, DailyWeather
 
+# Fallback temperature (°C) used only when a row's calendar date has no
+# DailyWeather coverage at all — e.g. this deployment's live 2026+ arrivals
+# against a DailyWeather table that only spans 2011-01-01 to 2019-12-31.
+# A climate-neutral placeholder so those rows keep a usable feature value
+# instead of being dropped entirely by the lag-only dropna() below.
+FALLBACK_TEMPERATURE_C = 20.0
+
 
 class FlowDataProcessor:
     """
@@ -55,7 +62,7 @@ class FlowDataProcessor:
         # (FlowDataProcessor(DATASETS_FOLDER)); unused now that data lives in SQL Server.
         pass
 
-    def load_and_prepare_data(self):
+    def load_and_prepare_data(self, prefer_live=False):
         """
         Load ED stay records, resample to daily counts, and merge with weather.
 
@@ -67,12 +74,32 @@ class FlowDataProcessor:
         left-joined onto the daily arrivals so days without weather data are
         still included (with NaN temperature, which the model handles).
 
+        Args:
+            prefer_live : If True and any HistoricalEdStays row is tagged
+                source="live" (synced from this deployment's own real
+                DailyPatients/LogPatients activity — see live_sync.py),
+                restrict to ONLY those rows, so "today"/the recent trend
+                reflects real hospital activity instead of the frozen
+                synthetic demo dataset (edstays_with_synth.csv, ~2019-2020).
+                Falls back to the full table when no live rows exist yet
+                (e.g. a freshly-deployed instance), so this never breaks or
+                empties the page. Training (model_training/trainer.py)
+                leaves this False to keep learning from the full corpus —
+                synthetic + live — for richer seasonal signal.
+
         Returns:
             pd.DataFrame with columns: ds (date), y (daily arrival count),
             temperature_2m_mean (average temperature for that day).
         """
         with SessionLocal() as session:
-            intimes = [r[0] for r in session.query(HistoricalEdStay.intime_synth).all()]
+            query = session.query(HistoricalEdStay.intime_synth)
+            if prefer_live:
+                live_query = query.filter(HistoricalEdStay.source == "live")
+                intimes = [r[0] for r in live_query.all()]
+                if not intimes:
+                    intimes = [r[0] for r in query.all()]  # no live data yet — fall back to the full table
+            else:
+                intimes = [r[0] for r in query.all()]
             weather_rows = session.query(DailyWeather.time, DailyWeather.temperature_2m_mean).all()
 
         df = pd.DataFrame({"intime_synth": intimes})
@@ -137,8 +164,23 @@ class FlowDataProcessor:
         ml_df["y_lag_7"]  = ml_df["y"].shift(7)
         ml_df["y_roll_7"] = ml_df["y"].rolling(7).mean()
 
-        # Drop rows with NaN lags (first 7 rows cannot be fully computed)
-        ml_df.dropna(inplace=True)
+        # Missing temperature (a date range DailyWeather doesn't cover) must
+        # not cost us the whole row — only the lag columns below are allowed
+        # to drop rows. First carry the nearest known temperature forward/
+        # backward (handles an ordinary gap within an otherwise-covered
+        # range); any dates with zero DailyWeather overlap (e.g. live 2026+
+        # arrivals vs. weather data through 2019) are still NaN after that,
+        # so fill those with FALLBACK_TEMPERATURE_C.
+        ml_df["temperature_2m_mean"] = (
+            ml_df["temperature_2m_mean"].ffill().bfill().fillna(FALLBACK_TEMPERATURE_C)
+        )
+
+        # Drop rows only where the lag/rolling features themselves are NaN —
+        # i.e. the first 7 rows of this dataframe, which cannot have a full
+        # 7-prior-observation window. A blanket dropna() here was the root
+        # cause of ml_df ending up completely empty whenever every row's
+        # temperature was NaN.
+        ml_df = ml_df.dropna(subset=["y_lag_1", "y_lag_7", "y_roll_7"])
         return ml_df
 
     def prepare_prediction_data(self, n_days=30):

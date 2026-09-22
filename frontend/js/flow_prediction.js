@@ -23,6 +23,7 @@ async function loadFlowStats() {
     try {
         const response = await fetch('/api/flow-prediction/stats');
         const stats = await response.json();
+        if (!response.ok) throw new Error(parseApiError(stats.detail));
 
         document.getElementById('flow-stats').innerHTML = `
             <div class="stats-grid">
@@ -70,12 +71,26 @@ async function loadFlowPrediction(days) {
 
         const predData = await predResponse.json();
         const histData = await histResponse.json();
+        if (!predResponse.ok) throw new Error(parseApiError(predData.detail));
+        if (!histResponse.ok) throw new Error(parseApiError(histData.detail));
 
         const historicalDates  = histData.historical.map(h => h.date);
         const historicalValues = histData.historical.map(h => h.actual_patients);
 
         const predictionDates  = predData.predictions.map(p => p.date);
         const predictionValues = predData.predictions.map(p => p.predicted_patients);
+
+        // Chart.js draws each dataset as its own independent polyline, so even
+        // though the historical/prediction dates are back-to-back, the two
+        // lines wouldn't visually touch. Repeating the last historical value
+        // as the prediction series' point at that same date makes the dashed
+        // line pick up exactly where the solid line ends instead of floating
+        // as two disconnected segments.
+        const bridgeCount = historicalDates.length ? historicalDates.length - 1 : 0;
+        const bridgeValue  = historicalDates.length ? historicalValues[historicalValues.length - 1] : null;
+        const predictionSeries = historicalDates.length
+            ? [...Array(bridgeCount).fill(null), bridgeValue, ...predictionValues]
+            : [...Array(historicalDates.length).fill(null), ...predictionValues];
 
         // Destroy the previous chart instance before creating a new one to avoid canvas reuse errors
         if (flowChart) {
@@ -96,17 +111,22 @@ async function loadFlowPrediction(days) {
                         borderColor: 'rgb(75, 192, 192)',
                         backgroundColor: 'rgba(75, 192, 192, 0.1)',
                         tension: 0.1,
-                        borderWidth: 2
+                        borderWidth: 2,
+                        pointRadius: 1.5,
+                        pointHoverRadius: 5
                     },
                     {
                         label: 'Predictions',
-                        // Fill historical slots with null so prediction line starts where history ends
-                        data: [...Array(historicalDates.length).fill(null), ...predictionValues],
+                        // Bridged to the last historical point (see bridgeValue above) so it
+                        // reads as one continuous line, not two floating segments
+                        data: predictionSeries,
                         borderColor: 'rgb(255, 99, 132)',
                         backgroundColor: 'rgba(255, 99, 132, 0.1)',
                         borderDash: [5, 5],  // dashed line to distinguish predictions from actuals
                         tension: 0.1,
-                        borderWidth: 2
+                        borderWidth: 2,
+                        pointRadius: 1.5,
+                        pointHoverRadius: 5
                     }
                 ]
             },

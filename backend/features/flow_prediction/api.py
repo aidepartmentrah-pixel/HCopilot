@@ -59,6 +59,15 @@ _model_mtime: float = 0.0
 _ml_df            = None
 _ml_df_row_count: int = -1
 
+# Minimum rows create_features() must produce from the live-preferring path
+# to be safely usable — predict_flow()'s day-0 seeding alone needs 7 rows
+# (ml_df["y"].iloc[-7]); this adds margin above that bare minimum. Below
+# this, fall back to the full (non-live-restricted) dataset rather than
+# caching something that crashes predict_flow()/get_historical_data()/
+# get_statistics() downstream (e.g. live activity that doesn't yet span
+# enough calendar days for the 7-lag features).
+MIN_LIVE_ML_ROWS = 14
+
 
 def _get_model_data() -> dict:
     """
@@ -106,9 +115,23 @@ def _get_ml_df():
         raise HTTPException(status_code=404, detail="HistoricalEdStays dataset is empty")
     # Rebuild the feature DataFrame only if the row count has changed
     if _ml_df is None or _ml_df_row_count != row_count:
-        processor    = FlowDataProcessor()
-        master_df    = processor.load_and_prepare_data()
-        _ml_df       = processor.create_features(master_df)
+        processor = FlowDataProcessor()
+        # prefer_live=True: once this deployment has any of its own synced
+        # arrivals (see live_sync.py), display and lag-seeding project
+        # forward from real recent activity instead of the frozen synthetic
+        # demo dataset — see load_and_prepare_data()'s docstring. Falls back
+        # to the full table automatically when no live rows exist yet.
+        master_df = processor.load_and_prepare_data(prefer_live=True)
+        ml_df     = processor.create_features(master_df)
+
+        if len(ml_df) < MIN_LIVE_ML_ROWS:
+            # The live-preferring path produced too little (or nothing) to
+            # serve safely — fall back to the full, non-live-restricted
+            # corpus rather than caching an unusably small DataFrame.
+            master_df = processor.load_and_prepare_data(prefer_live=False)
+            ml_df     = processor.create_features(master_df)
+
+        _ml_df = ml_df
         _ml_df_row_count = row_count
     return _ml_df
 
