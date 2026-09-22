@@ -33,7 +33,12 @@ test.describe('Arabic / RTL (§19)', () => {
     await arabicRow.click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
+    // Patient & Arrival auto-completes and collapses once a named roster
+    // patient loads (V2.2a §9 auto-progression) — reopen it to check the field.
     const nameInput = page.getByRole('textbox', { name: 'Full Name' })
+    if (!(await nameInput.isVisible())) {
+      await page.getByTestId('isbar-section-patient-arrival').click()
+    }
     await expect(nameInput).toHaveValue(name)
     await expect(nameInput).toHaveAttribute('dir', 'auto')
   })

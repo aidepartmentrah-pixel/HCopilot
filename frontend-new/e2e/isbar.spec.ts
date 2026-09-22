@@ -22,7 +22,15 @@ test.describe('ER ISBAR Entry', () => {
     await firstRow.click()
 
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
-    await expect(page.getByRole('textbox', { name: 'Full Name' })).toBeEnabled()
+    // Patient & Arrival auto-completes and collapses once a roster patient
+    // with a real name loads (V2.2a §9 auto-progression) — reopen it to
+    // confirm the field is populated and editable, rather than assuming
+    // it's still the open section.
+    const nameField = page.getByRole('textbox', { name: 'Full Name' })
+    if (!(await nameField.isVisible())) {
+      await page.getByTestId('isbar-section-patient-arrival').click()
+    }
+    await expect(nameField).toBeEnabled()
 
     // The picked roster entry shows as "Selected", exactly once — not
     // duplicated into a second row.
@@ -49,7 +57,12 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('button', { name: 'Start ISBAR' }).click()
 
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
-    await expect(page.getByRole('textbox', { name: 'Full Name' })).toHaveValue(uniqueName)
+    // Patient & Arrival auto-completes and collapses once submitted (§9) — reopen it to confirm the saved value.
+    const savedNameField = page.getByRole('textbox', { name: 'Full Name' })
+    if (!(await savedNameField.isVisible())) {
+      await page.getByTestId('isbar-section-patient-arrival').click()
+    }
+    await expect(savedNameField).toHaveValue(uniqueName)
   })
 
   test('Change Patient returns to the disabled state', async ({ page }) => {
@@ -85,8 +98,14 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('button', { name: 'Start ISBAR' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
-    await page.getByTestId('isbar-section-vitals').click()
-    await page.getByRole('spinbutton', { name: 'Heart Rate (bpm)' }).fill('88')
+    // V2.2a auto-opens the next section once Patient & Arrival is complete
+    // (§9) — it may already be open here, so only click to open it if it's
+    // still collapsed, rather than assuming a closed starting state.
+    const heartRateField = page.getByRole('spinbutton', { name: 'Heart Rate (bpm)' })
+    if (!(await heartRateField.isVisible())) {
+      await page.getByTestId('isbar-section-vitals').click()
+    }
+    await heartRateField.fill('88')
     await page.getByRole('button', { name: 'Save Changes' }).click()
     await expect(page.getByText('Changes saved.')).toBeVisible({ timeout: 10000 })
 
@@ -96,7 +115,10 @@ test.describe('ER ISBAR Entry', () => {
     await page.reload()
     await page.getByRole('cell', { name: uniqueName }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
-    await page.getByTestId('isbar-section-vitals').click()
-    await expect(page.getByRole('spinbutton', { name: 'Heart Rate (bpm)' })).toHaveValue('88')
+    const reloadedHeartRateField = page.getByRole('spinbutton', { name: 'Heart Rate (bpm)' })
+    if (!(await reloadedHeartRateField.isVisible())) {
+      await page.getByTestId('isbar-section-vitals').click()
+    }
+    await expect(reloadedHeartRateField).toHaveValue('88')
   })
 })

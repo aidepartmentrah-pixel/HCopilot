@@ -1,6 +1,6 @@
 import styles from './StatusBadge.module.css'
 
-export type StatusTone = 'success' | 'warning' | 'danger' | 'critical' | 'occupied' | 'waiting' | 'neutral'
+export type StatusTone = 'success' | 'warning' | 'danger' | 'critical' | 'occupied' | 'waiting' | 'neutral' | 'brand'
 
 interface StatusBadgeProps {
   label: string

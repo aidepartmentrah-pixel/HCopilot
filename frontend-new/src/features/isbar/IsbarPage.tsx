@@ -6,6 +6,7 @@ import { patientsApi } from '@/api/patients'
 import { DataTable } from '@/components/tables/DataTable'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/feedback/useToast'
+import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useCreatePatient, useModifyPatient, useNextIds, usePatients } from '@/hooks/usePatients'
 import type { DirectoryPatient } from '@/types/directory'
@@ -26,6 +27,7 @@ export function IsbarPage() {
   const [mode, setMode] = useState<PanelMode>('disabled')
   const [activeStayId, setActiveStayId] = useState<number | null>(null)
   const [fallbackOpen, setFallbackOpen] = useState(false)
+  const [unsavedGuardOpen, setUnsavedGuardOpen] = useState(false)
 
   const { data: patientsData, isLoading: patientsLoading, error: patientsError, refetch: refetchPatients } = usePatients()
   const { data: nextIds } = useNextIds()
@@ -95,9 +97,24 @@ export function IsbarPage() {
     startDraft({ record_source: 'local' })
   }
 
+  /** Unsaved ISBAR changes must never silently vanish (§38). */
   function handleChangePatient() {
+    if (methods.formState.isDirty) {
+      setUnsavedGuardOpen(true)
+      return
+    }
+    proceedChangePatient()
+  }
+
+  function proceedChangePatient() {
+    setUnsavedGuardOpen(false)
     setMode('disabled')
     setActiveStayId(null)
+  }
+
+  async function handleSaveDraftAndChangePatient() {
+    await handleSubmit(methods.getValues())
+    proceedChangePatient()
   }
 
   async function handleSubmit(values: IsbarFormValues) {
@@ -153,6 +170,7 @@ export function IsbarPage() {
         />
         <IsbarWorkspace
           mode={mode}
+          resetKey={`${mode}-${activeStayId ?? 'draft'}`}
           methods={methods}
           onSubmit={handleSubmit}
           onChangePatient={handleChangePatient}
@@ -182,6 +200,18 @@ export function IsbarPage() {
         onClose={() => setFallbackOpen(false)}
         onSelectDirectoryPatient={handleSelectDirectoryPatient}
         onEnterManually={handleEnterManually}
+      />
+
+      <ConfirmDialog
+        open={unsavedGuardOpen}
+        title="Unsaved ISBAR changes"
+        description="You have unsaved changes for this patient."
+        cancelLabel="Stay Here"
+        confirmLabel="Discard Changes"
+        destructive
+        extraAction={{ label: 'Save Draft', onClick: handleSaveDraftAndChangePatient }}
+        onConfirm={proceedChangePatient}
+        onCancel={() => setUnsavedGuardOpen(false)}
       />
     </>
   )

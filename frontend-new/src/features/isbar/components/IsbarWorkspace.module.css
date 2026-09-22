@@ -13,6 +13,42 @@
   margin-top: var(--space-2);
 }
 
+.stickyBanner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--canvas);
+  padding-top: var(--space-1);
+}
+
+.stepTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.stepNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--slate-100);
+  color: var(--text-secondary);
+  font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-semibold);
+  flex-shrink: 0;
+}
+
+.continueRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+}
+
 .preview {
   display: flex;
   flex-direction: column;

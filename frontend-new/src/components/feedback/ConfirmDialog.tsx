@@ -12,6 +12,8 @@ interface ConfirmDialogProps {
   destructive?: boolean
   onConfirm: () => void
   onCancel: () => void
+  /** Optional third choice (e.g. ISBAR's unsaved-changes "Save Draft / Discard Changes / Stay Here", §38) — rendered between Cancel and Confirm. */
+  extraAction?: { label: string; onClick: () => void }
 }
 
 /**
@@ -28,6 +30,7 @@ export function ConfirmDialog({
   destructive = false,
   onConfirm,
   onCancel,
+  extraAction,
 }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
@@ -60,6 +63,11 @@ export function ConfirmDialog({
         <Button variant="secondary" size="sm" onClick={onCancel}>
           {cancelLabel}
         </Button>
+        {extraAction && (
+          <Button variant="secondary" size="sm" onClick={extraAction.onClick}>
+            {extraAction.label}
+          </Button>
+        )}
         <Button variant={destructive ? 'destructive' : 'primary'} size="sm" onClick={onConfirm} autoFocus>
           {confirmLabel}
         </Button>

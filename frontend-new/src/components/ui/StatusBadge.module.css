@@ -74,3 +74,11 @@
 .neutral .dot {
   background: var(--slate-500);
 }
+
+.brand {
+  background: var(--brand-50);
+  color: var(--brand-700);
+}
+.brand .dot {
+  background: var(--brand-600);
+}
