@@ -91,7 +91,7 @@ function _pdCsvLabels(section, fieldId, csv) {
 
 // Renders one metadata-driven section (Situation/Background/Focused/Recommendation)
 // as a read-only accordion section, reusing the same field list as the entry form.
-function renderReadOnlyMetaSection(section, isbar) {
+function renderReadOnlyMetaSection(section, isbar, defaultOpen) {
     isbar = isbar || {};
     let lastSubheading = null;
     let bodyHtml = '';
@@ -131,12 +131,12 @@ function renderReadOnlyMetaSection(section, isbar) {
         ? filledLabels.slice(0, 3).join(' · ')
         : 'Not recorded';
 
-    return _pdSectionHeader(section.number, section.icon, section.title, summary, filledLabels.length > 0, false) +
+    return _pdSectionHeader(section.number, section.icon, section.title, summary, filledLabels.length > 0, !!defaultOpen) +
         '<div class="pdetails-section-body isbar-grid-' + section.id + '">' + (bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
     '</details>';
 }
 
-function renderPatientArrivalReadOnly(d) {
+function renderPatientArrivalReadOnly(d, defaultOpen) {
     const bed = patientBedMap && d.patient_id != null ? patientBedMap[d.patient_id] : null;
     const bedStr = bed ? (bed.bed_number + (bed.bed_type ? ' (' + bed.bed_type + ')' : '')) : null;
     const body =
@@ -151,12 +151,12 @@ function renderPatientArrivalReadOnly(d) {
         _pdField('Bed', _pdVal(bedStr)) +
         _pdField('Chief Complaint', _pdVal(d.chiefcomplaint));
     const summary = d.chiefcomplaint ? d.chiefcomplaint : 'Not recorded';
-    return _pdSectionHeader(1, ISBAR_SECTION_ICONS['patient-arrival'], 'Patient & Arrival', summary, !!d.chiefcomplaint, true) +
+    return _pdSectionHeader(1, ISBAR_SECTION_ICONS['patient-arrival'], 'Patient & Arrival', summary, !!d.chiefcomplaint, defaultOpen) +
         '<div class="pdetails-section-body isbar-grid-patient-arrival">' + body + '</div>' +
     '</details>';
 }
 
-function renderVitalsReadOnly(d) {
+function renderVitalsReadOnly(d, defaultOpen) {
     const isbar = d.isbar || {};
     const body =
         _pdField('Temperature', _pdVal(d.temperature, '°C')) +
@@ -175,12 +175,30 @@ function renderVitalsReadOnly(d) {
         _pdField('Measured At', _pdVal(isbar.vitals_measured_at)) +
         _pdField('Recorded By', _pdVal(isbar.vitals_recorded_by));
     const summary = 'BP ' + (d.sbp ?? '–') + '/' + (d.dbp ?? '–') + ' · HR ' + (d.heartrate ?? '–') + ' · SpO₂ ' + (d.o2sat ?? '–') + '%';
-    return _pdSectionHeader(2, ISBAR_SECTION_ICONS.vitals, 'Initial Vital Signs', summary, d.sbp != null || d.heartrate != null, true) +
+    return _pdSectionHeader(2, ISBAR_SECTION_ICONS.vitals, 'Initial Vital Signs', summary, d.sbp != null || d.heartrate != null, defaultOpen) +
         '<div class="pdetails-section-body isbar-grid-vitals">' + body + '</div>' +
     '</details>';
 }
 
-function renderPatientDetailsHtml(d) {
+// ER UI Architecture Redesign, Page C (UI-C2) — this is the shared render
+// function the doc asked to extract: the same markup now backs three
+// surfaces instead of duplicating it per-surface.
+//   'modal'   — the original read-only Patient Details modal (Page A "View"),
+//               unchanged: Patient & Arrival/Vitals open by default, footer
+//               is Close + Edit Patient Data.
+//   'preview' — Page C's persistent preview pane: every section starts
+//               collapsed (confirmed decision #10: "compact/collapsed
+//               form"), footer is just "Open Full Record" — no direct edit
+//               here, the pane stays inspection-focused.
+//   'full'    — Page C's dedicated full-width page (UI-C4): every section
+//               starts open (this is the "long text, deep review" surface),
+//               footer is Print / Export PDF / Edit Record. The Option 4
+//               mockup shows these three buttons on the preview pane itself,
+//               but the tracking doc's own confirmed decision #10 is explicit
+//               that the preview stays inspection-only — see the doc's log
+//               for that call.
+function renderPatientDetailsHtml(d, opts) {
+    const mode = (opts && opts.mode) || 'modal';
     const isbar = d.isbar || {};
     const acuityLabels = { 1:'Immediate', 2:'Emergent', 3:'Urgent', 4:'Less Urgent', 5:'Non-Urgent' };
     const acuityLvl = d.acuity != null ? Math.round(d.acuity) : null;
@@ -207,20 +225,38 @@ function renderPatientDetailsHtml(d) {
             '</div>' +
         '</div>';
 
+    // 'preview' starts every section collapsed; 'modal' keeps its original
+    // behavior (arrival/vitals open); 'full' opens everything for reading.
+    const coreOpen = mode !== 'preview';
     const body =
         '<div class="pdetails-body">' +
         '<div class="isbar-accordion">' +
-            renderPatientArrivalReadOnly(d) +
-            renderVitalsReadOnly(d) +
-            ISBAR_METADATA_SECTIONS.map(s => renderReadOnlyMetaSection(s, isbar)).join('') +
+            renderPatientArrivalReadOnly(d, coreOpen) +
+            renderVitalsReadOnly(d, coreOpen) +
+            ISBAR_METADATA_SECTIONS.map(s => renderReadOnlyMetaSection(s, isbar, mode === 'full')).join('') +
         '</div>' +
         '</div>';
 
-    const footer =
-        '<div class="pdetails-footer">' +
-            '<button class="s-btn s-btn-outline" onclick="closePatientDetailsModal()">Close</button>' +
-            '<button class="s-btn s-btn-primary" onclick="pdetailsEditFromHere()">✏️ Edit Patient Data</button>' +
-        '</div>';
+    let footer;
+    if (mode === 'preview') {
+        footer =
+            '<div class="pdetails-footer">' +
+                '<button class="s-btn s-btn-primary" onclick="openFullRecordPage(' + d.stay_id + ')">📄 Open Full Record</button>' +
+            '</div>';
+    } else if (mode === 'full') {
+        footer =
+            '<div class="pdetails-footer">' +
+                '<button class="s-btn s-btn-outline" onclick="window.print()">🖨️ Print</button>' +
+                '<button class="s-btn s-btn-outline" onclick="window.print()" title="Use your browser\'s print dialog and choose \'Save as PDF\' as the destination">📄 Export PDF</button>' +
+                '<button class="s-btn s-btn-primary" onclick="editFullRecord()">✏️ Edit Record</button>' +
+            '</div>';
+    } else {
+        footer =
+            '<div class="pdetails-footer">' +
+                '<button class="s-btn s-btn-outline" onclick="closePatientDetailsModal()">Close</button>' +
+                '<button class="s-btn s-btn-primary" onclick="pdetailsEditFromHere()">✏️ Edit Patient Data</button>' +
+            '</div>';
+    }
 
     return header + body + footer;
 }

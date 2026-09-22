@@ -30,7 +30,11 @@
 // in the mobile slide-in drawer so both desktop and mobile state can be kept
 // in sync by iterating a single data structure.
 var NAV_GROUPS = {
-    'navg-care': { sections: ['beds-display', 'unurgent'],   drawer: 'dg-care' },
+    // 'unurgent' was its own section here; it's gone (folded into the Live
+    // ER Board's Waiting/No-Bed lane, ER Live-Roster Redesign slice ER8,
+    // re-surfaced by the ER UI Architecture Redesign) — see
+    // beds_display.js's loadBeds().
+    'navg-care': { sections: ['beds-display'],                drawer: 'dg-care' },
     'navg-ops':  { sections: ['scheduling',   'simulation'], drawer: 'dg-ops'  },
 };
 
@@ -42,7 +46,7 @@ var STAB_GROUPS = {
     'stabg-patients':  ['daily-patients', 'log-patients'],
     'stabg-sched':     ['shifts', 'groups'],
     'stabg-data':      ['datasets', 'relations'],
-    'stabg-system':    ['models', 'training', 'features'],
+    'stabg-system':    ['models', 'training', 'features', 'hospital-directory'],
 };
 
 // ── Section navigation ────────────────────────────────────────────────────────
@@ -107,6 +111,8 @@ function showSection(sectionId) {
     if (sectionId === 'flow-prediction') { loadFlowStats(); loadFlowPrediction(30); }
     if (sectionId === 'beds-display')  { loadBeds(); }
     if (sectionId === 'patients')      { initPatientForm(); loadPatients(); }
+    if (sectionId === 'patient-history') { loadPatientHistory(); }
+    if (sectionId === 'patient-full-record') { /* loaded directly by openFullRecordPage() before navigating here */ }
     if (sectionId === 'settings') {
         _loadCoreSettings();
         // Show the first settings tab accessible to the current user
@@ -117,7 +123,6 @@ function showSection(sectionId) {
     }
     if (sectionId === 'scheduling')    { loadSchedulingSection(); }
     if (sectionId === 'simulation')    { initSimulation(); }
-    if (sectionId === 'unurgent')      { initUnurgent(); }
     if (sectionId === 'statistics')    { loadStatistics(); }
 }
 
@@ -322,6 +327,7 @@ function showSettingsTab(tab) {
     if (tab === 'groups')       { loadGroupsSettings(); }
     if (tab === 'accounts')     { loadAccountsSettings(); }
     if (tab === 'features')     { loadFeaturesSettings(); }
+    if (tab === 'hospital-directory') { loadHospitalDirectorySettings(); }
 }
 
 /**

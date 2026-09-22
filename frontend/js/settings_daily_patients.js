@@ -379,9 +379,9 @@ function openEditDpModal(row) {
     document.getElementById('form-dp-name').value                 = row.name          != null ? row.name          : '';
     document.getElementById('form-dp-gender').value               = row.gender        != null ? row.gender        : '';
     document.getElementById('form-dp-age').value                  = row.age           != null ? row.age           : '';
-    // Slice to 16 chars to strip seconds/timezone from ISO strings for datetime-local input
-    document.getElementById('form-dp-arrival-time').value         = row.arrival_time   ? String(row.arrival_time).slice(0, 16)   : '';
-    document.getElementById('form-dp-departure-time').value       = row.departure_time ? String(row.departure_time).slice(0, 16) : '';
+    // Slice to 16 chars to strip seconds/timezone from ISO strings for the datetime picker
+    setDateTimeValue('form-dp-arrival-time', row.arrival_time   ? String(row.arrival_time).slice(0, 16)   : '');
+    setDateTimeValue('form-dp-departure-time', row.departure_time ? String(row.departure_time).slice(0, 16) : '');
     document.getElementById('form-dp-bed-occupation-time').value  = row.bed_occupation_time != null ? row.bed_occupation_time : '';
     document.getElementById('form-dp-temperature').value          = row.temperature  != null ? row.temperature  : '';
     document.getElementById('form-dp-heartrate').value            = row.heartrate    != null ? row.heartrate    : '';

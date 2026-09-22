@@ -84,6 +84,7 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD}
       DATABASE_DRIVER: "ODBC Driver 18 for SQL Server"
       DATABASE_TRUST_SERVER_CERTIFICATE: "yes"
+      SETTINGS_ENCRYPTION_KEY: ${SETTINGS_ENCRYPTION_KEY}
     volumes:
       # Without this, the live Flow_prediction.pkl and every versioned
       # training run written at runtime by the model training engine

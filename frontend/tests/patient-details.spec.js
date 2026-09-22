@@ -8,7 +8,7 @@
 
 const { test, expect } = require('@playwright/test');
 const path = require('path');
-const { login, gotoPatients } = require('./helpers');
+const { login, gotoPatients, expandActivePatients } = require('./helpers');
 
 const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const API_BASE = 'http://localhost:8082';
@@ -64,6 +64,7 @@ test.describe('Patient Details view', () => {
     try {
       await login(page);
       await gotoPatients(page);
+      await expandActivePatients(page);
       await page.fill('#pat-search', name);
       const row = page.locator('.s-table tbody tr', { hasText: name });
       await expect(row).toHaveCount(1);
@@ -111,6 +112,7 @@ test.describe('Patient Details view', () => {
     try {
       await login(page);
       await gotoPatients(page);
+      await expandActivePatients(page);
       await page.fill('#pat-search', name);
       const row = page.locator('.s-table tbody tr', { hasText: name });
       await expect(row).toHaveCount(1);

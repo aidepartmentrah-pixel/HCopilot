@@ -40,6 +40,7 @@ var HCOPILOT_SETTINGS_TABS = [
     { id: 'models',         label: '🤖 Models',          group: 'System'     },
     { id: 'training',       label: '🧠 Training',        group: 'System'     },
     { id: 'features',       label: '⚙️ Features',        group: 'System'     },
+    { id: 'hospital-directory', label: '🏥 Hospital Directory API', group: 'System' },
     { id: 'reset',          label: '⚠️ Reset',           group: null         },
 ];
 
@@ -59,9 +60,9 @@ var HCOPILOT_SECTIONS = [
     { id: 'flow-prediction', label: '📈 Flow Prediction' },
     { id: 'beds-display',    label: '🛏️ Beds' },
     { id: 'patients',        label: '🧑‍⚕️ Patients' },
+    { id: 'patient-history', label: '📜 History' },
     { id: 'scheduling',      label: '📅 Scheduling' },
     { id: 'simulation',      label: '🧪 Simulation' },
-    { id: 'unurgent',        label: '🟢 Unurgent' },
     { id: 'statistics',      label: '📊 Statistics' },
     { id: 'settings',        label: '⚙️ Settings' },
 ];
@@ -80,6 +81,10 @@ function userSections() {
 }
 
 function canAccess(sectionId) {
+    // "Open Full Record" (ER UI Architecture Redesign, Page C) is a detail
+    // view reached only from History, not a separately-navigable page —
+    // it rides on the same grant rather than needing its own section entry.
+    if (sectionId === 'patient-full-record') sectionId = 'patient-history';
     return userSections().includes(sectionId);
 }
 

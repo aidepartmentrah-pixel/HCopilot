@@ -1,36 +1,45 @@
-// tests/isbar-form.spec.js — the ISBAR accordion entry form.
+// tests/isbar-form.spec.js — the ISBAR accordion entry form (Page A of the
+// ER UI Architecture Redesign).
 //
-// Covers: opening the Patients page, expanding/collapsing every section,
-// entering representative values across all 6 sections, conditional fields
+// Covers: the disabled-by-default state, unlocking a manual entry via the
+// secondary fallback, expanding/collapsing every section, entering
+// representative values across all 6 sections, conditional fields
 // appearing/disappearing, collapse-preserves-data, missing-required-field
-// messaging, and a full valid submission appearing in the Patient Dataset.
+// messaging, and a full valid submission appearing in the Active Patients table.
 
 const { test, expect } = require('@playwright/test');
 const path = require('path');
-const { login, gotoPatients } = require('./helpers');
+const { login, gotoPatients, expandActivePatients } = require('./helpers');
 
 const SCREENSHOT_DIR = path.join(__dirname, 'screenshots');
 const TEST_NAME = 'PLAYWRIGHT_ISBAR_' + Date.now();
 
-test.describe('ISBAR entry form', () => {
+// Page A's ISBAR panel is disabled until a patient is selected — the manual
+// fallback (behind the collapsed "Can't find the patient?" toggle) is the
+// path that unlocks it without picking anything off the roster.
+async function unlockManualEntry(page) {
+  await page.click('#pat-a-fallback-toggle');
+  await page.click('.pat-a-manual-btn');
+  await expect(page.locator('#pat-name')).toBeEnabled();
+}
+
+test.describe('ISBAR entry form (Page A)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await gotoPatients(page);
-    // The whole "Add New Patient Stay" card is collapsed by default (Wave-2
-    // redesign) — expand it into data-entry mode before interacting with
-    // any of its fields.
-    await page.click('#pat-add-top');
-    await expect(page.locator('#pat-add-body')).toBeVisible();
   });
 
-  test('opens collapsed by default, then expands into data-entry mode with only Patient & Arrival open', async ({ page }) => {
-    // Re-collapse first to verify the true default state, since beforeEach already expanded it
-    await page.click('#pat-add-top');
-    await expect(page.locator('#pat-add-body')).toBeHidden();
-    await page.click('#pat-add-top');
-    await expect(page.locator('#pat-add-body')).toBeVisible();
+  test('starts disabled with a placeholder; Enter Manually unlocks the form with only Patient & Arrival open', async ({ page }) => {
+    await expect(page.locator('#pat-a-placeholder')).toBeVisible();
+    await expect(page.locator('#pat-a-banner')).toBeHidden();
+    await expect(page.locator('#pat-name')).toBeDisabled();
+    await expect(page.locator('#pat-a-footer')).toBeHidden();
 
-    await expect(page.locator('.pat-add-card')).toBeVisible();
+    await unlockManualEntry(page);
+
+    await expect(page.locator('#pat-a-placeholder')).toBeHidden();
+    await expect(page.locator('#pat-a-footer')).toBeVisible();
+    await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'draft');
     await expect(page.locator('#isbar-details-patient-arrival-add')).toBeVisible();
     await expect(page.locator('#isbar-details-vitals-add')).toBeVisible();
     // Only Patient & Arrival opens by default; everything else (including
@@ -42,12 +51,14 @@ test.describe('ISBAR entry form', () => {
   });
 
   test('"Continue to Vital Signs" opens the Vitals section', async ({ page }) => {
+    await unlockManualEntry(page);
     await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', false);
     await page.click('#isbar-details-patient-arrival-add button:has-text("Continue to Vital Signs")');
     await expect(page.locator('#isbar-details-vitals-add')).toHaveJSProperty('open', true);
   });
 
   test('expands and collapses every ISBAR section', async ({ page }) => {
+    await unlockManualEntry(page);
     const sectionIds = ['patient-arrival', 'vitals', 'situation', 'background', 'focused', 'recommendation'];
     for (const id of sectionIds) {
       const details = page.locator(`#isbar-details-${id}-add`);
@@ -61,6 +72,8 @@ test.describe('ISBAR entry form', () => {
   });
 
   test('fills representative values across all sections, handles conditional fields, and submits', async ({ page }) => {
+    await unlockManualEntry(page);
+
     // ── 1. Patient & Arrival ──────────────────────────────────────────────
     await page.fill('#pat-name', TEST_NAME);
     await page.selectOption('#pat-gender', 'Female');
@@ -182,9 +195,13 @@ test.describe('ISBAR entry form', () => {
     await page.fill('#pat-name', TEST_NAME);
     await page.click('#pat-add-btn');
 
-    // ── Submission succeeds and the patient appears in the compact table ───
+    // ── Submission succeeds; the panel activates in place (no modal) and the
+    // patient appears in the Active Patients table below ─────────────────
     await expect(page.locator('#message')).toContainText(/added/i, { timeout: 10000 });
+    await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'active', { timeout: 10000 });
+    await expect(page.locator('#pat-a-banner-name')).toContainText(TEST_NAME);
     await page.waitForTimeout(500); // table re-render after loadPatients()
+    await expandActivePatients(page);
     await page.fill('#pat-search', TEST_NAME);
     await expect(page.locator('.s-table tbody tr', { hasText: TEST_NAME })).toHaveCount(1);
 
@@ -197,5 +214,68 @@ test.describe('ISBAR entry form', () => {
     await row.locator('[data-action="delete-patient"]').click();
     await page.click('#pat-delete-confirm-btn');
     await expect(page.locator('#message')).toContainText(/removed|deleted/i, { timeout: 10000 });
+  });
+
+  test('saving ISBAR notes on an active stay preserves an already-assigned bed_occupation_time (2026-09-22 fix)', async ({ page, request }) => {
+    // Departure Time / Bed Occupation Time have no input on this form
+    // anymore (they're never typed here) — but bed_occupation_time is a
+    // real column a genuine bed assignment may have already set, and
+    // PUT /modify overwrites every field unconditionally. This proves the
+    // panel resends the real cached value instead of silently nulling it
+    // out the next time the nurse saves an ISBAR note.
+    const API_BASE = 'http://localhost:8082';
+    const name = 'PLAYWRIGHT_BEDOCC_' + Date.now();
+    const idsRes = await request.get(`${API_BASE}/api/patients/next-ids`);
+    const ids = await idsRes.json();
+    const addRes = await request.post(`${API_BASE}/api/patients/add`, {
+      data: {
+        patient_id: ids.next_patient_id, stay_id: ids.next_stay_id, name,
+        gender: 'Male', age: 50, arrival_time: '2026-02-01T08:00',
+        chiefcomplaint: 'Test complaint', acuity: 3,
+      },
+    });
+    expect(addRes.ok()).toBeTruthy();
+
+    const bedRes = await request.post(`${API_BASE}/api/beds/add`, {
+      data: { bed_number: 'PLAYWRIGHT-BEDOCC-' + Date.now(), bed_type: 'normal' },
+    });
+    expect(bedRes.ok()).toBeTruthy();
+    const bedId = (await bedRes.json()).bed.bed_id;
+
+    try {
+      const occupationTime = '2026-02-01T08:15';
+      const assignRes = await request.post(`${API_BASE}/api/beds/assign/${bedId}`, {
+        data: { patient_id: ids.next_patient_id, bed_occupation_time: occupationTime },
+      });
+      expect(assignRes.ok()).toBeTruthy();
+
+      const beforeRes = await request.get(`${API_BASE}/api/patients/${ids.next_stay_id}/details`);
+      expect((await beforeRes.json()).bed_occupation_time).toContain('2026-02-01');
+
+      // Select the stay on Page A (Active Patients table → Edit) and save
+      // an unrelated vital — must not touch bed_occupation_time.
+      // (beforeEach already logged in; re-visit to refresh past the API
+      // fixture's own patient/bed creation, invisible to the page until now.)
+      await gotoPatients(page);
+      await expandActivePatients(page);
+      await page.fill('#pat-search', name);
+      const row = page.locator('.s-table tbody tr', { hasText: name });
+      await expect(row).toHaveCount(1);
+      await row.locator('[data-action="edit-patient"]').click();
+      await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'active', { timeout: 10000 });
+
+      await page.click('#isbar-details-patient-arrival-add button:has-text("Continue to Vital Signs")');
+      await page.fill('#pat-heartrate', '77');
+      await page.click('#pat-add-btn');
+      await expect(page.locator('#message')).toContainText(/updated/i, { timeout: 10000 });
+
+      const afterRes = await request.get(`${API_BASE}/api/patients/${ids.next_stay_id}/details`);
+      const after = await afterRes.json();
+      expect(after.heartrate).toBe(77);
+      expect(after.bed_occupation_time).toContain('2026-02-01'); // still there, not wiped
+    } finally {
+      await request.delete(`${API_BASE}/api/patients/delete/${ids.next_stay_id}`).catch(() => {});
+      await request.delete(`${API_BASE}/api/beds/delete/${bedId}`).catch(() => {});
+    }
   });
 });

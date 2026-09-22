@@ -64,7 +64,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'immediate_concerns_other', label: 'Other concern (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'immediate_concerns_other', label: 'Other concern (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'immediate_concerns', includes: 'other' },
       },
     ],
@@ -93,7 +93,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'past_medical_history_other', label: 'Other history (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'past_medical_history_other', label: 'Other history (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'past_medical_history', includes: 'other' },
       },
       {
@@ -102,7 +102,7 @@ const ISBAR_METADATA_SECTIONS = [
         options: ['Yes', 'No'],
       },
       {
-        id: 'surgical_history_text', label: 'Surgical history details', type: 'textarea', requiredTier: 'conditional',
+        id: 'surgical_history_text', label: 'Surgical history details', type: 'textarea', requiredTier: 'optional',
         conditionalOn: { field: 'surgical_history_flag', equals: 'Yes' },
       },
       {
@@ -112,7 +112,7 @@ const ISBAR_METADATA_SECTIONS = [
         optionLabels: { NKA: 'No known allergies' },
       },
       {
-        id: 'allergy_types', label: 'Allergy Type', type: 'checkbox-group', requiredTier: 'conditional',
+        id: 'allergy_types', label: 'Allergy Type', type: 'checkbox-group', requiredTier: 'optional',
         choiceStyle: 'tiles',
         conditionalOn: { field: 'allergies_status', equals: 'Yes' },
         options: [
@@ -123,11 +123,11 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'allergy_substance', label: 'Substance', type: 'text', requiredTier: 'conditional',
+        id: 'allergy_substance', label: 'Substance', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'allergies_status', equals: 'Yes' },
       },
       {
-        id: 'allergy_reaction', label: 'Reaction', type: 'text', requiredTier: 'conditional',
+        id: 'allergy_reaction', label: 'Reaction', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'allergies_status', equals: 'Yes' },
       },
       {
@@ -149,7 +149,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'high_alert_meds_other', label: 'Other medication (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'high_alert_meds_other', label: 'Other medication (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'high_alert_meds', includes: 'other' },
       },
       {
@@ -167,11 +167,11 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'recent_procedures_other', label: 'Other procedure (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'recent_procedures_other', label: 'Other procedure (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'recent_procedures', includes: 'other' },
       },
       {
-        id: 'recent_procedure_datetime', label: 'Procedure/Event Date & Time', type: 'datetime', requiredTier: 'conditional',
+        id: 'recent_procedure_datetime', label: 'Procedure/Event Date & Time', type: 'datetime', requiredTier: 'optional',
         conditionalOn: { field: 'recent_procedures', notEmpty: true },
       },
     ],
@@ -255,7 +255,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'nursing_priorities_other', label: 'Other priority (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'nursing_priorities_other', label: 'Other priority (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'nursing_priorities', includes: 'other' },
       },
       { id: 'meds_due_next_shift', label: 'Medications Due During Next Shift', type: 'textarea', requiredTier: 'optional' },
@@ -274,7 +274,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'discharge_transfer_plan_other', label: 'Other plan (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'discharge_transfer_plan_other', label: 'Other plan (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'discharge_transfer_plan', equals: 'other' },
       },
       {
@@ -294,7 +294,7 @@ const ISBAR_METADATA_SECTIONS = [
         ],
       },
       {
-        id: 'outstanding_tasks_other', label: 'Other task (specify)', type: 'text', requiredTier: 'conditional',
+        id: 'outstanding_tasks_other', label: 'Other task (specify)', type: 'text', requiredTier: 'optional',
         conditionalOn: { field: 'outstanding_tasks', includes: 'other' },
       },
       { id: 'outgoing_nurse', label: 'Outgoing Nurse', type: 'text', requiredTier: 'optional', autofillFrom: 'currentUser' },

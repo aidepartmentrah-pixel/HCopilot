@@ -369,3 +369,190 @@
     color: #9ca3af;
     font-style: italic;
 }
+
+/* ── ER UI Architecture Redesign, Page B — Live ER Board ─────────────────────
+   Unified bed/no-bed card component (confirmed decision #5: same dimensions,
+   radius, spacing, typography — only the icon and status treatment differ)
+   arranged in horizontal per-ward lanes (decision #6), plus one catch-all
+   Waiting/No-Bed lane (open question 2, confirmed: catch-all only) fed by
+   the unchanged GET /api/beds/bedless endpoint. Replaces both the old
+   decorative pillow/mattress/frame bed graphic and the Unurgent-derived
+   .uu-card bedless list — neither had an equivalent for the other, which is
+   exactly what "share one component family" rules out. */
+
+.erb-stats-bar { margin-bottom: 24px; }
+.s-stat-card-nobed::before { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+.s-stat-card-wait::before  { background: linear-gradient(90deg, #d97706, #f59e0b); }
+
+.erb-lanes { display: flex; flex-direction: column; gap: 22px; }
+
+.erb-lane {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.erb-lane-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.erb-lane-header h3 { font-size: 17px; font-weight: 700; color: #1a1a2e; margin: 0; }
+.erb-lane-subtitle { font-size: 12px; color: #8a8fa3; }
+.erb-lane-count { margin-left: auto; font-size: 12.5px; font-weight: 600; color: #6b7280; white-space: nowrap; }
+.erb-lane-nav { display: flex; gap: 4px; }
+.erb-lane-nav-btn {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 1.5px solid #dfe3eb;
+    background: #fff;
+    color: #4b5563;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+}
+.erb-lane-nav-btn:hover { background: #eef0ff; border-color: #667eea; }
+
+.erb-lane-track {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scroll-behavior: smooth;
+}
+.erb-lane-empty {
+    color: #9ca3af;
+    font-size: 13px;
+    font-style: italic;
+    padding: 20px 8px;
+}
+
+/* Unified card — bed and waiting-patient variants share every rule below;
+   only .erb-card-graphic's contents (a real bed graphic vs. a gendered/age
+   avatar) and the .erb-card-* status modifiers differ. 2026-09-22 feedback:
+   brought the old decorative pillow/mattress/frame bed graphic back
+   (users specifically liked its look and asked for it to stay) and added
+   gendered/age-appropriate avatars for waiting patients instead of one
+   generic icon — centered, stacked layout replaces the old icon-in-a-
+   corner treatment to give both the same visual weight/prominence. */
+.erb-card {
+    flex: 0 0 168px;
+    /* Flex items default to a content-based automatic minimum width, which
+       wins over flex-basis/flex-shrink:0 when text inside can't wrap (e.g.
+       a long unbroken patient name) — found by measuring real rendered
+       card widths, not by reading the CSS: a waiting card with a long name
+       rendered at ~290px while a bed card sat at the intended 168px, even
+       though both share this exact rule. min-width: 0 overrides that
+       default so every card is a real, identical 168px regardless of its
+       text content — the .erb-card-name/-complaint ellipsis rules below
+       only take effect once this stops the box itself from growing. */
+    min-width: 0;
+    background: #fff;
+    border-radius: 12px;
+    border: 1.5px solid #e5e7eb;
+    padding: 14px 12px 12px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 3px;
+}
+.erb-card:hover { transform: translateY(-3px); box-shadow: 0 6px 14px rgba(0,0,0,0.12); }
+
+.erb-card-graphic { margin-bottom: 6px; }
+.erb-card-avatar { font-size: 42px; line-height: 1; }
+
+/* Decorative bed graphic — ported from the pre-redesign .bed-item/
+   .bed-graphic/.bed-pillow/.bed-mattress/.bed-frame rules (still further
+   down this file, now otherwise unused) so the exact look/colors users
+   already liked carry over unchanged into the new card. */
+.erb-card-bed-graphic { position: relative; width: 72px; height: 52px; }
+.erb-card-bed-pillow {
+    position: absolute; top: 0; left: 11px;
+    width: 50px; height: 22px;
+    background: #e2e8f0; border: 2px solid #cbd5e1; border-radius: 6px 6px 3px 3px;
+}
+.erb-card-bed-mattress {
+    position: absolute; top: 16px; left: 3px;
+    width: 66px; height: 20px;
+    background: #f1f5f9; border: 2px solid #cbd5e1; border-radius: 4px;
+}
+.erb-card-bed-frame {
+    position: absolute; top: 35px; left: 0;
+    width: 72px; height: 9px;
+    background: #94a3b8; border-radius: 2px;
+}
+.erb-card-occupied .erb-card-bed-pillow,
+.erb-card-occupied .erb-card-bed-mattress { background: #ffcccc; border-color: #e74c3c; }
+.erb-card-occupied .erb-card-bed-frame { background: #e74c3c; }
+.erb-card-available .erb-card-bed-pillow,
+.erb-card-available .erb-card-bed-mattress { background: #d4f1e8; border-color: #27ae60; }
+.erb-card-available .erb-card-bed-frame { background: #27ae60; }
+.erb-card-under-repair .erb-card-bed-pillow,
+.erb-card-under-repair .erb-card-bed-mattress { background: #fde68a; border-color: #fcd34d; }
+.erb-card-under-repair .erb-card-bed-frame { background: #f59e0b; }
+
+.erb-card-status-badge {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    padding: 2px 7px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.erb-card-primary { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.erb-card-sub { font-size: 11px; color: #8a8fa3; margin-bottom: 2px; }
+.erb-card-patient { border-top: 1px dashed #eef0f5; padding-top: 6px; margin-top: 4px; width: 100%; }
+.erb-card-id { font-size: 10.5px; font-weight: 700; color: #6b7280; }
+.erb-card-name { font-size: 12px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erb-card-name.unknown { color: #92400e; font-style: italic; }
+.erb-card-meta, .erb-card-complaint { font-size: 10.5px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.erb-card-wait-badge {
+    margin-top: 5px;
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 8px;
+    background: var(--color-warning-soft, #fef3e2);
+    color: var(--color-warning, #b66a12);
+}
+
+/* Status variants — available/occupied/under-repair mirror the old
+   .bed-item palette; waiting gets its own (neither bed state fits it). */
+.erb-card-available { border-color: #27ae60; background: #f4fdf8; }
+.erb-card-available .erb-card-status-badge { background: #27ae60; color: #fff; }
+
+.erb-card-occupied { border-color: #e74c3c; background: #fff6f6; }
+.erb-card-occupied .erb-card-status-badge { background: #e74c3c; color: #fff; }
+.erb-card-occupied .erb-card-id { color: #e74c3c; }
+
+.erb-card-under-repair { border-color: #f59e0b; background: #fffbeb; opacity: 0.92; }
+.erb-card-under-repair .erb-card-status-badge { background: #f59e0b; color: #fff; }
+
+.erb-card-waiting { border-color: #7c3aed; background: #faf8ff; }
+.erb-card-waiting .erb-card-status-badge { background: #7c3aed; color: #fff; }
+
+/* Waiting-time attention treatment (UI-B5, open question 3 confirmed:
+   "handled" = triage_time set) — a waiting card past the 5-minute mark
+   gets a stronger amber outline + a subtle pulse so it reads as needing
+   attention without being alarm-fatigue red. */
+.erb-card-attention {
+    border-color: #d97706;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(217,119,6,0.12);
+}
+@keyframes erb-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(217,119,6,0.12); } 50% { box-shadow: 0 0 0 5px rgba(217,119,6,0.22); } }
+.erb-card-attention { animation: erb-pulse 2.2s ease-in-out infinite; }
+
+@media (max-width: 900px) {
+    .erb-card { flex-basis: 148px; }
+}

@@ -105,8 +105,8 @@ function renderIsbarSectionBody(mode, sectionId) {
     if (!section || !container) return;
     const state = isbarState[mode];
 
-    const missingIds = isbarSectionMissingFields(mode, sectionId);
-
+    // No field in these sections is ever required (see isbarSectionMissingFields) —
+    // no asterisk, no "missing" highlight.
     let html = '';
     let lastSubheading = null;
     section.fields.forEach(field => {
@@ -116,14 +116,11 @@ function renderIsbarSectionBody(mode, sectionId) {
             html += `<h4 class="isbar-subheading">${lastSubheading}</h4>`;
         }
         const value = state[field.id];
-        const isMissing = missingIds.includes(field.id);
-        const requiredMark = (field.requiredTier === 'conditional' || isMissing) ? '<span class="isbar-required-mark">*</span>' : '';
-        const missingClass = isMissing ? ' isbar-field-missing' : '';
         if (field.type === 'boolean') {
             html += `<div class="isbar-field isbar-field-boolean">${isbarFieldInputHtml(field, mode, value)}</div>`;
         } else {
-            html += `<div class="isbar-field${missingClass}">
-                <label>${field.label}${requiredMark}</label>
+            html += `<div class="isbar-field">
+                <label>${field.label}</label>
                 ${isbarFieldInputHtml(field, mode, value)}
             </div>`;
         }
@@ -214,29 +211,17 @@ function _applyIsbarSectionStatus(detailsEl, statusEl, status, badgeText, detail
     statusEl.innerHTML = badge + detail;
 }
 
-// "Fill it all once started": checkbox-group and boolean fields are exempt
-// from being required (an empty multi-select or unchecked box is a
-// legitimate answer, not "not answered yet"), but still count toward whether
-// the section counts as touched at all. Mirrors the backend's
-// _group_all_or_nothing in patient_management/api.py exactly — every visible
-// field there maps 1:1 to a visible field here via isbarFieldVisible().
+// Every field in these sections is independently optional — filling one
+// never requires filling any other (no "fill it all once started" rule; see
+// backend patient_management/api.py's check_isbar, which mirrors this by
+// having no cross-field requirements either). A field is never "missing".
 function isbarSectionMissingFields(mode, sectionId) {
-    const section = ISBAR_METADATA_SECTIONS.find(s => s.id === sectionId);
-    if (!section) return [];
-    const state = isbarState[mode];
-    const visibleFields = section.fields.filter(f => isbarFieldVisible(f, state));
-    const isFilled = f => state[f.id] !== undefined && state[f.id] !== '';
-    const touched = visibleFields.some(isFilled);
-    if (!touched) return [];
-    return visibleFields
-        .filter(f => f.type !== 'checkbox-group' && f.type !== 'boolean')
-        .filter(f => !isFilled(f))
-        .map(f => f.id);
+    return [];
 }
 
 // Optional sections (Situation/Background/Focused Assessment/Recommendation)
-// reach a genuine 'complete' (green) once every required-once-started field
-// is filled — same visual treatment as Patient & Arrival/Vitals below.
+// show as 'complete' as soon as anything in them is filled in — there is
+// nothing left to require once started.
 function updateIsbarSectionStatus(mode, sectionId) {
     if (!sectionId) return;
     const section = ISBAR_METADATA_SECTIONS.find(s => s.id === sectionId);
@@ -269,11 +254,14 @@ function updateIsbarSectionStatus(mode, sectionId) {
     _applyIsbarSectionStatus(detailsEl, statusEl, 'complete', 'Complete', summaryParts.join(' · '));
 }
 
-// Patient & Arrival / Initial Vital Signs have real required-tier fields, so
-// unlike the optional sections above, these can reach a genuine 'complete'
-// (green) state. `requiredIds` / `valueOf` let each hand-written section in
-// patients.js describe its own required fields and how to read them.
-function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, hasMissingConditional, summaryText) {
+// Patient & Arrival is the only section with a real, submit-blocking
+// requirement — pass enforceRequired=true (the default) for it. Initial
+// Vital Signs uses this same renderer for its "N of M" summary but every
+// vital is independently optional, so it's called with enforceRequired=false:
+// any subset filled in shows as a normal in-progress state, never 'error'.
+// `requiredIds` / `valueOf` let each hand-written section in patients.js
+// describe its own fields and how to read them.
+function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, hasMissingConditional, summaryText, enforceRequired = true) {
     const statusEl = document.getElementById(isbarSummaryId(mode, sectionId));
     const detailsEl = document.getElementById(`isbar-details-${sectionId}-${mode}`);
     if (!statusEl) return;
@@ -282,7 +270,7 @@ function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, has
         const v = valueOf(id);
         return v !== null && v !== undefined && v !== '';
     });
-    if (hasMissingConditional) {
+    if (enforceRequired && hasMissingConditional) {
         _applyIsbarSectionStatus(detailsEl, statusEl, 'error', 'Missing info');
         return;
     }
@@ -294,10 +282,12 @@ function updateIsbarCoreSectionStatus(mode, sectionId, requiredIds, valueOf, has
         _applyIsbarSectionStatus(detailsEl, statusEl, 'complete', 'Complete', summaryText);
         return;
     }
-    // Started but incomplete — for Patient & Arrival this was always
-    // submit-blocking; for Vitals (optional-but-all-or-nothing as of the
-    // section-completeness rule) it now blocks submission too, so both show
-    // the same 'error' treatment rather than a neutral "N of M" progress pill.
+    if (!enforceRequired) {
+        // Optional section: any subset of fields is fine — never blocking.
+        _applyIsbarSectionStatus(detailsEl, statusEl, 'progress', `${filledRequired.length} of ${requiredIds.length} added`, summaryText);
+        return;
+    }
+    // Patient & Arrival: started but incomplete is genuinely submit-blocking.
     _applyIsbarSectionStatus(detailsEl, statusEl, 'error', `${filledRequired.length} of ${requiredIds.length} complete`, summaryText);
 }
 

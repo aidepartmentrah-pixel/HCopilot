@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HCopilot - Healthcare Data Management</title>
     <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/vendor/flatpickr.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/home.css">
     <link rel="stylesheet" href="css/datasets.css">
@@ -12,16 +13,22 @@
     <link rel="stylesheet" href="css/beds.css">
     <link rel="stylesheet" href="css/models.css">
     <link rel="stylesheet" href="css/model_training.css">
+    <link rel="stylesheet" href="css/hospital_directory.css">
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/settings.css">
     <link rel="stylesheet" href="css/patients.css">
     <link rel="stylesheet" href="css/patient-isbar-form.css">
     <link rel="stylesheet" href="css/scheduling.css">
     <link rel="stylesheet" href="css/simulation.css">
+    <!-- unurgent.css: the standalone Unurgent Care section is gone (folded
+         into Beds Display's bedless section, ER Live-Roster Redesign slice
+         ER8) — its .uu-* card/modal classes are reused there, so the file
+         stays. -->
     <link rel="stylesheet" href="css/unurgent.css">
     <link rel="stylesheet" href="css/statistics.css">
     <link rel="stylesheet" href="css/settings_reset.css">
     <link rel="stylesheet" href="css/auth.css">
+    <link rel="stylesheet" href="css/datetime-picker.css">
 </head>
 <body>
     <div class="container">
@@ -56,7 +63,15 @@
                     <span class="nav-icon">🧑‍⚕️</span>
                     <span class="nav-label">Patients</span>
                 </button>
-                <!-- Group: Care (Beds + Unurgent) -->
+                <!-- ER UI Architecture Redesign, Page C — History is now its
+                     own page (split table + persistent preview), not a tab
+                     inside Patients. -->
+                <button class="nav-btn" data-section="patient-history"
+                        onclick="showSection('patient-history')">
+                    <span class="nav-icon">📜</span>
+                    <span class="nav-label">History</span>
+                </button>
+                <!-- Group: Care (Beds Display, including its bedless section) -->
                 <button class="nav-btn nav-group-btn" id="navg-care-btn"
                         onclick="toggleNavGroup('navg-care', event)">
                     <span class="nav-icon">🛏️</span>
@@ -170,13 +185,17 @@
         <section id="beds-display" class="section">
             <div class="section-header">
                 <div>
-                    <h2>🛏️ Beds Display</h2>
-                    <p class="section-description">Hospital beds status and information</p>
+                    <h2>🛏️ Live ER Board</h2>
+                    <p class="section-description">Manage beds and waiting patients in real time — grouped by ward, one shared card style</p>
                 </div>
                 <button class="beds-fit-btn" id="beds-fit-btn" onclick="toggleBedsFitScreen()"
                         title="Shrink or grow the whole display to fit the screen with no scrolling — handy for a wall monitor">⛶ Fit to Screen</button>
             </div>
 
+            <!-- ER UI Architecture Redesign, Page B — unified bed/no-bed card
+                 lanes replace the old bed grid + separate Unurgent-derived
+                 bedless list. See _erbCardHtml()/_renderErbLane() in
+                 beds_display.js. -->
             <div class="beds-fit-scale" id="beds-fit-scale">
                 <div class="beds-fit-inner" id="beds-fit-inner">
                     <div class="beds-stats" id="beds-stats">
@@ -186,7 +205,7 @@
                         </div>
                     </div>
 
-                    <div class="beds-grid" id="beds-grid">
+                    <div class="erb-lanes" id="erb-lanes">
                         <div class="loading">
                             <div class="spinner"></div>
                             Loading beds...
@@ -195,6 +214,56 @@
                 </div>
             </div>
         </section>
+
+        <!-- Bedless Discharge Modal — ER Live-Roster Redesign, slice ER8.
+             Same shape as the former Unurgent discharge modal, now generic:
+             works for any bedless patient regardless of why they have no
+             bed, via the same shared /api/unurgent/discharge/{id} endpoint
+             (patient_management/discharge_manager.py's discharge_active_stay()
+             underneath — see backend). -->
+        <div id="bedless-discharge-modal" class="modal" style="display:none">
+            <div class="uu-dm-card">
+                <div class="uu-dm-header">
+                    <div class="uu-dm-header-left">
+                        <div class="uu-dm-header-icon">🏠</div>
+                        <div>
+                            <div class="uu-dm-title">Discharge Patient</div>
+                            <div class="uu-dm-subtitle" id="bedless-dm-patient-info">Patient #—</div>
+                        </div>
+                    </div>
+                    <button class="uu-dm-close-btn" onclick="closeBedlessDischargeModal()">✕</button>
+                </div>
+                <div class="uu-dm-body">
+                    <div class="uu-dm-chips" id="bedless-dm-details"></div>
+                    <div class="uu-dm-notice">
+                        <span class="uu-dm-notice-icon">📋</span>
+                        <span>The stay will be archived to History and all staff assignments released.</span>
+                    </div>
+                    <div class="uu-dm-field">
+                        <label class="uu-dm-label">🕐 Departure Time</label>
+                        <input type="text" id="bedless-discharge-time" class="uu-dm-time-input dt-picker">
+                    </div>
+                    <div class="uu-dm-field">
+                        <label class="uu-dm-label">📍 Destination</label>
+                        <div style="display:flex;gap:8px">
+                            <select id="bedless-discharge-destination" class="uu-dm-time-input" onchange="toggleDestinationDetail('bedless-discharge-destination', 'bedless-discharge-destination-detail')" style="flex:1">
+                                <option value="">Select destination…</option>
+                                <option value="Home">🏠 Home</option>
+                                <option value="Hospital Department">🏥 Hospital Department</option>
+                            </select>
+                            <input type="text" id="bedless-discharge-destination-detail" class="uu-dm-time-input" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
+                        </div>
+                    </div>
+                </div>
+                <div class="uu-dm-footer">
+                    <button class="uu-dm-cancel" onclick="closeBedlessDischargeModal()">Cancel</button>
+                    <button class="uu-dm-confirm" id="bedless-discharge-confirm-btn"
+                            onclick="confirmBedlessDischarge()">
+                        🏠 Confirm Discharge
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <!-- Bed Add/Edit Modal -->
         <div id="bed-form-modal" class="modal">
@@ -305,8 +374,8 @@
                     </div>
                     <div style="margin-top:10px;">
                         <p style="font-size:12px;color:#6b7280;margin-bottom:4px;">🕐 Bed Occupation Time <span style="color:#9ca3af;">(suggested: now — edit if needed)</span></p>
-                        <input type="datetime-local" id="modal-assign-arrival-time"
-                               class="patient-edit-input" style="width:100%;box-sizing:border-box;" />
+                        <input type="text" id="modal-assign-arrival-time"
+                               class="patient-edit-input dt-picker" style="width:100%;box-sizing:border-box;" />
                     </div>
                     <p id="modal-assign-error" style="color:#e74c3c;font-size:12px;margin-top:6px;min-height:16px;"></p>
                 </div>
@@ -603,11 +672,11 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Arrival Time <span class="form-hint">(optional)</span></label>
-                        <input class="form-input" type="datetime-local" id="form-dp-arrival-time">
+                        <input class="form-input dt-picker" type="text" id="form-dp-arrival-time">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Departure Time <span class="form-hint">(optional)</span></label>
-                        <input class="form-input" type="datetime-local" id="form-dp-departure-time" oninput="dpAutoOccupation()">
+                        <input class="form-input dt-picker" type="text" id="form-dp-departure-time" oninput="dpAutoOccupation()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Bed Occupation Time <span class="form-hint">(auto-computed or manual)</span></label>
@@ -707,18 +776,24 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
                         <div class="form-group">
                             <label class="form-label">Arrival Time <span class="form-hint">(required)</span></label>
-                            <input class="form-input" type="datetime-local" id="pedit-arrival-time" oninput="peditAutoOccupation()" required>
+                            <input class="form-input dt-picker" type="text" id="pedit-arrival-time" oninput="peditAutoOccupation()" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">Departure Time <span class="form-hint">(optional)</span></label>
-                            <input class="form-input" type="datetime-local" id="pedit-departure-time">
+                            <input class="form-input dt-picker" type="text" id="pedit-departure-time">
                         </div>
                     </div>
 
                     <!-- Bed occupation spans full width -->
                     <div class="form-group">
                         <label class="form-label">Bed Occupation Time <span class="form-hint">(optional)</span></label>
-                        <input class="form-input" type="datetime-local" id="pedit-bed-occupation-time">
+                        <input class="form-input dt-picker" type="text" id="pedit-bed-occupation-time">
+                    </div>
+
+                    <!-- Triage Time — ER Live-Roster Redesign, slice ER10 -->
+                    <div class="form-group" id="pedit-triage-group">
+                        <label class="form-label">Triage Time <span class="form-hint">(optional — when the doctor first saw the patient)</span></label>
+                        <input class="form-input dt-picker" type="text" id="pedit-triage-time">
                     </div>
 
                     <!-- Destination — log stays only -->
@@ -738,28 +813,28 @@
                     <div style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:6px 0 4px">Vital Signs</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
                         <div class="form-group">
-                            <label class="form-label">Temperature <span class="form-hint">(required, °C)</span></label>
-                            <input class="form-input" type="number" step="0.1" id="pedit-temperature" placeholder="e.g. 37.0" required>
+                            <label class="form-label">Temperature <span class="form-hint">(optional, °C)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-temperature" placeholder="e.g. 37.0">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Heart Rate <span class="form-hint">(required, bpm)</span></label>
-                            <input class="form-input" type="number" id="pedit-heartrate" placeholder="e.g. 80" required>
+                            <label class="form-label">Heart Rate <span class="form-hint">(optional, bpm)</span></label>
+                            <input class="form-input" type="number" id="pedit-heartrate" placeholder="e.g. 80">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">Resp. Rate <span class="form-hint">(required)</span></label>
-                            <input class="form-input" type="number" id="pedit-resprate" placeholder="e.g. 16" required>
+                            <label class="form-label">Resp. Rate <span class="form-hint">(optional)</span></label>
+                            <input class="form-input" type="number" id="pedit-resprate" placeholder="e.g. 16">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">O₂ Saturation <span class="form-hint">(required, %)</span></label>
-                            <input class="form-input" type="number" step="0.1" id="pedit-o2sat" placeholder="e.g. 98" required>
+                            <label class="form-label">O₂ Saturation <span class="form-hint">(optional, %)</span></label>
+                            <input class="form-input" type="number" step="0.1" id="pedit-o2sat" placeholder="e.g. 98">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">SBP <span class="form-hint">(required, mmHg)</span></label>
-                            <input class="form-input" type="number" id="pedit-sbp" placeholder="e.g. 120" required>
+                            <label class="form-label">SBP <span class="form-hint">(optional, mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-sbp" placeholder="e.g. 120">
                         </div>
                         <div class="form-group">
-                            <label class="form-label">DBP <span class="form-hint">(required, mmHg)</span></label>
-                            <input class="form-input" type="number" id="pedit-dbp" placeholder="e.g. 80" required>
+                            <label class="form-label">DBP <span class="form-hint">(optional, mmHg)</span></label>
+                            <input class="form-input" type="number" id="pedit-dbp" placeholder="e.g. 80">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Blood Glucose <span class="form-hint">(optional, mg/dL)</span></label>
@@ -785,7 +860,7 @@
                     </div>
 
                     <div class="form-group" style="grid-column:1/-1">
-                        <label class="form-label">Pain Score <span class="form-hint">(required, 0–10)</span></label>
+                        <label class="form-label">Pain Score <span class="form-hint">(optional, 0–10)</span></label>
                         <div class="pat-pain-scale isbar-scale" id="pedit-pain-scale">
                             <button type="button" class="pat-scale-btn" data-pain="0" data-zone="low" onclick="selectPatPain('edit','0')">0</button>
                             <button type="button" class="pat-scale-btn" data-pain="1" data-zone="low" onclick="selectPatPain('edit','1')">1</button>
@@ -899,20 +974,100 @@
 
         <section id="patients" class="section">
             <div class="section-header">
-                <h2>🧑‍⚕️ Patients</h2>
-                <p class="section-description">Add and manage patient stays</p>
+                <h2>🧑‍⚕️ New Patient / ISBAR</h2>
+                <p class="section-description">Pick a patient from the Live ER Roster to start ISBAR documentation in place — no modal, no re-typing identity</p>
             </div>
             <div class="pat-section-layout">
 
-                <!-- Inline Add Form — ISBAR accordion -->
-                <div class="pat-add-card" id="pat-add-card" data-expanded="false">
-                    <button type="button" class="pat-add-top" id="pat-add-top" onclick="toggleAddCardCollapse()" aria-expanded="false">
-                        <span class="pat-add-icon" id="pat-add-top-icon">➕</span>
-                        <h3 id="pat-add-top-title">Add New Patient Stay</h3>
-                        <span class="isbar-section-status pat-add-top-status" id="pat-add-top-status" hidden>Not started</span>
-                        <span class="isbar-chevron pat-add-top-chevron" aria-hidden="true"></span>
-                    </button>
-                    <div class="pat-add-body" id="pat-add-body" hidden>
+                <!-- ER UI Architecture Redesign, Page A — two-panel layout replacing
+                     the old roster-picker-inside-collapsed-add-card → Edit-modal
+                     pattern (ER9). Left: Live ER Roster + secondary fallback.
+                     Right: ISBAR entry, disabled until a patient is selected,
+                     activated in place (no modal) once one is — see
+                     selectPatStay()/setPatFormMode() in patients.js. -->
+                <div class="pat-a-layout">
+                    <div class="pat-a-roster-panel">
+                        <div class="pat-a-roster-header">
+                            <h3><span class="pat-a-live-dot" aria-hidden="true"></span> Live ER Roster</h3>
+                            <button type="button" class="s-btn s-btn-outline" id="pat-er-roster-refresh-btn" onclick="loadPatErRoster()">🔄 Refresh</button>
+                        </div>
+                        <p class="pat-hint" id="pat-er-roster-status"></p>
+                        <div class="pat-directory-results pat-a-roster-list" id="pat-er-roster-results"></div>
+
+                        <div class="pat-a-fallback">
+                            <button type="button" class="pat-a-fallback-toggle" id="pat-a-fallback-toggle" onclick="togglePatFallback()">
+                                Can't find the patient? <span class="pat-a-fallback-link">Search Hospital Directory · Manual Entry</span>
+                                <span class="isbar-chevron pat-a-fallback-chevron" aria-hidden="true"></span>
+                            </button>
+                            <div class="pat-a-fallback-body" id="pat-a-fallback-body" hidden>
+                                <div class="isbar-field pat-directory-search-field">
+                                    <label>🔍 Search Hospital Directory <span class="pat-hint">(optional — leave blank to enter manually)</span></label>
+
+                                    <div id="pat-directory-search-ui">
+                                        <div class="pat-directory-tabs" role="tablist">
+                                            <button type="button" class="pat-directory-tab active" id="pat-directory-tab-name" onclick="switchPatDirectoryTab('name')">Search by name</button>
+                                            <button type="button" class="pat-directory-tab" id="pat-directory-tab-id" onclick="switchPatDirectoryTab('id')">Search by patient ID</button>
+                                        </div>
+
+                                        <div class="pat-directory-panel" id="pat-directory-panel-name">
+                                            <div class="pat-directory-panel-heading">البحث بالاسم الثلاثي</div>
+                                            <div class="pat-directory-name-grid" dir="rtl">
+                                                <div class="pat-directory-name-field">
+                                                    <label for="pat-directory-first-name">الاسم</label>
+                                                    <input class="isbar-input" type="text" id="pat-directory-first-name" dir="rtl" oninput="onPatDirectorySearchInput()" autocomplete="off">
+                                                </div>
+                                                <div class="pat-directory-name-field">
+                                                    <label for="pat-directory-father-name">اسم الأب</label>
+                                                    <input class="isbar-input" type="text" id="pat-directory-father-name" dir="rtl" oninput="onPatDirectorySearchInput()" autocomplete="off">
+                                                </div>
+                                                <div class="pat-directory-name-field">
+                                                    <label for="pat-directory-last-name">الشهرة</label>
+                                                    <input class="isbar-input" type="text" id="pat-directory-last-name" dir="rtl" oninput="onPatDirectorySearchInput()" autocomplete="off">
+                                                </div>
+                                            </div>
+                                            <div class="pat-directory-guess-row" id="pat-directory-guess-row" hidden>
+                                                <button type="button" class="s-btn s-btn-outline pat-directory-guess-btn" id="pat-directory-guess-btn" onclick="findPatDirectoryPossibleMatches()">🔍 Find possible matches</button>
+                                                <span class="pat-hint">Don't know the middle name? We'll check common ones for you.</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="pat-directory-panel" id="pat-directory-panel-id" hidden>
+                                            <input class="isbar-input" type="text" id="pat-directory-patient-id" placeholder="Patient ID" oninput="onPatDirectorySearchInput()" autocomplete="off">
+                                        </div>
+
+                                        <div class="pat-directory-results" id="pat-directory-results" hidden></div>
+                                    </div>
+
+                                    <!-- Shown instead of the search UI once a result is picked — the
+                                         resolved name fills this "field" directly (with a clear/change
+                                         affordance) rather than leaving the search inputs empty next to
+                                         a separate confirmation line. -->
+                                    <div class="pat-directory-resolved" id="pat-directory-resolved" hidden></div>
+                                </div>
+                                <button type="button" class="s-btn s-btn-outline pat-a-manual-btn" onclick="enterManualPatientEntry()">✏️ Enter Manually</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pat-a-isbar-panel" id="pat-a-isbar-panel" data-mode="disabled">
+                        <!-- Identity banner — shown only once a patient is active (UI-A3) -->
+                        <div class="pat-a-banner" id="pat-a-banner" hidden>
+                            <span class="pat-a-banner-avatar" aria-hidden="true">🧑‍⚕️</span>
+                            <div class="pat-a-banner-info">
+                                <div class="pat-a-banner-name" id="pat-a-banner-name"></div>
+                                <div class="pat-a-banner-meta" id="pat-a-banner-meta"></div>
+                            </div>
+                            <button type="button" class="s-btn s-btn-outline" onclick="changeActivePatient()">Change Patient</button>
+                        </div>
+
+                        <!-- Disabled-state placeholder — form stays visible/inert underneath,
+                             not hidden, per the redesign's confirmed decision #1. -->
+                        <div class="pat-a-placeholder" id="pat-a-placeholder">
+                            <div class="pat-a-placeholder-icon" aria-hidden="true">🧑‍⚕️</div>
+                            <h3>Select a patient from the Live ER Roster to begin ISBAR entry</h3>
+                            <p>The patient's information will load automatically, and you can then complete the ISBAR sections.</p>
+                        </div>
+
                         <div id="pat-add-error" class="pat-add-error"></div>
                         <div id="pat-add-error-summary" class="pat-add-error-summary" hidden></div>
 
@@ -942,11 +1097,18 @@
                                     <div class="isbar-field"><label>Age <span class="pat-hint">(required)</span></label>
                                         <input class="isbar-input" type="number" id="pat-age" placeholder="e.g. 45" min="0" required></div>
                                     <div class="isbar-field"><label>Arrival Time <span class="pat-hint">(auto, required)</span></label>
-                                        <input class="isbar-input" type="datetime-local" id="pat-arrival-time" oninput="patAutoOccupation()" required></div>
-                                    <div class="isbar-field"><label>Departure Time <span class="pat-hint">(optional)</span></label>
-                                        <input class="isbar-input" type="datetime-local" id="pat-departure-time"></div>
-                                    <div class="isbar-field"><label>Bed Occupation Time <span class="pat-hint">(optional)</span></label>
-                                        <input class="isbar-input" type="datetime-local" id="pat-bed-occupation-time"></div>
+                                        <input class="isbar-input dt-picker" type="text" id="pat-arrival-time" required></div>
+                                    <!-- Departure Time / Bed Occupation Time removed from this entry
+                                         form (2026-09-22 feedback) — neither is ever typed by the user
+                                         here: departure only exists once a discharge happens (Beds
+                                         Display / Unurgent discharge modals), and bed occupation is set
+                                         by the real bed-assignment action (assignPatientToBed() in
+                                         beds_display.js), not at ISBAR entry time. Both values are still
+                                         preserved on save (see patActiveBedOccupationTime in
+                                         patients.js) — this only removes the confusing, always-empty
+                                         inputs, not the underlying data. -->
+                                    <div class="isbar-field"><label>Triage Time <span class="pat-hint">(optional — time only; when the doctor first saw the patient)</span></label>
+                                        <input class="isbar-input dt-picker-time" type="text" id="pat-triage-time"></div>
                                     <div class="isbar-field" style="grid-column:1/-1"><label>Chief Complaint <span class="pat-hint">(required)</span></label>
                                         <input class="isbar-input" type="text" id="pat-chiefcomplaint" placeholder="e.g. Chest pain" required></div>
                                     <div class="isbar-field" style="grid-column:1/-1">
@@ -981,23 +1143,23 @@
                                     <span class="isbar-chevron" aria-hidden="true"></span>
                                 </summary>
                                 <div class="isbar-section-body isbar-grid-vitals">
-                                    <div class="isbar-field"><label>Temperature <span class="pat-hint">(required, °C)</span></label>
-                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0" required><span class="isbar-unit">°C</span></div></div>
-                                    <div class="isbar-field"><label>Heart Rate <span class="pat-hint">(required, bpm)</span></label>
-                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" id="pat-heartrate" placeholder="e.g. 80" required><span class="isbar-unit">bpm</span></div></div>
-                                    <div class="isbar-field"><label>Respiratory Rate <span class="pat-hint">(required)</span></label>
-                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" id="pat-resprate" placeholder="e.g. 16" required><span class="isbar-unit">/min</span></div></div>
-                                    <div class="isbar-field"><label>O₂ Saturation <span class="pat-hint">(required, %)</span></label>
-                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.1" id="pat-o2sat" placeholder="e.g. 98" required><span class="isbar-unit">%</span></div></div>
-                                    <div class="isbar-field"><label>Blood Pressure <span class="pat-hint">(required, mmHg)</span></label>
+                                    <div class="isbar-field"><label>Temperature <span class="pat-hint">(optional, °C)</span></label>
+                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.1" id="pat-temperature" placeholder="e.g. 37.0"><span class="isbar-unit">°C</span></div></div>
+                                    <div class="isbar-field"><label>Heart Rate <span class="pat-hint">(optional, bpm)</span></label>
+                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" id="pat-heartrate" placeholder="e.g. 80"><span class="isbar-unit">bpm</span></div></div>
+                                    <div class="isbar-field"><label>Respiratory Rate <span class="pat-hint">(optional)</span></label>
+                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" id="pat-resprate" placeholder="e.g. 16"><span class="isbar-unit">/min</span></div></div>
+                                    <div class="isbar-field"><label>O₂ Saturation <span class="pat-hint">(optional, %)</span></label>
+                                        <div class="isbar-number-wrap"><input class="isbar-input" type="number" step="0.1" id="pat-o2sat" placeholder="e.g. 98"><span class="isbar-unit">%</span></div></div>
+                                    <div class="isbar-field"><label>Blood Pressure <span class="pat-hint">(optional, mmHg)</span></label>
                                         <div class="pat-bp-combined">
-                                            <input class="isbar-input" type="number" id="pat-sbp" placeholder="SBP" required>
+                                            <input class="isbar-input" type="number" id="pat-sbp" placeholder="SBP">
                                             <span class="pat-bp-sep">/</span>
-                                            <input class="isbar-input" type="number" id="pat-dbp" placeholder="DBP" required>
+                                            <input class="isbar-input" type="number" id="pat-dbp" placeholder="DBP">
                                         </div></div>
                                     <div class="isbar-field"><label>Blood Glucose <span class="pat-hint">(optional, mg/dL)</span></label>
                                         <div class="isbar-number-wrap"><input class="isbar-input" type="number" id="pat-blood-glucose"><span class="isbar-unit">mg/dL</span></div></div>
-                                    <div class="isbar-field" style="grid-column:1/-1"><label>Pain Score <span class="pat-hint">(required, 0–10)</span></label>
+                                    <div class="isbar-field" style="grid-column:1/-1"><label>Pain Score <span class="pat-hint">(optional, 0–10)</span></label>
                                         <div class="pat-pain-scale isbar-scale" id="pat-pain-scale">
                                             <button type="button" class="pat-scale-btn" data-pain="0" data-zone="low" onclick="selectPatPain('add','0')">0</button>
                                             <button type="button" class="pat-scale-btn" data-pain="1" data-zone="low" onclick="selectPatPain('add','1')">1</button>
@@ -1038,71 +1200,165 @@
                             <div id="isbar-accordion-add"></div>
                         </div>
 
-                        <div class="pat-add-footer">
+                        <div class="pat-add-footer" id="pat-a-footer">
                             <span class="pat-add-required-remaining" id="pat-add-required-remaining"></span>
                             <span class="pat-add-footer-actions">
-                                <button class="s-btn s-btn-outline" onclick="cancelAddPatientForm()">Cancel</button>
-                                <button class="s-btn s-btn-outline" onclick="clearPatientForm()">🔄 Reset Form</button>
+                                <button class="s-btn s-btn-outline" id="pat-a-cancel-btn" onclick="cancelAddPatientForm()">Cancel</button>
+                                <button class="s-btn s-btn-outline" id="pat-a-reset-btn" onclick="resetPatDraftForm()">🔄 Reset Form</button>
                                 <button class="s-btn s-btn-primary" id="pat-add-btn" onclick="submitPatientForm()">➕ Add Patient</button>
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Dataset Table -->
+                <!-- Active Patients — still on Page A: browse/search every active
+                     stay (roster-origin or manual) and resume any of them into the
+                     panel above via selectPatStay() (Edit), or inspect read-only
+                     (View). History (discharged stays) moved to its own page — see
+                     the "patient-history" section. -->
                 <div class="pat-dataset-card">
-                    <div class="pat-dataset-top">
+                    <button type="button" class="pat-dataset-top pat-dataset-top-toggle" id="pat-dataset-toggle-btn" onclick="togglePatDatasetCollapse()" aria-expanded="false">
                         <div>
-                            <h3 id="pat-dataset-card-title">📋 Patient Dataset</h3>
-                            <p id="pat-dataset-card-subtitle">All patient stays in the system</p>
+                            <h3 id="pat-dataset-card-title">📋 Active Patients</h3>
+                            <p id="pat-dataset-card-subtitle">Patients currently in the ER, from the live roster or entered manually</p>
                         </div>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div style="display:flex;border:1.5px solid #e5e7eb;border-radius:8px;overflow:hidden">
-                                <button class="pat-view-btn active" data-view="daily"
-                                        onclick="switchPatientView('daily')"
-                                        style="padding:6px 14px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:#eef2ff;color:#4338ca;transition:all .15s">
-                                    📋 Daily Patients
-                                </button>
-                                <button class="pat-view-btn" data-view="log"
-                                        onclick="switchPatientView('log')"
-                                        style="padding:6px 14px;font-size:13px;font-weight:600;border:none;border-left:1.5px solid #e5e7eb;cursor:pointer;background:#fff;color:#6b7280;transition:all .15s">
-                                    📁 Patient Log
-                                </button>
+                        <span class="pat-dataset-toggle-actions">
+                            <span class="s-btn s-btn-outline" onclick="event.stopPropagation(); loadPatients();">🔄 Refresh</span>
+                            <span class="isbar-chevron pat-dataset-chevron" aria-hidden="true"></span>
+                        </span>
+                    </button>
+                    <!-- Collapsed by default (2026-09-22 feedback) — the live
+                         roster + ISBAR panel above is the page's actual job;
+                         this table is a secondary "browse/resume an active
+                         stay" tool, not something that needs to dominate the
+                         page on every visit. -->
+                    <div id="pat-dataset-body" hidden>
+                        <!-- Stats Bar -->
+                        <div id="pat-stats-bar" class="s-stats-bar" style="display:none">
+                            <div class="s-stat-card">
+                                <span class="s-stat-icon">📋</span>
+                                <div class="s-stat-content">
+                                    <span class="s-stat-val" id="pat-stat-total">–</span>
+                                    <span class="s-stat-lbl">Total Stays</span>
+                                </div>
                             </div>
-                            <button class="s-btn s-btn-outline" onclick="patActiveView==='daily'?loadPatients():loadPatientLog()">🔄 Refresh</button>
-                        </div>
-                    </div>
-                    <!-- Stats Bar -->
-                    <div id="pat-stats-bar" class="s-stats-bar" style="display:none">
-                        <div class="s-stat-card">
-                            <span class="s-stat-icon">📋</span>
-                            <div class="s-stat-content">
-                                <span class="s-stat-val" id="pat-stat-total">–</span>
-                                <span class="s-stat-lbl">Total Stays</span>
-                            </div>
-                        </div>
-                        <div class="s-stat-card s-stat-card-avail">
-                            <span class="s-stat-icon">🧑‍⚕️</span>
-                            <div class="s-stat-content">
-                                <span class="s-stat-val s-val-blue" id="pat-stat-subjects">–</span>
-                                <span class="s-stat-lbl">Unique Subjects</span>
+                            <div class="s-stat-card s-stat-card-avail">
+                                <span class="s-stat-icon">🧑‍⚕️</span>
+                                <div class="s-stat-content">
+                                    <span class="s-stat-val s-val-blue" id="pat-stat-subjects">–</span>
+                                    <span class="s-stat-lbl">Unique Subjects</span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <!-- Filter Bar -->
-                    <div id="pat-filter-bar" class="s-filter-bar" style="display:none">
-                        <div class="s-search-box">
-                            <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
-                            <input class="s-search-input" id="pat-search" type="text" placeholder="Search by subject/stay ID or complaint…" oninput="filterPatients()">
+                        <!-- Filter Bar -->
+                        <div id="pat-filter-bar" class="s-filter-bar" style="display:none">
+                            <div class="s-search-box">
+                                <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input class="s-search-input" id="pat-search" type="text" placeholder="Search by subject/stay ID or complaint…" oninput="filterPatients()">
+                            </div>
+                            <span class="s-result-count" id="pat-visible-count"></span>
                         </div>
-                        <span class="s-result-count" id="pat-visible-count"></span>
-                    </div>
-                    <!-- Table -->
-                    <div id="patients-table-container">
-                        <div class="loading"><div class="spinner"></div>Loading patients...</div>
+                        <!-- Table -->
+                        <div id="patients-table-container">
+                            <div class="loading"><div class="spinner"></div>Loading patients...</div>
+                        </div>
                     </div>
                 </div>
 
+            </div>
+        </section>
+
+        <!-- ER UI Architecture Redesign, Page C — History: split table +
+             persistent preview pane (replaces the old flat table +
+             patient-details-modal popup for discharged stays). See
+             patient-history.js. -->
+        <section id="patient-history" class="section">
+            <div class="section-header">
+                <div>
+                    <h2>📜 History</h2>
+                    <p class="section-description">Browse and inspect discharged patient stays</p>
+                </div>
+            </div>
+
+            <div class="hist-layout" id="hist-layout">
+                <div class="hist-table-pane" id="hist-table-pane">
+                    <div class="pat-dataset-card">
+                        <div class="pat-dataset-top">
+                            <div>
+                                <h3>📜 Historical Stays</h3>
+                                <p class="section-subtitle" style="margin:2px 0 0">Browse and view past patient stays</p>
+                            </div>
+                            <button class="s-btn s-btn-outline" onclick="loadPatientHistory()">🔄 Refresh</button>
+                        </div>
+                        <div id="hist-stats-bar" class="s-stats-bar" style="display:none">
+                            <div class="s-stat-card">
+                                <span class="s-stat-icon">📋</span>
+                                <div class="s-stat-content">
+                                    <span class="s-stat-val" id="hist-stat-total">–</span>
+                                    <span class="s-stat-lbl">Total Stays</span>
+                                </div>
+                            </div>
+                            <div class="s-stat-card s-stat-card-avail">
+                                <span class="s-stat-icon">🧑‍⚕️</span>
+                                <div class="s-stat-content">
+                                    <span class="s-stat-val s-val-blue" id="hist-stat-subjects">–</span>
+                                    <span class="s-stat-lbl">Unique Subjects</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="hist-filter-bar" class="s-filter-bar hist-filter-bar" style="display:none">
+                            <div class="s-search-box">
+                                <svg class="s-search-icon" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#aaa" stroke-width="1.8"/><line x1="14" y1="14" x2="18" y2="18" stroke="#aaa" stroke-width="1.8" stroke-linecap="round"/></svg>
+                                <input class="s-search-input" id="hist-search" type="text" placeholder="Search by name, ID or complaint…" oninput="filterPatientHistory()">
+                            </div>
+                            <select class="hist-filter-select" id="hist-filter-acuity" onchange="filterPatientHistory()">
+                                <option value="">All Acuity</option>
+                                <option value="1">1 — Immediate</option>
+                                <option value="2">2 — Emergent</option>
+                                <option value="3">3 — Urgent</option>
+                                <option value="4">4 — Less Urgent</option>
+                                <option value="5">5 — Non-Urgent</option>
+                            </select>
+                            <select class="hist-filter-select" id="hist-filter-bed" onchange="filterPatientHistory()">
+                                <option value="">All Beds</option>
+                            </select>
+                            <input class="hist-filter-date" id="hist-filter-from" type="date" onchange="filterPatientHistory()" title="Arrival from">
+                            <span class="hist-filter-date-sep">–</span>
+                            <input class="hist-filter-date" id="hist-filter-to" type="date" onchange="filterPatientHistory()" title="Arrival to">
+                            <button class="s-btn s-btn-outline" onclick="clearPatientHistoryFilters()">Clear</button>
+                            <span class="s-result-count" id="hist-visible-count"></span>
+                        </div>
+                        <div id="patient-history-table-container">
+                            <div class="loading"><div class="spinner"></div>Loading history...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hist-divider" id="hist-divider" hidden></div>
+
+                <div class="hist-preview-pane" id="hist-preview-pane" hidden>
+                    <div class="hist-preview-header">
+                        <span class="hist-preview-label">Preview</span>
+                        <button class="hist-preview-close" onclick="closeHistoryPreview()" title="Close preview">&#x2715;</button>
+                    </div>
+                    <div class="hist-preview-body" id="hist-preview-content"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ER UI Architecture Redesign, Page C (UI-C4) — Open Full Record:
+             dedicated full-width page for deep review/print/export/edit,
+             reusing renderPatientDetailsHtml() at full width (mode:'full'). -->
+        <section id="patient-full-record" class="section">
+            <div class="section-header">
+                <div>
+                    <h2>🧾 Full Patient Record</h2>
+                    <p class="section-description">Complete stay record — print, export, or edit</p>
+                </div>
+                <button class="s-btn s-btn-outline" onclick="closeFullRecordPage()">← Back to History</button>
+            </div>
+            <div class="hist-full-record-card" id="hist-full-record-content">
+                <div class="loading"><div class="spinner"></div>Loading record...</div>
             </div>
         </section>
 
@@ -1120,7 +1376,7 @@
                     <div id="bed-discharge-info" style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#92400e;line-height:1.5;"></div>
                     <div class="form-group">
                         <label class="form-label">Departure Time</label>
-                        <input class="form-input" type="datetime-local" id="bed-discharge-departure-time">
+                        <input class="form-input dt-picker" type="text" id="bed-discharge-departure-time">
                         <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
                     </div>
                     <div class="form-group">
@@ -1158,7 +1414,7 @@
                     <div id="discharge-modal-info" style="background:#fef3c7;border-radius:8px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#92400e;line-height:1.5;"></div>
                     <div class="form-group">
                         <label class="form-label">Departure Time</label>
-                        <input class="form-input" type="datetime-local" id="discharge-departure-time">
+                        <input class="form-input dt-picker" type="text" id="discharge-departure-time">
                         <span class="form-hint">Pre-filled with current time — edit before confirming if needed</span>
                     </div>
                     <div class="form-group">
@@ -1212,7 +1468,7 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Bed Occupation Time <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
-                        <input class="form-input" type="datetime-local" id="sched-edit-occupation-time">
+                        <input class="form-input dt-picker" type="text" id="sched-edit-occupation-time">
                         <span class="form-hint">Leave blank to keep the existing value</span>
                     </div>
                     <div id="sched-edit-error" class="form-error-box"></div>
@@ -1443,7 +1699,7 @@
 
                     <div id="sch-occ-time-row" style="padding:12px 20px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                         <label style="font-size:13px;color:#6b7280;font-weight:500;white-space:nowrap;">🕐 Bed Occupation Time <span style="color:#9ca3af;font-weight:400;">(optional)</span></label>
-                        <input type="datetime-local" id="sch-arrival-time"
+                        <input type="text" id="sch-arrival-time" class="dt-picker"
                                style="flex:1;min-width:180px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#1f2937;" />
                     </div>
                     <div class="sch-summary-footer">
@@ -1675,81 +1931,6 @@
             </div>
         </section>
 
-        <!-- ══════════════════════════════════════════════════════════════════ -->
-        <!--   UNURGENT CARE SECTION                                          -->
-        <!-- ══════════════════════════════════════════════════════════════════ -->
-        <section id="unurgent" class="section">
-            <div class="section-header">
-                <h2>🟢 Unurgent Care</h2>
-                <p class="section-subtitle">
-                    Patients with acuity 5 routed to the non-urgent treatment path. No bed required.
-                </p>
-            </div>
-
-            <div class="uu-toolbar">
-                <input type="text" id="unurgent-search" class="uu-search"
-                       placeholder="Search by ID, name or complaint…"
-                       oninput="filterUnurgentPatients()">
-                <button class="uu-refresh-btn" onclick="loadUnurgentSection()">
-                    🔄 Refresh
-                </button>
-                <span class="uu-count" id="unurgent-count"></span>
-            </div>
-
-            <div id="unurgent-spinner" class="uu-spinner" style="display:none">
-                <div class="spinner"></div> Loading…
-            </div>
-
-            <div id="unurgent-list" class="uu-list">
-                <div class="uu-empty">Loading patients…</div>
-            </div>
-        </section>
-
-        <!-- Unurgent Discharge Modal -->
-        <div id="uu-discharge-modal" class="modal" style="display:none">
-            <div class="uu-dm-card">
-                <div class="uu-dm-header">
-                    <div class="uu-dm-header-left">
-                        <div class="uu-dm-header-icon">🏠</div>
-                        <div>
-                            <div class="uu-dm-title">Discharge from Unurgent Care</div>
-                            <div class="uu-dm-subtitle" id="uu-dm-patient-info">Patient #—</div>
-                        </div>
-                    </div>
-                    <button class="uu-dm-close-btn" onclick="closeUnurgentDischargeModal()">✕</button>
-                </div>
-                <div class="uu-dm-body">
-                    <div class="uu-dm-chips" id="uu-dm-details"></div>
-                    <div class="uu-dm-notice">
-                        <span class="uu-dm-notice-icon">📋</span>
-                        <span>The stay will be archived to the patient log and all staff assignments released.</span>
-                    </div>
-                    <div class="uu-dm-field">
-                        <label class="uu-dm-label">🕐 Departure Time</label>
-                        <input type="datetime-local" id="uu-discharge-time" class="uu-dm-time-input">
-                    </div>
-                    <div class="uu-dm-field">
-                        <label class="uu-dm-label">📍 Destination</label>
-                        <div style="display:flex;gap:8px">
-                            <select id="uu-discharge-destination" class="uu-dm-time-input" onchange="toggleDestinationDetail('uu-discharge-destination', 'uu-discharge-destination-detail')" style="flex:1">
-                                <option value="">Select destination…</option>
-                                <option value="Home">🏠 Home</option>
-                                <option value="Hospital Department">🏥 Hospital Department</option>
-                            </select>
-                            <input type="text" id="uu-discharge-destination-detail" class="uu-dm-time-input" placeholder="Which department?" maxlength="28" style="flex:1;display:none">
-                        </div>
-                    </div>
-                </div>
-                <div class="uu-dm-footer">
-                    <button class="uu-dm-cancel" onclick="closeUnurgentDischargeModal()">Cancel</button>
-                    <button class="uu-dm-confirm" id="uu-discharge-confirm-btn"
-                            onclick="confirmUnurgentDischarge()">
-                        🏠 Confirm Discharge
-                    </button>
-                </div>
-            </div>
-        </div>
-
         <section id="settings" class="section">
             <div class="section-header">
                 <h2>⚙️ Settings</h2>
@@ -1829,6 +2010,7 @@
                         <button class="settings-tab" data-tab="models" onclick="showSettingsTab('models')">🤖<span class="stab-label"> Models</span></button>
                         <button class="settings-tab" data-tab="training" onclick="showSettingsTab('training')">🧠<span class="stab-label"> Training</span></button>
                         <button class="settings-tab" data-tab="features" onclick="showSettingsTab('features')">🎛️<span class="stab-label"> Features</span></button>
+                        <button class="settings-tab" data-tab="hospital-directory" onclick="showSettingsTab('hospital-directory')">🏥<span class="stab-label"> Hospital Directory API</span></button>
                     </div>
                 </div>
                 <div class="stab-sep"></div>
@@ -2575,6 +2757,70 @@
                     </div>
                 </div>
 
+                <!-- ── Hospital Directory API Card ─────────────────────── -->
+                <div class="settings-card" data-settings-tab="hospital-directory" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🏥 Hospital Directory API</h3>
+                            <p>Connect to the hospital's external patient directory so patients can be searched and linked before a stay is created</p>
+                        </div>
+                        <div class="settings-card-btns">
+                            <button class="s-btn s-btn-outline" onclick="loadHospitalDirectorySettings()">🔄 Refresh</button>
+                        </div>
+                    </div>
+                    <div class="hd-body">
+                        <div id="hd-form-error" class="form-error-box"></div>
+
+                        <div class="form-group">
+                            <label class="form-label">API Base URL</label>
+                            <input class="form-input" type="text" id="hd-base-url" placeholder="http://host.docker.internal:6000/api/directory/v1">
+                        </div>
+
+                        <div class="hd-row">
+                            <div class="form-group">
+                                <label class="form-label">API Key</label>
+                                <div class="hd-key-wrap">
+                                    <input class="form-input" type="password" id="hd-api-key" placeholder="Leave unchanged to keep the current key" autocomplete="new-password">
+                                    <button type="button" class="hd-key-toggle" id="hd-key-toggle-btn" onclick="toggleHdKeyVisibility()" title="Show/hide">👁️</button>
+                                </div>
+                            </div>
+                            <div class="form-group hd-timeout-field">
+                                <label class="form-label">Request Timeout (seconds)</label>
+                                <input class="form-input" type="number" id="hd-timeout" min="1" max="120" value="10">
+                            </div>
+                        </div>
+
+                        <div class="hd-verify-row">
+                            <label class="feat-toggle-label">
+                                <input type="checkbox" id="hd-verify-tls" checked>
+                                <span class="feat-slider"></span>
+                            </label>
+                            <span>Verify TLS Certificate</span>
+                        </div>
+
+                        <div class="hd-actions">
+                            <button class="s-btn s-btn-outline" id="hd-test-btn" onclick="testHospitalDirectoryConnection()">▶ Test Connection</button>
+                            <button class="s-btn s-btn-primary" id="hd-save-btn" onclick="saveHospitalDirectorySettings()">💾 Save Settings</button>
+                        </div>
+
+                        <div id="hd-test-result" class="hd-test-result" hidden></div>
+                        <div id="hd-last-test" class="hd-last-test"></div>
+
+                        <div class="hd-divider"></div>
+
+                        <div class="hd-candidates-header">
+                            <h4>Middle-Name Guess List</h4>
+                            <p>Tried, in order, by "Find possible matches" on the Add-Patient form when a patient's first and last name are known but the middle name isn't. One name per line — order matters (most common first).</p>
+                        </div>
+                        <div id="hd-candidates-error" class="form-error-box"></div>
+                        <textarea class="form-input hd-candidates-textarea" id="hd-candidates-textarea" rows="8" placeholder="One name per line…"></textarea>
+                        <div class="hd-actions">
+                            <button class="s-btn s-btn-outline" onclick="loadMiddleNameCandidates()">🔄 Reload</button>
+                            <button class="s-btn s-btn-primary" id="hd-candidates-save-btn" onclick="saveMiddleNameCandidates()">💾 Save List</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ── Accounts Card ──────────────────────────────────── -->
                 <div class="settings-card" data-settings-tab="accounts" style="display:none">
                     <div class="settings-card-top">
@@ -2945,6 +3191,8 @@
     </div>
 
     <script src="js/vendor/chart.js"></script>
+    <script src="js/vendor/flatpickr.js"></script>
+    <script src="js/datetime-picker.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/dataset_display.js"></script>
     <script src="js/flow_prediction.js"></script>
@@ -2963,15 +3211,16 @@
     <script src="js/patient-isbar-form.js"></script>
     <script src="js/patient-details-view.js"></script>
     <script src="js/patients.js"></script>
+    <script src="js/patient-history.js"></script>
     <script src="js/scheduling.js"></script>
     <script src="js/simulation.js"></script>
-    <script src="js/unurgent.js"></script>
     <script src="js/model_files.js"></script>
     <script src="js/model_training.js"></script>
     <script src="js/statistics.js"></script>
     <script src="js/settings_reset.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/settings_features.js"></script>
+    <script src="js/settings_hospital_directory.js"></script>
     <script src="js/settings_accounts.js"></script>
     <script src="js/navigation.js"></script>
     <script src="js/app.js"></script>
@@ -2998,6 +3247,10 @@
                     onclick="showSection('patients')">
                 <span class="nav-icon">🧑‍⚕️</span><span>Patients</span>
             </button>
+            <button class="nav-drawer-btn" data-section="patient-history"
+                    onclick="showSection('patient-history')">
+                <span class="nav-icon">📜</span><span>History</span>
+            </button>
             <!-- Group: Care -->
             <div class="nav-drawer-group" id="dg-care">
                 <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-care')">
@@ -3008,10 +3261,6 @@
                     <button class="nav-drawer-btn nav-drawer-sub" data-section="beds-display"
                             onclick="showSection('beds-display')">
                         <span class="nav-icon">🛏️</span><span>Beds Display</span>
-                    </button>
-                    <button class="nav-drawer-btn nav-drawer-sub" data-section="unurgent"
-                            onclick="showSection('unurgent')">
-                        <span class="nav-icon">🟢</span><span>Unurgent Care</span>
                     </button>
                 </div>
             </div>
@@ -3048,10 +3297,6 @@
         <button class="nav-dd-item" data-section="beds-display"
                 onclick="showSection('beds-display')">
             <span class="nav-dd-icon">🛏️</span> Beds Display
-        </button>
-        <button class="nav-dd-item" data-section="unurgent"
-                onclick="showSection('unurgent')">
-            <span class="nav-dd-icon">🟢</span> Unurgent Care
         </button>
     </div>
     <div class="nav-dropdown" id="navg-ops-dd">

@@ -29,7 +29,7 @@
 # =============================================================================
 
 from sqlalchemy import (
-    Column, Integer, BigInteger, String, ForeignKey, ForeignKeyConstraint,
+    Column, Integer, BigInteger, String, Unicode, ForeignKey, ForeignKeyConstraint,
     CheckConstraint, UniqueConstraint, Float, DateTime, Boolean,
 )
 
@@ -137,7 +137,10 @@ class DailyPatient(Base):
 
     stay_id             = Column(Integer, primary_key=True, autoincrement=False)
     subject_id          = Column(Integer, nullable=False, index=True)
-    name                = Column(String(200), nullable=True)
+    # Unicode (NVARCHAR), not String (VARCHAR): a directory search result's
+    # full_name can be Arabic — VARCHAR silently corrupts non-Latin-1
+    # characters to "?" on write.
+    name                = Column(Unicode(200), nullable=True)
     gender              = Column(String(20), nullable=True)
     age                 = Column(Float, nullable=True)
     temperature         = Column(Float, nullable=True)
@@ -173,6 +176,25 @@ class DailyPatient(Base):
     # renamed or deleted.
     admission_ward_id   = Column(Integer, nullable=True)
     admission_ward_name = Column(String(200), nullable=True)
+    # Hospital Directory API integration (see features/hospital_directory/) —
+    # snapshots of the external system's identifiers at the moment this stay
+    # was created from a directory search selection. Both null and
+    # record_source="local" for a purely manually-typed stay; local
+    # subject_id/stay_id remain the real primary keys either way.
+    external_patient_id = Column(String(64), nullable=True)
+    external_visit_id   = Column(String(64), nullable=True)
+    record_source       = Column(String(20), nullable=True)  # "local" | "external"
+    # ER Live-Roster Redesign (see docs/development/ER Live Roster
+    # Redesign/) — reference to the external ER system's visit id, never
+    # a primary key or unique-constrained (a reappeared id is a new
+    # admission, not a resumed stay). triage_time is optional, same
+    # free-text convention as arrival_time/bed_occupation_time.
+    # departure_source distinguishes a nurse's own discharge ("manual")
+    # from the live-roster poll-diff safety net closing a stay on its
+    # behalf ("api_detected").
+    er_visit_id         = Column(String(64), nullable=True)
+    triage_time         = Column(String(30), nullable=True)
+    departure_source    = Column(String(20), nullable=True)  # "manual" | "api_detected"
 
 
 class LogPatient(Base):
@@ -181,7 +203,7 @@ class LogPatient(Base):
     log_id              = Column(BigInteger, primary_key=True, autoincrement=True)
     subject_id          = Column(Integer, nullable=False, index=True)
     stay_id             = Column(Integer, nullable=False, index=True)
-    name                = Column(String(200), nullable=True)
+    name                = Column(Unicode(200), nullable=True)  # see DailyPatient.name
     gender              = Column(String(20), nullable=True)
     age                 = Column(Float, nullable=True)
     temperature         = Column(Float, nullable=True)
@@ -204,6 +226,12 @@ class LogPatient(Base):
     bed_history         = Column(String(500), nullable=True)
     admission_ward_id   = Column(Integer, nullable=True)
     admission_ward_name = Column(String(200), nullable=True)
+    external_patient_id = Column(String(64), nullable=True)
+    external_visit_id   = Column(String(64), nullable=True)
+    record_source       = Column(String(20), nullable=True)  # "local" | "external"
+    er_visit_id         = Column(String(64), nullable=True)
+    triage_time         = Column(String(30), nullable=True)
+    departure_source    = Column(String(20), nullable=True)  # "manual" | "api_detected"
 
 
 class PatientISBARDetails(Base):
@@ -555,3 +583,46 @@ class TrainingRun(Base):
     artifact_path     = Column(String(500), nullable=True)  # relative to backend/, e.g. models/AIModels/training_runs/{run_id}/model.pkl
     is_live           = Column(Boolean, nullable=False, default=False)
     error_message     = Column(String(1000), nullable=True)
+
+
+# ── Hospital Directory API connection settings ─────────────────────────────
+# Single-row table (one row per IntegrationName; only "hospital_directory" is
+# used today) holding the external Hospital Directory API's connection
+# details. Read fresh from the DB on every call by
+# features/hospital_directory/settings_db.py — no in-process caching, so a
+# saved change takes effect on the very next search/test without a restart.
+# api_key_encrypted is Fernet-encrypted at rest by
+# features/hospital_directory/crypto_utils.py, keyed by the
+# SETTINGS_ENCRYPTION_KEY process env var (never stored in this table).
+
+class ExternalApiSettings(Base):
+    __tablename__ = "ExternalApiSettings"
+    __table_args__ = (
+        UniqueConstraint("integration_name", name="uq_external_api_settings_integration_name"),
+    )
+
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    integration_name   = Column(String(50), nullable=False, index=True)  # "hospital_directory"
+    base_url           = Column(String(500), nullable=True)
+    api_key_encrypted  = Column(String(500), nullable=True)
+    timeout_seconds    = Column(Integer, nullable=False, default=10)
+    verify_tls         = Column(Boolean, nullable=False, default=True)
+    last_test_status   = Column(String(20), nullable=True)   # "success" | "failure"
+    last_test_message  = Column(String(1000), nullable=True)
+    last_test_at       = Column(DateTime, nullable=True)
+
+
+class MiddleNameCandidate(Base):
+    """
+    One curated candidate name tried by the "Find possible matches" guess
+    loop (hospital_directory/guess.py) when a user knows a patient's first
+    and last name but not the middle/father name the vendor API requires
+    for a structured search. sort_order controls try-order (most-common
+    names first) and is the only thing an admin reorders — there is
+    deliberately only one flat list, not named/switchable sets.
+    """
+    __tablename__ = "MiddleNameCandidates"
+
+    id          = Column(Integer, primary_key=True, autoincrement=True)
+    name        = Column(Unicode(200), nullable=False)  # see DailyPatient.name — these are Arabic given names
+    sort_order  = Column(Integer, nullable=False, default=0, index=True)

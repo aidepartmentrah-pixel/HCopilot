@@ -26,21 +26,19 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 from typing import Optional
-from datetime import datetime
 from db.session import SessionLocal
 from db.models import DailyPatient
 from features.relations.relations_manager import RelationsManager
 from features.beds_display.bed_manager import BedManager
-from features.data_management.log_patients_manager import LogPatientsManager
 from features.staff_management.nurses_manager import NursesManager
 from features.staff_management.doctors_manager import DoctorsManager
-from features.timestamp_utils import validate_timestamp_order, validate_discharge_time, validate_destination
+from features.timestamp_utils import validate_timestamp_order, validate_destination
 from features.staff_logs.link_archiver import archive_patient_doctor_links, archive_patient_nurse_links
+from features.patient_management.discharge_manager import discharge_active_stay
 
 router       = APIRouter()
 rel          = RelationsManager()
 bed_mgr      = BedManager()
-log_mgr      = LogPatientsManager()
 nurses_mgr   = NursesManager()
 doctors_mgr  = DoctorsManager()
 
@@ -258,61 +256,19 @@ async def delete_assignment(patient_id: int, bed_id: int):
 
 @router.post("/discharge/{patient_id}/{bed_id}")
 async def discharge_patient(patient_id: int, bed_id: int, req: DischargeRequest):
-    # Full discharge workflow:
-    # 1. Find the patient's active stay in DailyPatients
-    # 2. Stamp the departure time
-    # 3. Copy the completed stay row to LogPatients
-    # 4. Remove the row from DailyPatients
-    # 5. Clear all relation links (bed, doctor, nurses)
+    # Full discharge workflow: archive + delete + doctor/nurse unlink is
+    # the shared discharge_active_stay() (see patient_management/
+    # discharge_manager.py, ER Live-Roster Redesign slice ER4) — this
+    # endpoint adds the bed-specific steps around it: releasing the
+    # patient_bed relation and chariot cleanup, since a bedded discharge
+    # (unlike Unurgent's) actually has a bed to give back.
     try:
-        with SessionLocal() as session:
-            patient_rows = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).all()
-            if not patient_rows:
-                raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found in daily patients")
-
-            # Prefer a row without a departure time to target the currently active stay
-            active = [r for r in patient_rows if not (r.departure_time or "").strip()]
-            row = active[-1] if active else patient_rows[-1]
-            stay_id = row.stay_id
-
-            departure_time = req.departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
-
-            # Validate departure time — use the discharge-aware helper that tolerates
-            # existing bad bed_occupation_time values
-            validate_discharge_time(row.arrival_time, row.bed_occupation_time, departure_time)
-
-            row.destination = req.destination
-
-            archived = {
-                "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
-                "gender": row.gender, "age": row.age, "temperature": row.temperature,
-                "heartrate": row.heartrate, "resprate": row.resprate, "o2sat": row.o2sat,
-                "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
-                "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
-                "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
-                "destination": row.destination, "bed_history": row.bed_history,
-                "admission_ward_id": row.admission_ward_id, "admission_ward_name": row.admission_ward_name,
-            }
-            log_mgr.append(archived)
-
-            session.delete(row)
-            session.commit()
-
-        # Release all bed/doctor/nurse links and update staff patient counts
-        old_doctor_ids, old_nurse_ids = _current_staff(patient_id)
-        archive_patient_doctor_links(patient_id, stay_id)
-        archive_patient_nurse_links(patient_id, stay_id)
-        rel.delete_by_left("patient_bed",    patient_id)
-        rel.delete_by_left("patient_doctor", patient_id)
-        for did in old_doctor_ids:
-            doctors_mgr.update_patient_count(did, -1)
-        rel.delete_by_left("patient_nurse",  patient_id)
-        for nid in old_nurse_ids:
-            nurses_mgr.update_patient_count(nid, -1)
-
+        result = discharge_active_stay(patient_id, departure_time=req.departure_time,
+                                        destination=req.destination, departure_source="manual")
+        rel.delete_by_left("patient_bed", patient_id)
         bed_mgr.cleanup_chariot_if_unneeded(bed_id)
-
-        return {"ok": True, "message": f"Patient {patient_id} discharged successfully", "stay_id": stay_id}
+        return {"ok": True, "message": f"Patient {patient_id} discharged successfully",
+                "stay_id": result["stay_id"]}
     except HTTPException:
         raise
     except Exception as e:

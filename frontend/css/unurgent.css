@@ -136,6 +136,15 @@
     color: #1f2937;
 }
 
+/* ER Live-Roster Redesign, slice ER8 — a bedless card with no name yet
+   (roster-origin, not yet filled in). Matches .pat-identity-name.unknown's
+   muted/italic treatment in patient-isbar-form.css. */
+.uu-card-name.unknown {
+    color: #6b7280;
+    font-style: italic;
+    font-weight: 500;
+}
+
 .uu-card-complaint {
     padding: 2px 14px 6px;
     font-size: 13px;

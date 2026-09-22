@@ -23,6 +23,7 @@ SAFE_GET_ENDPOINTS = [
     "/api/patient-flow/datasets",
     "/api/beds/list",
     "/api/beds/stats",
+    "/api/beds/bedless",
     "/api/models/list",
     "/api/staff/doctors/list",
     "/api/staff/doctors/stats",

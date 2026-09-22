@@ -1,23 +1,43 @@
 /**
- * beds_display.js — Beds Display section for HCopilot.
+ * beds_display.js — Page B, the Live ER Board (ER UI Architecture Redesign).
  *
- * Renders live bed occupancy as a ward-grouped visual grid.
- * Each bed card shows bed number, type, status, and assigned patient info.
+ * Renders beds AND waiting (no-bed) patients as one set of horizontal,
+ * ward-grouped lanes, using one shared card component for both (confirmed
+ * decision #5 — same dimensions/radius/spacing/typography, only the icon and
+ * status treatment differ). Replaces the old wrap-grid of decorative bed
+ * graphics plus a separate Unurgent-derived flat list.
  *
  * Responsibilities:
- *   loadBeds()             — fetch /api/beds/stats and /api/beds/list in parallel,
- *                            render stat cards and the ward-grouped bed grid.
- *   openBedModal(bedId)    — open the bed detail modal; fetches current patient
- *                            info and available doctors/nurses for assignment.
- *   assignPatient()        — POST /api/scheduling/assign to link a patient to this bed.
- *   releaseBed()           — POST /api/beds/release/{bedId} to free the bed.
- *   setCondition()         — POST /api/beds/condition/{bedId} to mark dirty/available.
- *   confirmDischarge()     — POST /api/scheduling/discharge/{stayId} to archive the
- *                            patient to LogPatients and release the bed.
+ *   loadBeds()              — fetch /api/beds/stats, /api/beds/list, and
+ *                             /api/beds/bedless together, render the summary
+ *                             stat row (UI-B4) and every lane (UI-B2/UI-B3)
+ *                             in one pass.
+ *   _erbCardFromBed()/
+ *   _erbCardFromBedless()   — normalize a bed row / bedless-patient row into
+ *                             the one card descriptor shape _erbCardHtml()
+ *                             renders (UI-B1).
+ *   _erbIsWaitingOverThreshold() — waiting-time attention treatment (UI-B5):
+ *                             arrival > 5 min ago AND triage_time still null
+ *                             (open question 3, confirmed: "handled" =
+ *                             triage_time set).
+ *   openBedModal(bedId)     — open the bed detail modal; fetches current patient
+ *                             info and available doctors/nurses for assignment.
+ *   assignPatient()         — POST /api/scheduling/assign to link a patient to this bed.
+ *   releaseBed()            — POST /api/beds/release/{bedId} to free the bed.
+ *   setCondition()          — POST /api/beds/condition/{bedId} to mark dirty/available.
+ *   confirmDischarge()      — POST /api/scheduling/discharge/{stayId} to archive the
+ *                             patient to LogPatients and release the bed.
+ *   openBedlessDischargeModal() / confirmBedlessDischarge() — the waiting-card's
+ *                             one action (clicking the card opens this modal
+ *                             directly — no separate button, no "view
+ *                             details" surface existed for a bedless patient
+ *                             before this redesign either).
  *
  * Global state:
  *   currentBedId     — bed_id of the bed open in the detail modal
  *   currentPatientId — patient_id currently on that bed (null if empty)
+ *   _bedlessPatients — in-memory list, refreshed by loadBeds(); backs both
+ *                      the Waiting/No-Bed lane and the discharge modal's lookup
  */
 
 let currentBedId     = null;  // bed currently open in the detail modal
@@ -26,50 +46,163 @@ let currentPatientId = null;  // patient currently on that bed (null if empty)
 let bedsFitActive       = false;  // whether "Fit to Screen" kiosk mode is on
 let bedsFitResizeHandler = null;  // bound resize listener, so it can be removed on exit
 
+// ER UI Architecture Redesign, Page B — waiting-time threshold for the
+// attention treatment (UI-B5). Open question 3, confirmed: "handled" means
+// triage_time is set, so "waiting > 5 min" = arrival more than 5 minutes ago
+// AND triage_time still null — reuses the column ER10 added for exactly
+// this purpose, no new backend field needed.
+const ERB_WAIT_ATTENTION_MINUTES = 5;
+
+let _bedlessPatients = [];             // in-memory list, refreshed by loadBeds(); also backs the discharge modal's lookup
+let _bedlessDischargePatientId = null; // subject_id of the patient being discharged
+
+function _erbMinutesSince(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return null;
+    return Math.floor((Date.now() - d.getTime()) / 60000);
+}
+
+function _erbIsWaitingOverThreshold(p) {
+    if (p.triage_time) return false; // "handled" — confirmed decision, open question 3
+    const mins = _erbMinutesSince(p.arrival_time);
+    return mins !== null && mins > ERB_WAIT_ATTENTION_MINUTES;
+}
+
+function _erbStatCard(icon, value, label, modifierClass) {
+    return `<div class="s-stat-card ${modifierClass || ''}">
+        <span class="s-stat-icon">${icon}</span>
+        <div class="s-stat-content">
+            <span class="s-stat-val">${value}</span>
+            <span class="s-stat-lbl">${label}</span>
+        </div>
+    </div>`;
+}
+
+// Unified card renderer (confirmed decision #5) — one shape for both a bed
+// and a waiting (no-bed) patient; only the icon and the status/color variant
+// differ. `c` is a plain descriptor built by _erbCardFromBed()/
+// _erbCardFromBedless() below, never rendered directly from raw API shapes,
+// so the two data sources never leak their differing field names into here.
+function _erbCardHtml(c) {
+    return `<div class="erb-card erb-card-${c.statusClass}${c.attentionClass || ''}" id="${c.domId}" onclick="${c.onclick}">
+        <div class="erb-card-top">
+            <span class="erb-card-icon" aria-hidden="true">${c.icon}</span>
+            <span class="erb-card-status-badge">${c.statusLabel}</span>
+        </div>
+        <div class="erb-card-primary">${c.primary}</div>
+        <div class="erb-card-sub">${c.sub}</div>
+        ${c.patientHtml ? `<div class="erb-card-patient">${c.patientHtml}</div>` : ''}
+    </div>`;
+}
+
+function _erbCardFromBed(bed) {
+    const statusClass = bed.bed_status.toLowerCase().replace(/ /g, '-'); // available|occupied|under-repair
+    const btype = bed.bed_type || 'normal';
+    let patientHtml = '';
+    if (bed.patient_id != null) {
+        const nameLine = bed.patient_name ? `<div class="erb-card-name">${_escapeHtml(bed.patient_name)}</div>` : '';
+        const metaParts = [];
+        if (bed.patient_age != null) metaParts.push(bed.patient_age + ' y/o');
+        if (bed.patient_gender)      metaParts.push(bed.patient_gender);
+        patientHtml = `<div class="erb-card-id">#${bed.patient_id}</div>${nameLine}` +
+            (metaParts.length ? `<div class="erb-card-meta">${_escapeHtml(metaParts.join(' · '))}</div>` : '');
+    }
+    return {
+        domId: `bed-card-${bed.bed_id}`,
+        statusClass,
+        statusLabel: bed.bed_status,
+        icon: '🛏️',
+        primary: _escapeHtml(bed.bed_number),
+        sub: _escapeHtml((bed.ward_name ? bed.ward_name + ' · ' : '') + btype),
+        patientHtml,
+        onclick: `openBedModal(${bed.bed_id}, '${bed.bed_number}', '${bed.bed_status}', ${bed.patient_id}, '${btype}')`,
+    };
+}
+
+// Interaction parity with a bed card (confirmed decision #5: "same...
+// interaction locations") — clicking either opens that card's one available
+// action surface: a bed card opens the bed modal (assign/release/repair);
+// a waiting card opens the discharge modal, its only action today (no
+// "view details" ever existed for a bedless patient before this redesign,
+// so none is invented here — see the tracking doc's log for this call).
+function _erbCardFromBedless(p) {
+    const attention = _erbIsWaitingOverThreshold(p);
+    const name = p.name
+        ? `<div class="erb-card-name">${_escapeHtml(p.name)}${p.age != null ? ', ' + p.age + ' y/o' : ''}${p.gender ? ' · ' + _escapeHtml(p.gender) : ''}</div>`
+        : '<div class="erb-card-name unknown">Unknown Patient</div>';
+    const complaint = p.chiefcomplaint ? `<div class="erb-card-complaint">${_escapeHtml(p.chiefcomplaint)}</div>` : '';
+    const mins = _erbMinutesSince(p.arrival_time);
+    const waitBadge = attention ? `<div class="erb-card-wait-badge">⏱️ Waiting ${mins}m</div>` : '';
+    return {
+        domId: `bedless-card-${p.subject_id}`,
+        statusClass: 'waiting',
+        statusLabel: 'Waiting',
+        icon: '🧑',
+        primary: 'Acuity ' + (p.acuity ?? '—'),
+        sub: '#' + p.subject_id,
+        patientHtml: `${name}${complaint}${waitBadge}`,
+        onclick: `openBedlessDischargeModal(${p.subject_id})`,
+        attentionClass: attention ? ' erb-card-attention' : '',
+    };
+}
+
+function _renderErbLane(laneKey, title, cardDescriptors) {
+    const trackId = 'erb-lane-' + laneKey;
+    const noun = laneKey === 'waiting' ? 'patient' : 'bed';
+    const count = `${cardDescriptors.length} ${noun}${cardDescriptors.length !== 1 ? 's' : ''}`;
+    return `<div class="erb-lane">
+        <div class="erb-lane-header">
+            <h3>${_escapeHtml(title)}</h3>
+            <span class="erb-lane-count">${count}</span>
+            <div class="erb-lane-nav">
+                <button type="button" class="erb-lane-nav-btn" onclick="_erbScrollLane('${trackId}', -1)" aria-label="Scroll ${_escapeHtml(title)} left">‹</button>
+                <button type="button" class="erb-lane-nav-btn" onclick="_erbScrollLane('${trackId}', 1)" aria-label="Scroll ${_escapeHtml(title)} right">›</button>
+            </div>
+        </div>
+        <div class="erb-lane-track" id="${trackId}">
+            ${cardDescriptors.length ? cardDescriptors.map(_erbCardHtml).join('') : '<div class="erb-lane-empty">Nothing here right now.</div>'}
+        </div>
+    </div>`;
+}
+
+function _erbScrollLane(trackId, direction) {
+    const el = document.getElementById(trackId);
+    if (el) el.scrollBy({ left: direction * 340, behavior: 'smooth' });
+}
+
 async function loadBeds() {
-    // Fetch bed stats and full bed list in parallel, then render the visual grid grouped by ward
+    // Fetch bed stats, the full bed list, and the bedless (no-bed) list all
+    // together — the Waiting/No-Bed lane and the summary stat row both need
+    // the bedless data, so it's no longer a separate independently-triggered
+    // fetch (loadBedlessSection(), pre-redesign) but part of one render pass.
     const statsContainer = document.getElementById('beds-stats');
-    const bedsContainer  = document.getElementById('beds-grid');
+    const lanesContainer = document.getElementById('erb-lanes');
 
     try {
-        const [statsResponse, bedsResponse] = await Promise.all([
+        const [statsRes, bedsRes, bedlessRes] = await Promise.all([
             fetch('/api/beds/stats'),
-            fetch('/api/beds/list')
+            fetch('/api/beds/list'),
+            fetch('/api/beds/bedless'),
         ]);
-        const stats    = await statsResponse.json();
-        const bedsData = await bedsResponse.json();
+        const stats       = await statsRes.json();
+        const bedsData    = await bedsRes.json();
+        const bedlessData = await bedlessRes.json();
+        _bedlessPatients  = bedlessData.patients || [];
 
-        // Render the stat cards row
-        statsContainer.innerHTML = `
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Beds</div>
-                    <div class="stat-value">${stats.total_beds}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Occupied</div>
-                    <div class="stat-value" style="color:#e74c3c">${stats.occupied}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Available</div>
-                    <div class="stat-value" style="color:#27ae60">${stats.available}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Under Repair</div>
-                    <div class="stat-value" style="color:#f59e0b">${stats.under_repair}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Occupancy Rate</div>
-                    <div class="stat-value">${stats.occupancy_rate}%</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Total Wards</div>
-                    <div class="stat-value">${stats.total_wards}</div>
-                </div>
-            </div>
-        `;
+        const waitingOver = _bedlessPatients.filter(_erbIsWaitingOverThreshold).length;
 
-        // Group beds by ward for section rendering; beds with no ward go to "Unassigned"
+        // Summary stat row (UI-B4) — Total/Occupied/Available already come
+        // from /api/beds/stats unchanged; Without Bed = the bedless
+        // endpoint's own count; Waiting > 5 min is the only new computation.
+        statsContainer.innerHTML = `<div class="s-stats-bar erb-stats-bar">
+            ${_erbStatCard('🛏️', stats.total_beds, 'Total Beds')}
+            ${_erbStatCard('🔴', stats.occupied, 'Occupied Beds', 's-stat-card-occ')}
+            ${_erbStatCard('🟢', stats.available, 'Available Beds', 's-stat-card-avail')}
+            ${_erbStatCard('🧑', _bedlessPatients.length, 'Patients Without Bed', 's-stat-card-nobed')}
+            ${_erbStatCard('⏱️', waitingOver, 'Waiting > 5 min', waitingOver > 0 ? 's-stat-card-wait' : '')}
+        </div>`;
+
+        // Group beds by ward for lane rendering; beds with no ward go to "Unassigned"
         const bedsByWard = {};
         const unassigned = [];
         bedsData.beds.forEach(bed => {
@@ -80,86 +213,106 @@ async function loadBeds() {
                 unassigned.push(bed);
             }
         });
-
         const wardIds = Object.keys(bedsByWard).sort((a, b) => parseInt(a) - parseInt(b));
-
-        // Build one ward section: header with mini-stats + visual bed grid
-        const renderWardSection = (wardLabel, wardBeds) => {
-            const occupied    = wardBeds.filter(b => b.bed_status === 'Occupied').length;
-            const available   = wardBeds.filter(b => b.bed_status === 'Available').length;
-            const underRepair = wardBeds.filter(b => b.bed_status === 'Under Repair').length;
-            return `
-                <div class="ward-section">
-                    <div class="ward-header">
-                        <h3>🏥 ${wardLabel}</h3>
-                        <div class="ward-stats">
-                            <span class="ward-stat occupied">🔴 ${occupied} Occupied</span>
-                            <span class="ward-stat available">🟢 ${available} Available</span>
-                            ${underRepair > 0 ? `<span class="ward-stat under-repair">🟡 ${underRepair} Under Repair</span>` : ''}
-                            <span class="ward-stat total">📊 ${wardBeds.length} Total</span>
-                        </div>
-                    </div>
-                    <div class="beds-visual-grid">
-                        ${wardBeds.map(bed => {
-                            const cssClass = bed.bed_status.toLowerCase().replace(/ /g, '-');
-                            const btype    = bed.bed_type || 'normal';
-                            const patTip = bed.patient_id != null
-                                ? ` · ${bed.patient_name ? bed.patient_name + ' (#' + bed.patient_id + ')' : 'Patient #' + bed.patient_id}`
-                                : '';
-                            const tooltip  = `Bed ${bed.bed_number}` +
-                                ` · Type: ${btype}` +
-                                patTip +
-                                (bed.bed_status === 'Under Repair' ? ' · Under Repair' : '');
-                            const patientBlock = bed.patient_id != null ? (() => {
-                            const nameLine = bed.patient_name
-                                ? `<div class="bed-patient-name">${bed.patient_name}</div>`
-                                : '';
-                            const metaParts = [];
-                            if (bed.patient_age != null) metaParts.push(bed.patient_age + ' y/o');
-                            if (bed.patient_gender)      metaParts.push(bed.patient_gender);
-                            const metaLine = metaParts.length
-                                ? `<div class="bed-patient-meta">${metaParts.join(' · ')}</div>`
-                                : '';
-                            return `<div class="bed-patient-block">
-                                        <div class="bed-patient-id">👤 #${bed.patient_id}</div>
-                                        ${nameLine}${metaLine}
-                                    </div>`;
-                        })() : '';
-                        return `
-                            <div class="bed-item ${cssClass}"
-                                 title="${tooltip}"
-                                 onclick="openBedModal(${bed.bed_id}, '${bed.bed_number}', '${bed.bed_status}', ${bed.patient_id}, '${btype}')"
-                                 data-bed-id="${bed.bed_id}">
-                                <div class="bed-graphic">
-                                    <div class="bed-pillow"></div>
-                                    <div class="bed-mattress"></div>
-                                    <div class="bed-frame"></div>
-                                </div>
-                                <div class="bed-info">
-                                    <div class="bed-number">${bed.bed_number}</div>
-                                    <div class="bed-status">${bed.bed_status}</div>
-                                    <div class="bed-type-badge type-${btype.toLowerCase()}">${btype}</div>
-                                    ${patientBlock}
-                                </div>
-                            </div>`;
-                        }).join('')}
-                    </div>
-                </div>`;
-        };
 
         let html = wardIds.map(w => {
             const name = bedsByWard[w][0]?.ward_name || ('Ward ' + w);
-            return renderWardSection(name, bedsByWard[w]);
+            return _renderErbLane('ward-' + w, name, bedsByWard[w].map(_erbCardFromBed));
         }).join('');
-        if (unassigned.length > 0) html += renderWardSection('Unassigned', unassigned);
-        bedsContainer.innerHTML = html;
+        if (unassigned.length > 0) html += _renderErbLane('unassigned', 'Unassigned', unassigned.map(_erbCardFromBed));
+        // Waiting/No-Bed — one catch-all lane, last (matches the confirmed
+        // reading of open question 2: not per-ward slots).
+        html += _renderErbLane('waiting', 'Waiting / No Bed', _bedlessPatients.map(_erbCardFromBedless));
+
+        lanesContainer.innerHTML = html;
 
         if (bedsFitActive) applyBedsFitScale();  // re-fit after live data changes the content height
 
     } catch (error) {
         statsContainer.innerHTML = `<div class="error-state"><p>Error loading bed statistics: ${error.message}</p></div>`;
-        bedsContainer.innerHTML  = `<div class="error-state"><div class="error-icon">❌</div><h3>Error Loading Beds</h3><p>${error.message}</p></div>`;
+        lanesContainer.innerHTML = `<div class="error-state"><div class="error-icon">❌</div><h3>Error Loading Beds</h3><p>${error.message}</p></div>`;
         showMessage(`Error loading beds: ${error.message}`, 'error');
+    }
+}
+
+// ── Bedless discharge modal ─────────────────────────────────────────────────
+// Same endpoint the former Unurgent section used (/api/unurgent/discharge/{id})
+// — it now runs the shared discharge_active_stay() underneath (see
+// patient_management/discharge_manager.py) and works for any bedless patient,
+// not only ones flagged unurgent=True. Kept as-is rather than renamed, per
+// the "URL/behavior unchanged, only the internals were unified" ER4 design.
+
+function openBedlessDischargeModal(patientId) {
+    _bedlessDischargePatientId = patientId;
+    const p = _bedlessPatients.find(pt => pt.subject_id === patientId);
+
+    const subtitleEl = document.getElementById('bedless-dm-patient-info');
+    if (subtitleEl) {
+        subtitleEl.textContent = p && p.name ? `${p.name}  ·  Patient #${patientId}` : `Patient #${patientId}`;
+    }
+
+    const chipsEl = document.getElementById('bedless-dm-details');
+    if (chipsEl && p) {
+        const chips = [];
+        if (p.acuity  != null) chips.push(`Acuity ${p.acuity}`);
+        if (p.age     != null) chips.push(`${p.age} y/o`);
+        if (p.gender)          chips.push(p.gender);
+        if (p.chiefcomplaint)  chips.push(p.chiefcomplaint);
+        if (p.arrival_time)    chips.push(`Arrived: ${p.arrival_time}`);
+        chipsEl.innerHTML = chips.map(t => `<span class="uu-dm-chip">${t}</span>`).join('');
+    } else if (chipsEl) {
+        chipsEl.innerHTML = '';
+    }
+
+    setDateTimeValue('bedless-discharge-time', nowLocalIso());
+    const destInput = document.getElementById('bedless-discharge-destination');
+    if (destInput) destInput.value = '';
+    toggleDestinationDetail('bedless-discharge-destination', 'bedless-discharge-destination-detail');
+
+    const modal = document.getElementById('bedless-discharge-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeBedlessDischargeModal() {
+    _bedlessDischargePatientId = null;
+    const modal = document.getElementById('bedless-discharge-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function confirmBedlessDischarge() {
+    const pid = _bedlessDischargePatientId;
+    if (!pid) return;
+
+    const departure_time = document.getElementById('bedless-discharge-time')?.value || null;
+    const destination = composeDestination('bedless-discharge-destination', 'bedless-discharge-destination-detail');
+    if (!destination) {
+        showMessage('Please select a destination.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('bedless-discharge-confirm-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Discharging…'; }
+
+    try {
+        const res = await fetch(`/api/unurgent/discharge/${pid}`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ departure_time, destination }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Discharge failed');
+
+        closeBedlessDischargeModal();
+        showMessage(`Patient #${pid} discharged (${data.departure_time}).`, 'success');
+        notifyDataChange('beds', `Patient #${pid} discharged (no bed)`);
+        // ER UI Architecture Redesign — the Waiting/No-Bed lane is now part
+        // of the same render pass as the bed lanes (loadBeds()), not a
+        // separately-triggered fetch (the old loadBedlessSection()).
+        await loadBeds();
+    } catch (err) {
+        showMessage(`Discharge error: ${err.message}`, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🏠 Confirm Discharge'; }
     }
 }
 
@@ -248,7 +401,7 @@ function openBedModal(bedId, bedNumber, bedStatus, patientId, bedType) {
         const err = document.getElementById('modal-assign-error');
         if (err) err.textContent = '';
         const arrivalInput = document.getElementById('modal-assign-arrival-time');
-        if (arrivalInput) arrivalInput.value = nowLocalIso();
+        if (arrivalInput) setDateTimeValue('modal-assign-arrival-time', nowLocalIso());
     }
 
     // Release button — only meaningful when a patient is currently occupying the bed
@@ -318,7 +471,7 @@ function openBedDischargeModal() {
     // Pre-fill departure time and show the discharge confirmation modal
     if (!currentBedId) return;
     const now = nowLocalIso();
-    document.getElementById('bed-discharge-departure-time').value = now;
+    setDateTimeValue('bed-discharge-departure-time', now);
     document.getElementById('bed-discharge-destination').value = '';
     toggleDestinationDetail('bed-discharge-destination', 'bed-discharge-destination-detail');
     const patLabel = currentPatientId != null ? `Patient <strong>#${currentPatientId}</strong>` : 'the patient';

@@ -67,6 +67,7 @@ from features.auth.api import router as auth_router                  # Login + u
 from features.ward_census.api import router as ward_census_router    # Daily per-ward patient census
 from features.daily_analysis.api import router as daily_analysis_router  # Date-filterable combined daily report
 from features.model_training.api import router as model_training_router  # Train/list/promote flow-prediction model runs
+from features.hospital_directory.api import router as hospital_directory_router  # External patient directory search + settings
 
 # ── Router registration ────────────────────────────────────────────────────────
 # Each router is mounted under its own URL prefix.  All API endpoints therefore
@@ -90,6 +91,7 @@ app.include_router(auth_router,       prefix="/api/auth")            # POST /api
 app.include_router(ward_census_router, prefix="/api/ward-census")    # GET /api/ward-census/today
 app.include_router(daily_analysis_router, prefix="/api/daily-analysis")  # GET /api/daily-analysis/report
 app.include_router(model_training_router, prefix="/api/model-training")  # POST /api/model-training/train, etc.
+app.include_router(hospital_directory_router, prefix="/api/hospital-directory")  # GET /api/hospital-directory/config, /patients/search
 
 
 @app.get("/health")

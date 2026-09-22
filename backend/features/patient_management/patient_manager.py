@@ -88,12 +88,19 @@ class PatientManager(DailyPatientsManager):
             "pain":                p.pain,
             "acuity":              p.acuity,
             "chiefcomplaint":      p.chiefcomplaint,
+            "external_patient_id": p.external_patient_id,
+            "external_visit_id":   p.external_visit_id,
+            "record_source":       p.record_source,
+            "er_visit_id":         p.er_visit_id,
+            "triage_time":         p.triage_time,
         }
 
     def add(self, patient_id, stay_id, arrival_time=None, departure_time=None, bed_occupation_time=None,
             temperature=None, heartrate=None, resprate=None,
             o2sat=None, sbp=None, dbp=None, pain=None, acuity=None, chiefcomplaint=None,
-            name=None, gender=None, age=None):
+            name=None, gender=None, age=None,
+            external_patient_id=None, external_visit_id=None, record_source=None,
+            er_visit_id=None, triage_time=None):
         """
         Add a new patient stay to DailyPatients, enforcing single-stay uniqueness.
 
@@ -120,7 +127,7 @@ class PatientManager(DailyPatientsManager):
         if patient_id in df["subject_id"].values:
             raise HTTPException(status_code=400, detail=f"Patient ID {patient_id} already exists")
         # Ensure datetime columns are object-typed to accept string values
-        for col in ("arrival_time", "departure_time", "bed_occupation_time"):
+        for col in ("arrival_time", "departure_time", "bed_occupation_time", "triage_time"):
             if col not in df.columns:
                 df[col] = None
             df[col] = df[col].astype(object)
@@ -132,6 +139,9 @@ class PatientManager(DailyPatientsManager):
             "temperature": temperature, "heartrate": heartrate, "resprate": resprate,
             "o2sat": o2sat, "sbp": sbp, "dbp": dbp,
             "pain": pain, "acuity": acuity, "chiefcomplaint": chiefcomplaint,
+            "external_patient_id": external_patient_id, "external_visit_id": external_visit_id,
+            "record_source": record_source or "local",
+            "er_visit_id": er_visit_id, "triage_time": triage_time,
         }])
         df = pd.concat([df, new_row], ignore_index=True)
         self._write_df(df)
@@ -140,7 +150,7 @@ class PatientManager(DailyPatientsManager):
     def modify(self, stay_id, patient_id, arrival_time=None, departure_time=None, bed_occupation_time=None,
                temperature=None, heartrate=None, resprate=None,
                o2sat=None, sbp=None, dbp=None, pain=None, acuity=None, chiefcomplaint=None,
-               name=None, gender=None, age=None):
+               name=None, gender=None, age=None, triage_time=None):
         """
         Update an existing active stay, preventing patient_id reassignment conflicts.
 
@@ -167,7 +177,7 @@ class PatientManager(DailyPatientsManager):
         other = df[df["stay_id"] != stay_id]
         if patient_id in other["subject_id"].values:
             raise HTTPException(status_code=400, detail=f"Patient ID {patient_id} is already used by another record")
-        for col in ("arrival_time", "departure_time", "bed_occupation_time"):
+        for col in ("arrival_time", "departure_time", "bed_occupation_time", "triage_time"):
             if col not in df.columns:
                 df[col] = None
         for col, val in [
@@ -180,6 +190,7 @@ class PatientManager(DailyPatientsManager):
             ("sbp",                sbp),             ("dbp",                 dbp),
             ("pain",               pain),            ("acuity",              acuity),
             ("chiefcomplaint",     chiefcomplaint),
+            ("triage_time",        triage_time),
         ]:
             df.loc[df["stay_id"] == stay_id, col] = val
         self._write_df(df)

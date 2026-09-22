@@ -1,0 +1,41 @@
+/* datetime-picker.css — theme overrides for the vendored flatpickr widget
+ * (css/vendor/flatpickr.css carries its own default look; this file only
+ * re-colors it to match the app's own primary accent, #667eea, already
+ * used everywhere else for .s-btn-primary etc. — see settings.css).
+ *
+ * Replaces the native browser datetime-local calendar/clock popup across
+ * every date/time field in the app (see js/datetime-picker.js).
+ */
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+    background: #667eea;
+    border-color: #667eea;
+}
+.flatpickr-day.today { border-color: #667eea; }
+.flatpickr-day.today:hover { background: #667eea; border-color: #667eea; color: #fff; }
+.flatpickr-day:hover { background: #eef0ff; }
+
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-weekdays { background: #667eea; }
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year { color: #fff; }
+.flatpickr-weekday { background: #667eea; color: #fff; }
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg { fill: #fff; }
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg { fill: rgba(255,255,255,0.8); }
+
+.flatpickr-time input:hover,
+.flatpickr-time .flatpickr-am-pm:hover,
+.flatpickr-time input:focus,
+.flatpickr-time .flatpickr-am-pm:focus { background: #eef0ff; }
+.numInputWrapper:hover { background: #eef0ff; }
+
+/* The visible altInput (see js/datetime-picker.js) reuses the app's own
+   .isbar-input / .form-input styling from their respective files — no
+   extra rule needed here beyond making sure it doesn't shrink oddly. */
+input.dt-picker-alt { width: 100%; box-sizing: border-box; }

@@ -5,23 +5,16 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 from typing import Optional
-from datetime import datetime
 from db.session import SessionLocal
 from db.models import DailyPatient, PatientBed
 from .bed_manager import BedManager, _VALID_CONDITIONS, _VALID_TYPES
-from features.data_management.log_patients_manager import LogPatientsManager
 from features.relations.relations_manager import RelationsManager
-from features.staff_management.doctors_manager import DoctorsManager
-from features.staff_management.nurses_manager import NursesManager
-from features.timestamp_utils import validate_timestamp_order, validate_discharge_time, validate_destination
-from features.staff_logs.link_archiver import archive_patient_doctor_links, archive_patient_nurse_links
+from features.timestamp_utils import validate_timestamp_order, validate_destination
+from features.patient_management.discharge_manager import discharge_active_stay
 
 router      = APIRouter()
 bed_manager = BedManager()
-log_mgr     = LogPatientsManager()
 rel         = RelationsManager()
-doctors_mgr = DoctorsManager()
-nurses_mgr  = NursesManager()
 
 
 # ── Request models ─────────────────────────────────────────────────────────────
@@ -112,6 +105,37 @@ async def get_beds():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/bedless")
+async def get_bedless_patients():
+    # ER Live-Roster Redesign, slice ER5 — active patients with no bed
+    # relation, enriched with linked doctor/nurse ids the same way
+    # unurgent/api.py's list_unurgent() already does (kept for card
+    # display on Beds Display's new bedless section).
+    try:
+        result = bed_manager.get_bedless_patients()
+        patients = result["patients"]
+
+        pd_rows = rel.list("patient_doctor")["rows"]
+        pn_rows = rel.list("patient_nurse")["rows"]
+
+        enriched = []
+        for p in patients:
+            pid = p["subject_id"]
+            doctor_ids = [r["doctor_id"] for r in pd_rows if r["patient_id"] == pid]
+            nurse_ids  = [r["nurse_id"]  for r in pn_rows  if r["patient_id"] == pid]
+            enriched.append({
+                **p,
+                "doctor_ids": [int(x) for x in doctor_ids],
+                "nurse_ids":  [int(x) for x in nurse_ids],
+            })
+
+        return {"patients": enriched, "total": len(enriched)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/stats")
 async def get_bed_stats():
     # Return aggregate counts for the stats bar (occupied, available, under repair, occupancy %)
@@ -176,7 +200,12 @@ async def release_bed(bed_id: int):
 
 @router.post("/discharge/{bed_id}")
 async def discharge_from_bed(bed_id: int, body: BedDischarge):
-    # Full discharge: stamp departure time → copy to log → remove from daily → clear all relations
+    # Resolve which patient occupies this bed, then delegate the actual
+    # archive/delete/unlink work to the shared discharge_active_stay()
+    # (see patient_management/discharge_manager.py, ER Live-Roster
+    # Redesign slice ER4) — the same function every discharge path in the
+    # app now uses. This endpoint's own job is just the bed-specific part:
+    # releasing the patient_bed relation and chariot cleanup.
     try:
         with SessionLocal() as session:
             link = session.query(PatientBed).filter(PatientBed.bed_id == bed_id).first()
@@ -184,55 +213,13 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
                 raise HTTPException(status_code=404, detail=f"Bed {bed_id} has no assigned patient")
             patient_id = link.patient_id
 
-        departure_time = body.departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
-        stay_id = None
-
-        with SessionLocal() as session:
-            patient_rows = session.query(DailyPatient).filter(DailyPatient.subject_id == patient_id).all()
-            if patient_rows:
-                # Find the active stay (no departure time yet) to avoid stamping a past discharge
-                active = [r for r in patient_rows if not (r.departure_time or "").strip()]
-                row = active[-1] if active else patient_rows[-1]
-                stay_id = row.stay_id
-
-                validate_discharge_time(row.arrival_time, row.bed_occupation_time, departure_time)
-
-                row.destination = body.destination
-
-                archived = {
-                    "subject_id": row.subject_id, "stay_id": row.stay_id, "name": row.name,
-                    "gender": row.gender, "age": row.age, "temperature": row.temperature,
-                    "heartrate": row.heartrate, "resprate": row.resprate, "o2sat": row.o2sat,
-                    "sbp": row.sbp, "dbp": row.dbp, "pain": row.pain, "acuity": row.acuity,
-                    "chiefcomplaint": row.chiefcomplaint, "arrival_time": row.arrival_time,
-                    "departure_time": departure_time, "bed_occupation_time": row.bed_occupation_time,
-                    "destination": row.destination, "bed_history": row.bed_history,
-                    "admission_ward_id": row.admission_ward_id, "admission_ward_name": row.admission_ward_name,
-                }
-                log_mgr.append(archived)
-
-                session.delete(row)
-                session.commit()
-
-        # Collect linked staff before removing relations so counts can be decremented
-        pd_rows    = rel.list("patient_doctor")["rows"]
-        pn_rows    = rel.list("patient_nurse")["rows"]
-        linked_docs = [r["doctor_id"] for r in pd_rows if r["patient_id"] == patient_id]
-        linked_nurs = [r["nurse_id"]  for r in pn_rows  if r["patient_id"] == patient_id]
-        archive_patient_doctor_links(patient_id, stay_id)
-        archive_patient_nurse_links(patient_id, stay_id)
-        rel.delete_by_left("patient_bed",    patient_id)
-        rel.delete_by_left("patient_doctor", patient_id)
-        rel.delete_by_left("patient_nurse",  patient_id)
-        for did in linked_docs:
-            doctors_mgr.update_patient_count(did, -1)
-        for nid in linked_nurs:
-            nurses_mgr.update_patient_count(nid, -1)
-
-        # If the freed bed was a temporary chariot bed, remove it unless still needed
+        result = discharge_active_stay(patient_id, departure_time=body.departure_time,
+                                        destination=body.destination, departure_source="manual")
+        rel.delete_by_left("patient_bed", patient_id)
         bed_manager.cleanup_chariot_if_unneeded(bed_id)
 
-        return {"ok": True, "message": f"Patient {patient_id} discharged from bed {bed_id}"}
+        return {"ok": True, "message": f"Patient {patient_id} discharged from bed {bed_id}",
+                "stay_id": result["stay_id"]}
     except HTTPException:
         raise
     except Exception as e:

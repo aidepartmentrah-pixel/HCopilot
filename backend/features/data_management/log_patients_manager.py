@@ -56,6 +56,8 @@ COLUMNS = [
     'o2sat', 'sbp', 'dbp', 'pain', 'acuity', 'chiefcomplaint',
     'arrival_time', 'departure_time', 'bed_occupation_time', 'destination', 'bed_history',
     'admission_ward_id', 'admission_ward_name',
+    'external_patient_id', 'external_visit_id', 'record_source',
+    'er_visit_id', 'triage_time', 'departure_source',
 ]
 
 
@@ -85,6 +87,12 @@ class LogPatientsManager:
             "pain":                p.pain,
             "acuity":              p.acuity,
             "chiefcomplaint":      p.chiefcomplaint,
+            "external_patient_id": p.external_patient_id,
+            "external_visit_id":   p.external_visit_id,
+            "record_source":       p.record_source,
+            "er_visit_id":         p.er_visit_id,
+            "triage_time":         p.triage_time,
+            "departure_source":    p.departure_source,
         }
 
     def append(self, row_dict):
@@ -106,6 +114,12 @@ class LogPatientsManager:
                     bed_history=data.get("bed_history"),
                     admission_ward_id=data.get("admission_ward_id"),
                     admission_ward_name=data.get("admission_ward_name"),
+                    external_patient_id=data.get("external_patient_id"),
+                    external_visit_id=data.get("external_visit_id"),
+                    record_source=data.get("record_source"),
+                    er_visit_id=data.get("er_visit_id"),
+                    triage_time=data.get("triage_time"),
+                    departure_source=data.get("departure_source"),
                 ))
                 session.commit()
             except OperationalError:

@@ -57,7 +57,7 @@ async function loadSchedulingSection() {
         if (el) el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
     });
     const arrivalEl = document.getElementById('sch-arrival-time');
-    if (arrivalEl) arrivalEl.value = nowLocalIso();
+    if (arrivalEl) setDateTimeValue('sch-arrival-time', nowLocalIso());
     await Promise.all([
         _loadSchedPatients(),
         _loadSchedDoctors(),
@@ -579,7 +579,7 @@ function clearSchedSelections() {
     const errEl = document.getElementById('sch-assign-error');
     if (errEl) errEl.textContent = '';
     const arrivalEl = document.getElementById('sch-arrival-time');
-    if (arrivalEl) arrivalEl.value = nowLocalIso();
+    if (arrivalEl) setDateTimeValue('sch-arrival-time', nowLocalIso());
 }
 
 async function confirmSchedAssignment() {
@@ -799,7 +799,7 @@ function openDischargeModal(patientId, bedId) {
     _dischargeBedId     = bedId;
 
     const now = nowLocalIso();
-    document.getElementById('discharge-departure-time').value = now;
+    setDateTimeValue('discharge-departure-time', now);
     document.getElementById('discharge-destination').value = '';
     toggleDestinationDetail('discharge-destination', 'discharge-destination-detail');
     document.getElementById('discharge-modal-info').innerHTML =
@@ -928,10 +928,9 @@ function openSchedEditModal(patientId, bedId) {
     if (a.nurse2_id) n2Sel.value = a.nurse2_id;
 
     // Pre-fill bed occupation time from the patient's record if available
-    const occEl = document.getElementById('sched-edit-occupation-time');
-    occEl.value = (patient && patient.bed_occupation_time)
+    setDateTimeValue('sched-edit-occupation-time', (patient && patient.bed_occupation_time)
         ? patient.bed_occupation_time.slice(0, 16)
-        : '';
+        : '');
 
     const errEl = document.getElementById('sched-edit-error');
     errEl.textContent   = '';

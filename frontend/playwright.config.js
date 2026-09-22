@@ -18,6 +18,14 @@ module.exports = defineConfig({
   timeout: 30000,
   expect: { timeout: 5000 },
   fullyParallel: false, // tests share one backend/DB — avoid cross-test data races
+  // `fullyParallel: false` only serializes tests WITHIN one file — different
+  // spec files still ran concurrently by default (3 workers), which raced on
+  // /api/patients/next-ids (a bare max(existing)+1 with no locking, see
+  // patient_manager.py) once a 4th+ spec file was added (ER Live-Roster
+  // Redesign, slice ER12 testing) — two workers could read the same "next"
+  // id before either committed, so one add() 400'd on a collision. Forcing
+  // one worker actually delivers this config's own stated intent above.
+  workers: 1,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {

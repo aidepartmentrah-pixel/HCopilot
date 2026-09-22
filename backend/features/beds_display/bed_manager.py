@@ -131,6 +131,45 @@ class BedManager:
                 "type_summary":   type_counts,
             }
 
+    def get_bedless_patients(self):
+        """
+        Every active DailyPatients row with no patient_bed relation — the
+        "bedless" population for Beds Display's dedicated section (ER
+        Live-Roster Redesign, slice ER5; see docs/development/ER Live
+        Roster Redesign/0. Slicing Task Table.md). Membership is
+        COMPUTED, never a stored flag: `unurgent` is returned as a plain
+        display tag, not a filter, so an OR-scheduler-routed acuity-5
+        patient (Unurgent's original population) and a fresh live-roster
+        pick who simply hasn't been assigned a bed yet both show up here
+        the same way, through one list.
+        """
+        with SessionLocal() as session:
+            bedded_ids = {pb.patient_id for pb in session.query(PatientBed).all()}
+            patients = [p for p in session.query(DailyPatient).all() if p.subject_id not in bedded_ids]
+            return {
+                "patients": [{
+                    "subject_id":     p.subject_id,
+                    "stay_id":        p.stay_id,
+                    "name":           p.name,
+                    "gender":         p.gender,
+                    "age":            p.age,
+                    "temperature":    p.temperature,
+                    "heartrate":      p.heartrate,
+                    "resprate":       p.resprate,
+                    "o2sat":          p.o2sat,
+                    "sbp":            p.sbp,
+                    "dbp":            p.dbp,
+                    "pain":           p.pain,
+                    "acuity":         p.acuity,
+                    "chiefcomplaint": p.chiefcomplaint,
+                    "arrival_time":   p.arrival_time,
+                    "triage_time":    p.triage_time,
+                    "er_visit_id":    p.er_visit_id,
+                    "unurgent":       str(p.unurgent or "").strip().lower() == "true",
+                } for p in patients],
+                "total": len(patients),
+            }
+
     def get_stats(self):
         with SessionLocal() as session:
             beds_rows = session.query(EDBed).all()

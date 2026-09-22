@@ -35,11 +35,15 @@ from features.staff_management.nurses_manager import NursesManager
 _COLS = ["subject_id", "stay_id", "name", "gender", "age", "temperature", "heartrate", "resprate",
          "o2sat", "sbp", "dbp", "pain", "acuity", "chiefcomplaint",
          "arrival_time", "departure_time", "bed_occupation_time", "unurgent", "bed_history",
-         "admission_ward_id", "admission_ward_name"]
+         "admission_ward_id", "admission_ward_name",
+         "external_patient_id", "external_visit_id", "record_source",
+         "er_visit_id", "triage_time", "departure_source"]
 
 _FLOAT_COLS = ["age", "temperature", "heartrate", "resprate", "o2sat", "sbp", "dbp", "acuity"]
 _STR_COLS   = ["name", "gender", "pain", "chiefcomplaint", "arrival_time", "departure_time",
-               "bed_occupation_time", "unurgent", "bed_history", "admission_ward_name"]
+               "bed_occupation_time", "unurgent", "bed_history", "admission_ward_name",
+               "external_patient_id", "external_visit_id", "record_source",
+               "er_visit_id", "triage_time", "departure_source"]
 
 
 def _clean_float(v):
@@ -91,6 +95,11 @@ class DailyPatientsManager:
             "pain":                p.pain,
             "acuity":              p.acuity,
             "chiefcomplaint":      p.chiefcomplaint,
+            "external_patient_id": p.external_patient_id,
+            "external_visit_id":   p.external_visit_id,
+            "record_source":       p.record_source,
+            "er_visit_id":         p.er_visit_id,
+            "triage_time":         p.triage_time,
         }
 
     def get_all(self):
@@ -109,7 +118,9 @@ class DailyPatientsManager:
     def add(self, subject_id, stay_id, arrival_time=None, departure_time=None, bed_occupation_time=None,
             temperature=None, heartrate=None, resprate=None,
             o2sat=None, sbp=None, dbp=None, pain=None, acuity=None, chiefcomplaint=None,
-            name=None, gender=None, age=None):
+            name=None, gender=None, age=None,
+            external_patient_id=None, external_visit_id=None, record_source=None,
+            er_visit_id=None, triage_time=None):
         with SessionLocal() as session:
             if session.query(DailyPatient).filter(DailyPatient.stay_id == stay_id).first() is not None:
                 raise HTTPException(status_code=400, detail=f"Stay ID {stay_id} already exists")
@@ -122,6 +133,11 @@ class DailyPatientsManager:
                 resprate=_clean_float(resprate), o2sat=_clean_float(o2sat),
                 sbp=_clean_float(sbp), dbp=_clean_float(dbp),
                 pain=_clean_str(pain), acuity=_clean_float(acuity), chiefcomplaint=chiefcomplaint,
+                external_patient_id=_clean_str(external_patient_id),
+                external_visit_id=_clean_str(external_visit_id),
+                record_source=_clean_str(record_source) or "local",
+                er_visit_id=_clean_str(er_visit_id),
+                triage_time=_clean_str(triage_time),
             ))
             session.commit()
             return {"success": True, "message": f"Patient stay {stay_id} added successfully"}
@@ -129,7 +145,9 @@ class DailyPatientsManager:
     def modify(self, stay_id, subject_id, arrival_time=None, departure_time=None, bed_occupation_time=None,
                temperature=None, heartrate=None, resprate=None,
                o2sat=None, sbp=None, dbp=None, pain=None, acuity=None, chiefcomplaint=None,
-               name=None, gender=None, age=None):
+               name=None, gender=None, age=None,
+               external_patient_id=None, external_visit_id=None, record_source=None,
+               er_visit_id=None, triage_time=None):
         with SessionLocal() as session:
             p = session.query(DailyPatient).filter(DailyPatient.stay_id == stay_id).first()
             if p is None:
@@ -140,6 +158,21 @@ class DailyPatientsManager:
             p.temperature, p.heartrate, p.resprate = _clean_float(temperature), _clean_float(heartrate), _clean_float(resprate)
             p.o2sat, p.sbp, p.dbp = _clean_float(o2sat), _clean_float(sbp), _clean_float(dbp)
             p.pain, p.acuity, p.chiefcomplaint = _clean_str(pain), _clean_float(acuity), chiefcomplaint
+            # A stay's external directory link isn't part of the edit form (see
+            # patient_management/api.py) — modify() leaves it exactly as it was
+            # set at creation rather than requiring every caller to re-pass it.
+            if external_patient_id is not None or external_visit_id is not None or record_source is not None:
+                p.external_patient_id = _clean_str(external_patient_id)
+                p.external_visit_id   = _clean_str(external_visit_id)
+                p.record_source       = _clean_str(record_source)
+            # triage_time IS part of the edit form (filled in once the doctor
+            # has actually seen the patient, potentially well after creation)
+            # — unlike the directory link above, always write it so clearing
+            # a previously-set value back to blank works too.
+            if triage_time is not None:
+                p.triage_time = _clean_str(triage_time)
+            if er_visit_id is not None:
+                p.er_visit_id = _clean_str(er_visit_id)
             session.commit()
             return {"success": True, "message": f"Patient stay {stay_id} modified successfully"}
 
@@ -201,13 +234,19 @@ class DailyPatientsManager:
                 "bed_occupation_time": p.bed_occupation_time, "unurgent": p.unurgent,
                 "bed_history": p.bed_history,
                 "admission_ward_id": p.admission_ward_id, "admission_ward_name": p.admission_ward_name,
+                "external_patient_id": p.external_patient_id, "external_visit_id": p.external_visit_id,
+                "record_source": p.record_source,
+                "er_visit_id": p.er_visit_id, "triage_time": p.triage_time,
+                "departure_source": p.departure_source,
             } for p in patients]
         df = pd.DataFrame(records, columns=_COLS)
         if df.empty:
             return df
         df["subject_id"] = df["subject_id"].astype(int)
         df["stay_id"]    = df["stay_id"].astype(int)
-        for col in ("arrival_time", "departure_time", "bed_occupation_time", "unurgent", "pain", "bed_history", "admission_ward_name"):
+        for col in ("arrival_time", "departure_time", "bed_occupation_time", "unurgent", "pain", "bed_history", "admission_ward_name",
+                    "external_patient_id", "external_visit_id", "record_source",
+                    "er_visit_id", "triage_time", "departure_source"):
             df[col] = df[col].astype(object)
         return df
 
@@ -232,5 +271,11 @@ class DailyPatientsManager:
                     bed_history=_clean_str(row.get("bed_history")) if "bed_history" in df.columns else None,
                     admission_ward_id=_clean_int(row.get("admission_ward_id")) if "admission_ward_id" in df.columns else None,
                     admission_ward_name=_clean_str(row.get("admission_ward_name")) if "admission_ward_name" in df.columns else None,
+                    external_patient_id=_clean_str(row.get("external_patient_id")) if "external_patient_id" in df.columns else None,
+                    external_visit_id=_clean_str(row.get("external_visit_id")) if "external_visit_id" in df.columns else None,
+                    record_source=_clean_str(row.get("record_source")) if "record_source" in df.columns else None,
+                    er_visit_id=_clean_str(row.get("er_visit_id")) if "er_visit_id" in df.columns else None,
+                    triage_time=_clean_str(row.get("triage_time")) if "triage_time" in df.columns else None,
+                    departure_source=_clean_str(row.get("departure_source")) if "departure_source" in df.columns else None,
                 ))
             session.commit()

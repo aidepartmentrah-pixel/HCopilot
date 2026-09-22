@@ -23,17 +23,21 @@ class _PatientBase(BaseModel):
     # Demographics, arrival, and vitals are required — the only fields that stay
     # optional are bed_occupation_time and departure_time, since an active stay
     # legitimately has neither until those events actually happen.
+    # gender/age/acuity/chiefcomplaint are typed Optional here (unlike the
+    # original "always required" shape) because a roster-origin stay (picked
+    # off the live ER feed, see er_visit_id below) genuinely can't supply
+    # them at creation time — see check_required_by_origin below, which
+    # enforces the full requirement for every OTHER origin unchanged.
     name:        str
-    gender:      str
-    age:         int
+    gender:      Optional[str] = None
+    age:         Optional[int] = None
     arrival_time: str
     departure_time: Optional[str] = None
     bed_occupation_time: Optional[str] = None
-    # Initial Vital Signs is optional overall (only Patient & Arrival is a hard
-    # requirement to add a patient), but once any one of these 7 is filled the
-    # rest must be too — see check_vitals_group below. Blood glucose / O2
-    # support stay independently optional even then (situational, not part of
-    # the universal vitals set).
+    # Initial Vital Signs is fully optional — only Patient & Arrival is a hard
+    # requirement to add a patient. Each vital may be recorded independently;
+    # there is no "fill it all once started" grouping (removed by request —
+    # see git history for the prior check_vitals_group model_validator).
     temperature: Optional[float] = None
     heartrate:   Optional[float] = None
     resprate:    Optional[float] = None
@@ -41,8 +45,23 @@ class _PatientBase(BaseModel):
     sbp:         Optional[float] = None
     dbp:         Optional[float] = None
     pain:        Optional[str] = None
-    acuity:      float
-    chiefcomplaint: str
+    acuity:      Optional[float] = None
+    chiefcomplaint: Optional[str] = None
+    # Hospital Directory API integration (see features/hospital_directory/) —
+    # populated only when this stay was created from a directory search
+    # selection; a purely manually-typed stay leaves all three unset and
+    # record_source defaults to "local" server-side (see patient_manager.py).
+    external_patient_id: Optional[str] = None
+    external_visit_id:   Optional[str] = None
+    record_source:       Optional[str] = None
+    # ER Live-Roster Redesign (see docs/development/ER Live Roster
+    # Redesign/) — er_visit_id is set only when this stay was created by
+    # picking a name off the live ER roster; triage_time is optional and
+    # independent of origin, filled in whenever a doctor actually sees the
+    # patient (same "blank until the event happens" treatment as
+    # bed_occupation_time).
+    er_visit_id: Optional[str] = None
+    triage_time: Optional[str] = None
 
     @field_validator('patient_id')
     @classmethod
@@ -51,7 +70,7 @@ class _PatientBase(BaseModel):
             raise ValueError('must be a positive integer')
         return v
 
-    @field_validator('name', 'gender', 'arrival_time', 'chiefcomplaint')
+    @field_validator('name', 'arrival_time')
     @classmethod
     def check_required_str(cls, v: str) -> str:
         if not v or not v.strip():
@@ -60,10 +79,35 @@ class _PatientBase(BaseModel):
 
     @field_validator('age')
     @classmethod
-    def check_age(cls, v: int) -> int:
-        if v < 0:
+    def check_age(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
             raise ValueError('must be a positive number')
         return v
+
+    @model_validator(mode="after")
+    def check_required_by_origin(self):
+        # Roster-origin stays (record_source="external" WITH an
+        # er_visit_id — see the class docstring above) get a relaxed bar:
+        # only name + arrival_time (both already unconditionally required
+        # above) are needed at creation, since gender/age/chiefcomplaint/
+        # acuity simply aren't available from the live roster at pick
+        # time. Every other origin — a purely manual stay, OR a directory
+        # search selection (record_source="external" but no er_visit_id,
+        # since that flow already supplies full identity) — keeps today's
+        # full Patient & Arrival requirement unchanged. This is deliberately
+        # keyed on er_visit_id presence, not record_source alone, so the
+        # existing directory-search shortcut (ER11) is never affected.
+        is_roster_origin = self.record_source == "external" and bool(self.er_visit_id)
+        if not is_roster_origin:
+            missing = [f for f in ("gender", "chiefcomplaint")
+                       if not (getattr(self, f) or "").strip()]
+            if self.age is None:
+                missing.append("age")
+            if self.acuity is None:
+                missing.append("acuity")
+            if missing:
+                raise ValueError(f"{', '.join(missing)}: is required")
+        return self
 
     @field_validator('temperature')
     @classmethod
@@ -115,19 +159,6 @@ class _PatientBase(BaseModel):
             raise ValueError('expected between 1 (Immediate) and 5 (Non-Urgent)')
         return v
 
-    @model_validator(mode="after")
-    def check_vitals_group(self):
-        # "Fill it all once started": Initial Vital Signs has no top-level
-        # requirement, but a patient with 2 of 7 vitals recorded is worse than
-        # either 0 or 7 — so once any one is present, the rest must be too.
-        vitals = {"temperature": self.temperature, "heartrate": self.heartrate, "resprate": self.resprate,
-                  "o2sat": self.o2sat, "sbp": self.sbp, "dbp": self.dbp, "pain": self.pain}
-        filled = {k: v for k, v in vitals.items() if v not in (None, "")}
-        if filled and len(filled) < len(vitals):
-            missing = ", ".join(k for k in vitals if k not in filled)
-            raise ValueError(f"Initial Vital Signs is incomplete once started — missing: {missing}")
-        return self
-
 
 # ── ISBAR nursing-handover fields ───────────────────────────────────────────
 # Every field here is optional (see plan decision: today's required fields
@@ -139,7 +170,6 @@ class _PatientBase(BaseModel):
 _YES_NO           = {"Yes", "No"}
 _O2_SUPPORT        = {"room_air", "nasal_cannula", "simple_mask", "non_rebreather",
                        "high_flow_nc", "cpap_bipap", "mechanical_vent"}
-_O2_SUPPORT_NEEDS_FLOW = {"nasal_cannula", "simple_mask", "non_rebreather"}
 _CLINICAL_STATUS   = {"Stable", "Improving", "Close monitoring", "Deteriorating", "Critical"}
 _IMMEDIATE_CONCERNS = {"respiratory_distress", "chest_pain", "fever_infection", "sepsis",
                         "altered_loc", "active_bleeding", "uncontrolled_pain",
@@ -173,22 +203,6 @@ def _split_csv(v: Optional[str]) -> list[str]:
     if not v:
         return []
     return [t.strip() for t in v.split(",") if t.strip()]
-
-
-def _group_all_or_nothing(section_label: str, fields: list[tuple[str, object]], also_touched: tuple = ()):
-    # "Fill it all once started" — mirrors the frontend's per-section rule
-    # (see patient-isbar-form.js updateIsbarSectionStatus). `fields` holds
-    # only currently-visible, non-exempt fields (checkbox-group/boolean and
-    # conditionally-hidden fields are excluded by the caller); `also_touched`
-    # carries the raw values of exempt fields that still count toward "was
-    # this section touched at all" even though they don't have to be filled
-    # themselves (an empty multi-select or unchecked box is a legitimate
-    # answer, not "not answered yet").
-    filled = [label for label, v in fields if v not in (None, "")]
-    touched = bool(filled) or any(v not in (None, "", []) for v in also_touched)
-    if touched and len(filled) < len(fields):
-        missing = ", ".join(label for label, v in fields if v in (None, ""))
-        raise ValueError(f"{section_label} is incomplete — fill in: {missing} (or leave the whole section blank)")
 
 
 def _check_allowed(field: str, v: Optional[str], allowed: set[str], multi: bool = False):
@@ -292,92 +306,10 @@ class ISBARDetails(BaseModel):
         _check_allowed("discharge_transfer_plan", self.discharge_transfer_plan, _DISCHARGE_PLAN)
         _check_allowed("outstanding_tasks", self.outstanding_tasks, _OUTSTANDING_TASKS, multi=True)
 
-        # Conditional-required checks
-        if self.allergies_status == "Yes":
-            if not (self.allergy_substance and self.allergy_substance.strip()):
-                raise ValueError("allergy_substance is required when allergies_status is Yes")
-            if not (self.allergy_reaction and self.allergy_reaction.strip()):
-                raise ValueError("allergy_reaction is required when allergies_status is Yes")
-
-        if self.surgical_history_flag == "Yes":
-            if not (self.surgical_history_text and self.surgical_history_text.strip()):
-                raise ValueError("surgical_history_text is required when surgical_history_flag is Yes")
-
-        if self.o2_support in _O2_SUPPORT_NEEDS_FLOW:
-            if self.o2_flow_rate is None:
-                raise ValueError(f"o2_flow_rate is required when o2_support is {self.o2_support}")
-
-        for csv_field, other_field in (
-            ("immediate_concerns", "immediate_concerns_other"),
-            ("past_medical_history", "past_medical_history_other"),
-            ("high_alert_meds", "high_alert_meds_other"),
-            ("recent_procedures", "recent_procedures_other"),
-            ("nursing_priorities", "nursing_priorities_other"),
-            ("outstanding_tasks", "outstanding_tasks_other"),
-        ):
-            if "other" in _split_csv(getattr(self, csv_field)):
-                other_val = getattr(self, other_field)
-                if not (other_val and other_val.strip()):
-                    raise ValueError(f"{other_field} is required when {csv_field} includes 'other'")
-
-        if self.discharge_transfer_plan == "other":
-            if not (self.discharge_transfer_plan_other and self.discharge_transfer_plan_other.strip()):
-                raise ValueError("discharge_transfer_plan_other is required when discharge_transfer_plan is 'other'")
-
-        # Section completeness ("fill it all once started")
-        _group_all_or_nothing("Situation", [
-            ("reason_for_admission", self.reason_for_admission),
-            ("current_diagnosis", self.current_diagnosis),
-            ("clinical_status", self.clinical_status),
-        ] + ([("immediate_concerns_other", self.immediate_concerns_other)]
-             if "other" in _split_csv(self.immediate_concerns) else []),
-            also_touched=(self.immediate_concerns,))
-
-        _group_all_or_nothing("Background", [
-            ("surgical_history_flag", self.surgical_history_flag),
-            ("allergies_status", self.allergies_status),
-            ("isolation_precautions", self.isolation_precautions),
-        ] + ([("surgical_history_text", self.surgical_history_text)] if self.surgical_history_flag == "Yes" else [])
-          + ([("allergy_substance", self.allergy_substance), ("allergy_reaction", self.allergy_reaction)]
-             if self.allergies_status == "Yes" else [])
-          + ([("past_medical_history_other", self.past_medical_history_other)]
-             if "other" in _split_csv(self.past_medical_history) else [])
-          + ([("high_alert_meds_other", self.high_alert_meds_other)]
-             if "other" in _split_csv(self.high_alert_meds) else [])
-          + ([("recent_procedures_other", self.recent_procedures_other)]
-             if "other" in _split_csv(self.recent_procedures) else [])
-          + ([("recent_procedure_datetime", self.recent_procedure_datetime)] if self.recent_procedures else []),
-            also_touched=(self.past_medical_history, self.allergy_types, self.high_alert_meds, self.recent_procedures))
-
-        _group_all_or_nothing("Focused Assessment", [
-            ("neuro_status", self.neuro_status), ("telemetry", self.telemetry),
-            ("edema", self.edema), ("peripheral_pulses", self.peripheral_pulses),
-            ("diet", self.diet), ("npo", self.npo),
-            ("swallow_assessment", self.swallow_assessment), ("last_bowel_movement", self.last_bowel_movement),
-            ("voiding", self.voiding), ("urinary_catheter", self.urinary_catheter), ("wounds", self.wounds),
-            ("fall_risk", self.fall_risk), ("pressure_injury_risk", self.pressure_injury_risk),
-            ("mobility_aids", self.mobility_aids),
-            ("intake_ml", self.intake_ml), ("output_ml", self.output_ml),
-            ("critical_lab_results", self.critical_lab_results), ("pending_labs", self.pending_labs),
-            ("pending_imaging", self.pending_imaging),
-        ], also_touched=(self.lines_tubes_drains,))
-
-        _group_all_or_nothing("Recommendation & Handover", [
-            ("meds_due_next_shift", self.meds_due_next_shift),
-            ("pending_medical_review", self.pending_medical_review),
-            ("consultations", self.consultations),
-            ("discharge_transfer_plan", self.discharge_transfer_plan),
-            ("outgoing_nurse", self.outgoing_nurse),
-            ("incoming_nurse", self.incoming_nurse),
-            ("handover_datetime", self.handover_datetime),
-        ] + ([("nursing_priorities_other", self.nursing_priorities_other)]
-             if "other" in _split_csv(self.nursing_priorities) else [])
-          + ([("discharge_transfer_plan_other", self.discharge_transfer_plan_other)]
-             if self.discharge_transfer_plan == "other" else [])
-          + ([("outstanding_tasks_other", self.outstanding_tasks_other)]
-             if "other" in _split_csv(self.outstanding_tasks) else []),
-            also_touched=(self.nursing_priorities, self.outstanding_tasks, self.receiver_ack))
-
+        # No conditional-required or section-completeness ("fill it all once
+        # started") rules by design — every ISBAR field is independently
+        # optional; filling one never forces another. Only Patient & Arrival
+        # (see _PatientBase) is a hard requirement to add a patient.
         return self
 
 
@@ -458,7 +390,10 @@ async def add_patient(p: PatientCreate):
             p.patient_id, p.stay_id, p.arrival_time, p.departure_time, p.bed_occupation_time,
             p.temperature, p.heartrate, p.resprate,
             p.o2sat, p.sbp, p.dbp, p.pain, p.acuity, p.chiefcomplaint,
-            name=p.name, gender=p.gender, age=p.age
+            name=p.name, gender=p.gender, age=p.age,
+            external_patient_id=p.external_patient_id, external_visit_id=p.external_visit_id,
+            record_source=p.record_source,
+            er_visit_id=p.er_visit_id, triage_time=p.triage_time,
         )
         if p.isbar is not None:
             # exclude_unset: a field the client never included in the request
@@ -482,7 +417,7 @@ async def modify_patient(stay_id: int, p: PatientModify):
             stay_id, p.patient_id, p.arrival_time, p.departure_time, p.bed_occupation_time,
             p.temperature, p.heartrate, p.resprate,
             p.o2sat, p.sbp, p.dbp, p.pain, p.acuity, p.chiefcomplaint,
-            name=p.name, gender=p.gender, age=p.age
+            name=p.name, gender=p.gender, age=p.age, triage_time=p.triage_time,
         )
         if p.isbar is not None:
             # exclude_unset=True is the whole point here: the frontend
@@ -550,6 +485,12 @@ async def get_patient_details(stay_id: int):
                 "chiefcomplaint":      row.chiefcomplaint,
                 "destination":         row.destination,
                 "source":              source,   # "daily" (active) or "log" (discharged)
+                "external_patient_id": row.external_patient_id,
+                "external_visit_id":   row.external_visit_id,
+                "record_source":       row.record_source,  # "local" | "external" — this stay's own creation origin
+                "er_visit_id":         row.er_visit_id,
+                "triage_time":         row.triage_time,
+                "departure_source":    row.departure_source,
             }
 
         isbar_row = isbar_mgr.get(stay_id)

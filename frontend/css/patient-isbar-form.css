@@ -47,13 +47,15 @@
    that gap space without touching body's global rule or .container's
    layout/centering, so nothing about Home/Scheduling/Settings/etc. changes;
    the purple stays visible as an outer frame at the very page edge. */
-#patients.section, #statistics.section {
+#patients.section, #statistics.section,
+#patient-history.section, #patient-full-record.section {
     background: var(--color-bg);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
 }
 #patients .pat-dataset-card,
-#patients .pat-add-card {
+#patients .pat-add-card,
+#patient-history .pat-dataset-card {
     box-shadow: 0 1px 3px rgba(24,32,51,0.06);
 }
 
@@ -534,6 +536,18 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     box-shadow: 0 20px 50px rgba(24,32,51,0.25);
 }
 
+/* #pdetails-content is the actual flex item inside .modal-content (it wraps
+   .pdetails-header + .pdetails-body below) — without making it a flex column
+   itself with min-height:0, it just grows to its full content height, the
+   overall modal silently exceeds max-height: 90vh, and .bfm-content's
+   overflow:hidden clips the excess instead of scrolling. */
+#pdetails-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
 .pdetails-header {
     position: sticky;
     top: 0;
@@ -581,6 +595,7 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     padding: 18px 26px 26px;
     overflow-y: auto;
     flex: 1 1 auto;
+    min-height: 0;
     background: var(--color-bg);
 }
 
@@ -674,8 +689,473 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 .pat-row-menu-item.danger { color: var(--color-danger); }
 .pat-row-menu-item.danger:hover { background: var(--color-danger-soft); }
 
+/* ── Hospital Directory search box (Patient & Arrival section) ──────────── */
+.pat-directory-search-field { position: relative; }
+
+/* ── Live ER Roster picker (ER Live-Roster Redesign, slice ER9) ─────────── */
+.pat-er-roster-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+/* Tabs */
+.pat-directory-tabs {
+    display: flex;
+    gap: 4px;
+    background: #f1f2f7;
+    border-radius: var(--radius-md);
+    padding: 3px;
+    margin-bottom: 12px;
+    width: fit-content;
+}
+.pat-directory-tab {
+    border: none;
+    background: none;
+    padding: 7px 16px;
+    border-radius: calc(var(--radius-md) - 3px);
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+}
+.pat-directory-tab.active { background: var(--color-surface); color: var(--color-primary); box-shadow: 0 1px 2px rgba(20,25,40,0.08); }
+
+.pat-directory-panel[hidden] { display: none; }
+
+.pat-directory-panel-heading {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--color-text);
+    text-align: right;
+    direction: rtl;
+    margin-bottom: 8px;
+}
+
+.pat-directory-id-input { max-width: 260px; }
+
+/* Arabic 3-field name grid, RTL, First/Father/Family in DOM order (renders
+   right-to-left so First name lands on the right, matching natural Arabic
+   reading order). */
+.pat-directory-name-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+    gap: 12px;
+}
+.pat-directory-name-field { display: flex; flex-direction: column; gap: 4px; }
+.pat-directory-name-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-align: right;
+}
+.pat-directory-name-field input { text-align: right; }
+
+@media (max-width: 640px) {
+    .pat-directory-name-grid { grid-template-columns: 1fr; }
+}
+
+.pat-directory-guess-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+.pat-directory-guess-row[hidden] { display: none; }
+.pat-directory-guess-row .pat-hint { margin: 0; }
+
+.pat-directory-results {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(20, 25, 40, 0.12);
+    max-height: 320px;
+    overflow-y: auto;
+}
+.pat-directory-results[hidden] { display: none; }
+
+.pat-directory-result-count {
+    padding: 8px 12px 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.pat-directory-result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+.pat-directory-result-row:last-child { border-bottom: none; }
+.pat-directory-result-row:hover, .pat-directory-result-row:focus-visible { background: var(--color-primary-soft); }
+
+.pat-directory-result-radio {
+    flex: 0 0 auto;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+}
+.pat-directory-result-avatar {
+    flex: 0 0 auto;
+    font-size: 16px;
+    opacity: 0.6;
+}
+.pat-directory-result-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pat-directory-result-name { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.pat-directory-result-meta { font-size: 11px; color: var(--color-text-muted); }
+
+.pat-directory-result-empty,
+.pat-directory-result-status {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+}
+
+.pat-directory-not-found-link {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border: none;
+    border-top: 1px solid var(--color-border);
+    background: none;
+    color: var(--color-primary);
+    text-decoration: underline;
+    font-size: 12.5px;
+    cursor: pointer;
+    font-family: inherit;
+}
+.pat-directory-not-found-link:hover { background: var(--color-primary-soft); }
+
+/* The resolved selection is styled to look like a filled-in field (not a
+   separate message below an empty one) — a bordered box the name visibly
+   sits inside of, with a checkmark confirming the match and an X to
+   go back to searching. */
+.pat-directory-resolved {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border: 1.5px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    background: var(--color-primary-soft);
+}
+.pat-directory-resolved[hidden] { display: none; }
+.pat-directory-resolved-name { font-size: 14px; font-weight: 700; color: var(--color-text); }
+.pat-directory-resolved-id { font-size: 12px; color: var(--color-text-muted); }
+.pat-directory-resolved-check {
+    margin-left: auto;
+    flex: 0 0 auto;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+.pat-directory-resolved-clear {
+    flex: 0 0 auto;
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 4px;
+    font-family: inherit;
+}
+.pat-directory-resolved-clear:hover { color: var(--color-danger); }
+
+/* ── ER UI Architecture Redesign, Page A — two-panel layout ──────────────────
+   Left: Live ER Roster (always-visible list, not a search dropdown) + the
+   secondary directory-search/manual-entry fallback. Right: the ISBAR panel,
+   in one of three modes (disabled/draft/active) — see setPatFormMode() in
+   patients.js. */
+
+.pat-a-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: var(--space-4);
+    align-items: start;
+}
+
+.pat-a-roster-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    position: sticky;
+    top: var(--space-4);
+}
+
+.pat-a-roster-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+.pat-a-roster-header h3 {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--color-text);
+    margin: 0;
+}
+.pat-a-live-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--color-success);
+    box-shadow: 0 0 0 3px var(--color-success-soft);
+    flex: 0 0 auto;
+}
+
+/* Overrides .pat-directory-results' absolute-dropdown positioning — this is
+   an always-visible list in its own panel, not a search-result overlay. */
+.pat-a-roster-list.pat-directory-results {
+    position: static;
+    max-height: 420px;
+    overflow-y: auto;
+    box-shadow: none;
+    margin-top: var(--space-2);
+}
+.pat-a-roster-list[hidden] { display: none; }
+
+.pat-a-roster-row-added { opacity: 0.85; }
+.pat-a-roster-row-active { background: var(--color-primary-soft); }
+.pat-a-roster-chip {
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--color-warning-soft);
+    color: var(--color-warning);
+}
+.pat-a-roster-row-active .pat-a-roster-chip {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.pat-a-fallback {
+    margin-top: var(--space-4);
+    padding-top: var(--space-3);
+    border-top: 1px dashed var(--color-border);
+}
+.pat-a-fallback-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 4px 0;
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+}
+.pat-a-fallback-link { color: var(--color-primary); font-weight: 600; }
+.pat-a-fallback-chevron { margin-left: auto; }
+.pat-a-fallback-toggle.open .pat-a-fallback-chevron { transform: rotate(180deg); }
+.pat-a-fallback-body { margin-top: var(--space-3); }
+.pat-a-fallback-body[hidden] { display: none; }
+.pat-a-manual-btn { margin-top: var(--space-3); width: 100%; }
+
+.pat-a-isbar-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-5) var(--space-4);
+    position: relative;
+    min-height: 200px;
+}
+
+/* Disabled mode — form stays visible underneath (confirmed decision #1:
+   disabled, not hidden), just visually inert. Inputs themselves also carry
+   the real `disabled` attribute (see _setPatAccordionDisabled in
+   patients.js) so this is genuinely non-interactive, not just styled that
+   way. */
+.pat-a-isbar-panel[data-mode="disabled"] .isbar-accordion { opacity: 0.5; filter: saturate(0.5); }
+.pat-a-isbar-panel[data-mode="disabled"] #pat-add-error,
+.pat-a-isbar-panel[data-mode="disabled"] #pat-add-error-summary { display: none; }
+
+.pat-a-placeholder {
+    text-align: center;
+    padding: var(--space-5) var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+}
+.pat-a-placeholder[hidden] { display: none; }
+.pat-a-placeholder-icon { font-size: 30px; margin-bottom: 8px; }
+.pat-a-placeholder h3 { font-size: 15px; font-weight: 700; color: var(--color-text); margin: 0 0 6px; }
+.pat-a-placeholder p { font-size: 13px; color: var(--color-text-muted); margin: 0; }
+
+.pat-a-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    background: var(--color-primary-soft);
+    border: 1.5px solid var(--color-primary);
+    border-radius: var(--radius-md);
+}
+.pat-a-banner[hidden] { display: none; }
+.pat-a-banner-avatar { font-size: 22px; flex: 0 0 auto; }
+.pat-a-banner-info { flex: 1 1 auto; min-width: 0; }
+.pat-a-banner-name { font-size: 15px; font-weight: 700; color: var(--color-text); }
+.pat-a-banner-meta { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+
+/* .pat-add-footer's own `display: flex` (patients.css) otherwise beats the
+   UA [hidden] rule at equal specificity, since it's declared later in the
+   cascade — this is the same fix already applied above for the placeholder/
+   banner/roster-list, needed here too since setPatFormMode() toggles this
+   footer's `hidden` attribute directly. */
+#pat-a-footer[hidden] { display: none; }
+
+@media (max-width: 900px) {
+    .pat-a-layout { grid-template-columns: 1fr; }
+    .pat-a-roster-panel { position: static; }
+}
+
 @media (max-width: 640px) {
     .isbar-section-body, .pdetails-section-body { grid-template-columns: 1fr !important; }
     .pdetails-summary-grid { grid-template-columns: repeat(2, 1fr); }
     #patients.section, #statistics.section { margin: -10px; padding: 10px; }
+}
+
+/* ── ER UI Architecture Redesign, Page C — History split view ────────────────
+   Table (left) + persistent, resizable preview pane (right) — confirmed
+   decision #9: ~60–65% table / 35–40% preview by default, sane minimums on
+   both sides, draggable divider (not a modal). See patient-history.js for
+   the drag handlers and _histDefaultPreviewWidth(). */
+
+.hist-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+}
+.hist-table-pane {
+    flex: 1 1 auto;
+    min-width: 420px;
+    max-width: 100%;
+}
+.hist-divider {
+    flex: 0 0 10px;
+    align-self: stretch;
+    cursor: col-resize;
+    position: relative;
+    margin: 0 2px;
+}
+.hist-divider[hidden] { display: none; }
+.hist-divider::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0; left: 4px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--color-border);
+    transition: background 0.15s;
+}
+.hist-divider:hover::after, .hist-divider.dragging::after { background: var(--color-primary); }
+
+.hist-preview-pane {
+    flex: 0 0 auto;
+    min-width: 360px;
+    max-width: 720px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 3px rgba(24,32,51,0.06);
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 160px);
+}
+.hist-preview-pane[hidden] { display: none; }
+.hist-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    flex: 0 0 auto;
+}
+.hist-preview-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--color-text-muted); }
+.hist-preview-close {
+    border: none;
+    background: none;
+    font-size: 15px;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+}
+.hist-preview-close:hover { background: var(--color-bg); color: var(--color-text); }
+.hist-preview-body { overflow-y: auto; padding: var(--space-4); flex: 1 1 auto; }
+
+.hist-row { cursor: pointer; }
+.hist-row:hover { background: #fafbff; }
+.hist-row-selected { background: var(--color-primary-soft) !important; }
+
+.hist-filter-bar { flex-wrap: wrap; gap: var(--space-3); }
+.hist-filter-select, .hist-filter-date {
+    padding: 8px 10px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 12.5px;
+    color: var(--color-text);
+    background: var(--color-surface);
+}
+.hist-filter-date-sep { color: var(--color-text-muted); }
+
+.hist-full-record-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 1px 3px rgba(24,32,51,0.06);
+    padding: var(--space-5);
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+@media (max-width: 900px) {
+    .hist-layout { flex-direction: column; }
+    .hist-divider { display: none !important; }
+    .hist-preview-pane { max-width: 100%; width: 100% !important; max-height: none; }
+}
+
+/* Printing (UI-C4's Print/Export PDF) — scope the printed page to just the
+   full record card; hide chrome that makes no sense on paper. */
+@media print {
+    .app-header, .main-nav, #message, .nav-drawer, .nav-overlay { display: none !important; }
+    #patient-full-record .section-header button { display: none !important; }
+    .hist-full-record-card { box-shadow: none; border: none; max-width: 100%; }
+    .container { padding: 0 !important; margin: 0 !important; }
 }
