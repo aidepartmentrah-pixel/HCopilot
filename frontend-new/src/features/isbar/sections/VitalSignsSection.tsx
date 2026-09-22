@@ -1,43 +1,64 @@
-import { useFormContext } from 'react-hook-form'
+import { useController, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
 import { O2_SUPPORT_OPTIONS } from '@/types/isbar'
 import { numericFieldOptions } from '../constants'
+import { BloodPressureInput } from '../components/BloodPressureInput'
+import { PainScaleSelector } from '../components/PainScaleSelector'
+import { UnitInput } from '../components/UnitInput'
 import type { IsbarFormValues } from '../schema'
 import sectionStyles from './Section.module.css'
 
 export function VitalSignsSection({ disabled }: { disabled: boolean }) {
   const {
     register,
+    control,
     formState: { errors },
   } = useFormContext<IsbarFormValues>()
+  const sbpField = useController({ name: 'sbp', control }).field
+  const dbpField = useController({ name: 'dbp', control }).field
+  const painField = useController({ name: 'pain', control }).field
 
   return (
     <div className={sectionStyles.grid}>
       <FormField label="Temperature (°C)" htmlFor="temperature" error={errors.temperature?.message}>
-        <Input id="temperature" type="number" step="0.1" disabled={disabled} invalid={!!errors.temperature} {...register('temperature', numericFieldOptions)} />
+        <UnitInput id="temperature" unit="°C" type="number" step="0.1" disabled={disabled} invalid={!!errors.temperature} {...register('temperature', numericFieldOptions)} />
       </FormField>
       <FormField label="Heart Rate (bpm)" htmlFor="heartrate" error={errors.heartrate?.message}>
-        <Input id="heartrate" type="number" disabled={disabled} invalid={!!errors.heartrate} {...register('heartrate', numericFieldOptions)} />
+        <UnitInput id="heartrate" unit="bpm" type="number" disabled={disabled} invalid={!!errors.heartrate} {...register('heartrate', numericFieldOptions)} />
       </FormField>
       <FormField label="Respiratory Rate (/min)" htmlFor="resprate" error={errors.resprate?.message}>
-        <Input id="resprate" type="number" disabled={disabled} invalid={!!errors.resprate} {...register('resprate', numericFieldOptions)} />
+        <UnitInput id="resprate" unit="/min" type="number" disabled={disabled} invalid={!!errors.resprate} {...register('resprate', numericFieldOptions)} />
       </FormField>
       <FormField label="O2 Saturation (%)" htmlFor="o2sat" error={errors.o2sat?.message}>
-        <Input id="o2sat" type="number" disabled={disabled} invalid={!!errors.o2sat} {...register('o2sat', numericFieldOptions)} />
+        <UnitInput id="o2sat" unit="%" type="number" disabled={disabled} invalid={!!errors.o2sat} {...register('o2sat', numericFieldOptions)} />
       </FormField>
-      <FormField label="Systolic BP (mmHg)" htmlFor="sbp" error={errors.sbp?.message}>
-        <Input id="sbp" type="number" disabled={disabled} invalid={!!errors.sbp} {...register('sbp', numericFieldOptions)} />
-      </FormField>
-      <FormField label="Diastolic BP (mmHg)" htmlFor="dbp" error={errors.dbp?.message}>
-        <Input id="dbp" type="number" disabled={disabled} invalid={!!errors.dbp} {...register('dbp', numericFieldOptions)} />
-      </FormField>
-      <FormField label="Pain (0-10 or description)" htmlFor="pain">
-        <Input id="pain" disabled={disabled} {...register('pain')} />
-      </FormField>
+
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Blood Pressure (mmHg)" htmlFor="sbp" error={errors.sbp?.message || errors.dbp?.message}>
+          <BloodPressureInput
+            sbpId="sbp"
+            dbpId="dbp"
+            sbpValue={sbpField.value ?? undefined}
+            dbpValue={dbpField.value ?? undefined}
+            onSbpChange={sbpField.onChange}
+            onDbpChange={dbpField.onChange}
+            disabled={disabled}
+            sbpInvalid={!!errors.sbp}
+            dbpInvalid={!!errors.dbp}
+          />
+        </FormField>
+      </div>
+
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Pain" htmlFor="pain">
+          <PainScaleSelector id="pain" value={painField.value} onChange={painField.onChange} disabled={disabled} />
+        </FormField>
+      </div>
+
       <FormField label="Blood Glucose (mg/dL)" htmlFor="isbar.blood_glucose">
-        <Input id="isbar.blood_glucose" type="number" disabled={disabled} {...register('isbar.blood_glucose', numericFieldOptions)} />
+        <UnitInput id="isbar.blood_glucose" unit="mg/dL" type="number" disabled={disabled} {...register('isbar.blood_glucose', numericFieldOptions)} />
       </FormField>
       <FormField label="O2 Support" htmlFor="isbar.o2_support">
         <Select id="isbar.o2_support" disabled={disabled} placeholder="Select…" {...register('isbar.o2_support')}>
@@ -49,7 +70,7 @@ export function VitalSignsSection({ disabled }: { disabled: boolean }) {
         </Select>
       </FormField>
       <FormField label="O2 Flow Rate (L/min)" htmlFor="isbar.o2_flow_rate">
-        <Input id="isbar.o2_flow_rate" type="number" disabled={disabled} {...register('isbar.o2_flow_rate', numericFieldOptions)} />
+        <UnitInput id="isbar.o2_flow_rate" unit="L/min" type="number" disabled={disabled} {...register('isbar.o2_flow_rate', numericFieldOptions)} />
       </FormField>
       <FormField label="Vitals Recorded By" htmlFor="isbar.vitals_recorded_by">
         <Input id="isbar.vitals_recorded_by" disabled={disabled} {...register('isbar.vitals_recorded_by')} />

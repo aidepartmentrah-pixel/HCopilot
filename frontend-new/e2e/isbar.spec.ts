@@ -52,7 +52,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByLabel('Gender').selectOption('Female')
     await page.getByRole('spinbutton', { name: 'Age' }).fill('34')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Abdominal pain')
-    await page.getByLabel('Acuity (ESI)').selectOption('3')
+    await page.getByRole('radio', { name: /^3/ }).click()
 
     await page.getByRole('button', { name: 'Start ISBAR' }).click()
 
@@ -75,7 +75,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByLabel('Gender').selectOption('Male')
     await page.getByRole('spinbutton', { name: 'Age' }).fill('50')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Chest pain')
-    await page.getByLabel('Acuity (ESI)').selectOption('2')
+    await page.getByRole('radio', { name: /^2/ }).click()
     await page.getByRole('button', { name: 'Start ISBAR' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
@@ -94,7 +94,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByLabel('Gender').selectOption('Male')
     await page.getByRole('spinbutton', { name: 'Age' }).fill('60')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Fall')
-    await page.getByLabel('Acuity (ESI)').selectOption('2')
+    await page.getByRole('radio', { name: /^2/ }).click()
     await page.getByRole('button', { name: 'Start ISBAR' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 

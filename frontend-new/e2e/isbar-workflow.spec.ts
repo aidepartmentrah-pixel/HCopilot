@@ -24,7 +24,7 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     await page.getByLabel('Gender').selectOption('Female')
     await page.getByRole('spinbutton', { name: 'Age' }).fill('40')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Test complaint')
-    await page.getByLabel('Acuity (ESI)').selectOption('3')
+    await page.getByRole('radio', { name: /^3/ }).click()
     await page.getByTestId('isbar-continue-patient-arrival').click()
 
     // Section 1 collapses (Complete) and section 2 opens automatically.
@@ -39,7 +39,7 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     await page.getByLabel('Gender').selectOption('Male')
     await page.getByRole('spinbutton', { name: 'Age' }).fill('55')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Test complaint')
-    await page.getByLabel('Acuity (ESI)').selectOption('2')
+    await page.getByRole('radio', { name: /^2/ }).click()
     await page.getByTestId('isbar-continue-patient-arrival').click()
 
     const section1 = page.getByTestId('isbar-section-patient-arrival')

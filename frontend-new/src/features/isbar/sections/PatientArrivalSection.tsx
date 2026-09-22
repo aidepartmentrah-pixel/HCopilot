@@ -1,16 +1,19 @@
-import { useFormContext } from 'react-hook-form'
+import { useController, useFormContext } from 'react-hook-form'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
-import { ACUITY_OPTIONS, GENDER_OPTIONS, numericFieldOptions } from '../constants'
+import { GENDER_OPTIONS, numericFieldOptions } from '../constants'
+import { ESIScaleSelector } from '../components/ESIScaleSelector'
 import type { IsbarFormValues } from '../schema'
 import sectionStyles from './Section.module.css'
 
 export function PatientArrivalSection({ disabled }: { disabled: boolean }) {
   const {
     register,
+    control,
     formState: { errors },
   } = useFormContext<IsbarFormValues>()
+  const acuityField = useController({ name: 'acuity', control }).field
 
   return (
     <div className={sectionStyles.grid}>
@@ -55,15 +58,17 @@ export function PatientArrivalSection({ disabled }: { disabled: boolean }) {
       >
         <Input id="chiefcomplaint" dir="auto" disabled={disabled} invalid={!!errors.chiefcomplaint} {...register('chiefcomplaint')} />
       </FormField>
-      <FormField label="Acuity (ESI)" htmlFor="acuity" required error={errors.acuity?.message}>
-        <Select id="acuity" disabled={disabled} invalid={!!errors.acuity} placeholder="Select…" {...register('acuity', numericFieldOptions)}>
-          {ACUITY_OPTIONS.map((a) => (
-            <option key={a.value} value={a.value}>
-              {a.label}
-            </option>
-          ))}
-        </Select>
-      </FormField>
+      <div className={sectionStyles.fullWidth}>
+        <FormField label="Acuity (ESI)" htmlFor="acuity" required error={errors.acuity?.message}>
+          <ESIScaleSelector
+            id="acuity"
+            value={acuityField.value}
+            onChange={acuityField.onChange}
+            disabled={disabled}
+            invalid={!!errors.acuity}
+          />
+        </FormField>
+      </div>
     </div>
   )
 }
