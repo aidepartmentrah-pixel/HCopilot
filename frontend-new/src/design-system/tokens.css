@@ -97,6 +97,20 @@
   --control-height-md: 40px;
   --control-height-lg: 44px;
 
+  /* Application shell (top bar) — branded indigo/navy layer, distinct from
+     the neutral workspace canvas it sits above (Global Theme spec §1/§3/
+     §14 — "Layer 1" identity vs. "Layer 2" calm workspace). Never reused
+     for workspace/page content. */
+  --shell-bg: #1e1b4b;
+  --shell-bg-elevated: #262261;
+  --shell-border: #322d78;
+  --shell-text: #ffffff;
+  --shell-text-muted: #a5b4fc;
+  --shell-active-bg: #4338ca;
+  --shell-control-bg: rgb(255 255 255 / 0.08);
+  --shell-control-bg-hover: rgb(255 255 255 / 0.14);
+  --shell-control-border: rgb(255 255 255 / 0.16);
+
   /* Layout. */
   --topnav-height: 64px;
 

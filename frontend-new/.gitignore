@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Playwright global-setup writes a real (but throwaway, dev-only admin/admin)
+# logged-in storageState here so every e2e spec starts already signed in.
+e2e/.auth
+test-results
+playwright-report
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

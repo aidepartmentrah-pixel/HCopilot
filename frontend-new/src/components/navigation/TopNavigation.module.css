@@ -4,23 +4,25 @@
   z-index: var(--z-dropdown);
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-6);
   height: var(--topnav-height);
   padding: 0 var(--space-6);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-default);
+  background: var(--shell-bg);
+  border-bottom: 1px solid var(--shell-border);
 }
 
 .brand {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
   flex-shrink: 0;
+  text-decoration: none;
 }
 
 .brandName {
   font-size: 18px;
   font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
+  color: var(--shell-text);
 }
 
 .nav {
@@ -40,36 +42,28 @@
   border-radius: var(--radius-md);
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
+  color: var(--shell-text-muted);
   text-decoration: none;
   white-space: nowrap;
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 .navLink:hover {
-  background: var(--slate-100);
-  color: var(--text-primary);
+  background: var(--shell-control-bg-hover);
+  color: var(--shell-text);
+}
+.navLink:focus-visible {
+  outline: 2px solid var(--shell-text);
+  outline-offset: -2px;
 }
 
 .navLinkActive {
-  background: var(--brand-50);
-  color: var(--brand-700);
+  background: var(--shell-active-bg);
+  color: var(--shell-text);
 }
 
-.userArea {
+.shellActions {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
   flex-shrink: 0;
-}
-
-.avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--radius-full);
-  background: var(--brand-600);
-  color: var(--text-on-brand);
-  font-size: var(--font-size-label);
-  font-weight: var(--font-weight-semibold);
 }

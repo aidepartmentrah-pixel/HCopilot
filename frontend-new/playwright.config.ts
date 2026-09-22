@@ -15,8 +15,16 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
+  // V2.0 added a real login gate (AuthProvider) — global-setup.ts signs in
+  // once against the real backend and every test starts already
+  // authenticated via storageState, so this doesn't ripple into every
+  // existing spec file. A signed-out state (e.g. to test the login form
+  // itself) is opted into per-test with `test.use({ storageState: {
+  // cookies: [], origins: [] } })` — see e2e/shell.spec.ts.
+  globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: 'http://localhost:8083',
+    storageState: './e2e/.auth/admin.json',
     trace: 'on-first-retry',
   },
   expect: {

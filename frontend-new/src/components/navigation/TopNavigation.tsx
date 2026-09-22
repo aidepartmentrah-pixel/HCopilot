@@ -1,6 +1,10 @@
 import { BarChart3, BedDouble, ClipboardPlus, History, Home, Settings } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import { HCopilotMark } from '@/components/brand/HCopilotMark'
+import { GlobalSearch } from './GlobalSearch'
+import { NotificationBell } from './NotificationBell'
+import { UserMenu } from './UserMenu'
 import styles from './TopNavigation.module.css'
 
 interface NavItem {
@@ -25,12 +29,17 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/settings', label: 'Settings', icon: <Settings size={18} /> },
 ]
 
+/**
+ * The one reusable application shell (Global Theme spec §3) — identical on
+ * every page. Branded indigo/navy per §4, never redefined per page.
+ */
 export function TopNavigation() {
   return (
     <header className={styles.header}>
-      <div className={styles.brand}>
+      <NavLink to="/" className={styles.brand} end>
+        <HCopilotMark size={30} />
         <span className={styles.brandName}>HCopilot</span>
-      </div>
+      </NavLink>
 
       <nav className={styles.nav} aria-label="Primary">
         {NAV_ITEMS.map((item) => (
@@ -46,10 +55,10 @@ export function TopNavigation() {
         ))}
       </nav>
 
-      <div className={styles.userArea}>
-        <div className={styles.avatar} aria-hidden="true">
-          U
-        </div>
+      <div className={styles.shellActions}>
+        <GlobalSearch />
+        <NotificationBell />
+        <UserMenu />
       </div>
     </header>
   )
