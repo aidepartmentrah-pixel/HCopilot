@@ -1,3 +1,18 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Legacy Frontend Shell & Dashboard Refresh, UI-T1.
+   Values here are today's real hardcoded brand colors, only moved into
+   variables (no visual change). Theme variants (UI-T7) override these
+   under [data-theme="..."] later; semantic colors (success/warning/
+   danger) are intentionally separate and never theme-dependent.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+    --brand-500: #667eea;
+    --brand-600: #764ba2;
+    --brand-700: #5a67d8;
+    --brand-800: #6b46c1;
+    --brand-accent: #4f46e5;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -6,7 +21,7 @@
 
 body {
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
     min-height: 100vh;
     padding: 20px;
 }
@@ -23,7 +38,7 @@ body {
 .app-header {
     display: flex;
     align-items: center;
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     border-radius: 16px;
     box-shadow: 0 6px 28px rgba(91,103,216,.45), 0 1px 0 rgba(255,255,255,.08) inset;
     margin-bottom: 24px;
@@ -196,11 +211,11 @@ body {
 
 .nav-dd-item:hover {
     background: #f0f4ff;
-    color: #4f46e5;
+    color: var(--brand-accent);
 }
 
 .nav-dd-item.active {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     color: #fff;
     font-weight: 700;
 }
@@ -229,11 +244,11 @@ body {
 
 .nav-drawer-group-btn:hover {
     background: #f0f4ff;
-    color: #4f46e5;
+    color: var(--brand-accent);
 }
 
 .nav-drawer-group-btn.active {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     color: #fff;
     font-weight: 700;
     border-radius: 11px;
@@ -264,9 +279,9 @@ body {
     font-size: 13.5px !important;
 }
 
-.nav-drawer-sub:hover { color: #4f46e5 !important; }
+.nav-drawer-sub:hover { color: var(--brand-accent) !important; }
 .nav-drawer-sub.active {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%) !important;
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%) !important;
     color: #fff !important;
     font-weight: 700 !important;
 }
@@ -333,7 +348,7 @@ body {
     align-items: center;
     gap: 11px;
     padding: 20px 18px;
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     flex-shrink: 0;
 }
 
@@ -392,11 +407,11 @@ body {
 .nav-drawer-btn .nav-icon { font-size: 17px; flex-shrink: 0; }
 .nav-drawer-btn:hover {
     background: #f0f4ff;
-    color: #4f46e5;
+    color: var(--brand-accent);
     transform: translateX(3px);
 }
 .nav-drawer-btn.active {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     color: #fff;
     font-weight: 700;
     box-shadow: 0 3px 10px rgba(91,103,216,.3);
@@ -574,7 +589,7 @@ tbody tr:hover {
 
 .spinner {
     border: 3px solid #f3f3f3;
-    border-top: 3px solid #667eea;
+    border-top: 3px solid var(--brand-500);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -640,7 +655,7 @@ tbody tr:hover {
 }
 
 .stat-value {
-    color: #667eea;
+    color: var(--brand-500);
     font-size: 32px;
     font-weight: 700;
 }

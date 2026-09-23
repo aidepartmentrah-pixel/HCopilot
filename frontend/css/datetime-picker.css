@@ -1,6 +1,6 @@
 /* datetime-picker.css — theme overrides for the vendored flatpickr widget
  * (css/vendor/flatpickr.css carries its own default look; this file only
- * re-colors it to match the app's own primary accent, #667eea, already
+ * re-colors it to match the app's own primary accent, var(--brand-500), already
  * used everywhere else for .s-btn-primary etc. — see settings.css).
  *
  * Replaces the native browser datetime-local calendar/clock popup across
@@ -11,19 +11,19 @@
 .flatpickr-day.selected:hover,
 .flatpickr-day.startRange,
 .flatpickr-day.endRange {
-    background: #667eea;
-    border-color: #667eea;
+    background: var(--brand-500);
+    border-color: var(--brand-500);
 }
-.flatpickr-day.today { border-color: #667eea; }
-.flatpickr-day.today:hover { background: #667eea; border-color: #667eea; color: #fff; }
+.flatpickr-day.today { border-color: var(--brand-500); }
+.flatpickr-day.today:hover { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
 .flatpickr-day:hover { background: #eef0ff; }
 
 .flatpickr-months .flatpickr-month,
 .flatpickr-current-month .flatpickr-monthDropdown-months,
-.flatpickr-weekdays { background: #667eea; }
+.flatpickr-weekdays { background: var(--brand-500); }
 .flatpickr-current-month .flatpickr-monthDropdown-months,
 .flatpickr-current-month input.cur-year { color: #fff; }
-.flatpickr-weekday { background: #667eea; color: #fff; }
+.flatpickr-weekday { background: var(--brand-500); color: #fff; }
 .flatpickr-months .flatpickr-prev-month:hover svg,
 .flatpickr-months .flatpickr-next-month:hover svg { fill: #fff; }
 .flatpickr-months .flatpickr-prev-month svg,

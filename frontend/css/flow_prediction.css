@@ -7,7 +7,7 @@
 
 .flow-btn {
     padding: 12px 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -77,6 +77,6 @@
 }
 
 .predictions-table strong {
-    color: #667eea;
+    color: var(--brand-500);
     font-size: 18px;
 }

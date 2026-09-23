@@ -148,13 +148,13 @@
 
 .patient-edit-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-500);
     box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 
 .patient-save-btn {
     padding: 9px 18px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -180,7 +180,7 @@
     align-items: center;
     gap: 12px;
     padding: 18px 22px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
 }
 .bfm-header-left { display:flex; align-items:center; gap:10px; flex:1; }
 .bfm-header-icon { font-size: 22px; }
@@ -294,7 +294,7 @@
     transition: all 0.14s;
 }
 .ward-quick-btn.active, .ward-quick-btn:hover {
-    border-color: #667eea;
+    border-color: var(--brand-500);
     background: #eef2ff;
     color: #4338ca;
 }
@@ -336,7 +336,7 @@
 }
 .form-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-500);
     box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 
@@ -345,7 +345,7 @@
 .cancel-btn       { background:#f3f4f6; color:#555; border:none; }
 .cancel-btn:hover { background:#e5e7eb; }
 
-.save-btn         { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; }
+.save-btn         { background:linear-gradient(135deg,var(--brand-500),var(--brand-600)); color:#fff; border:none; }
 .save-btn:hover   { opacity:0.9; transform:translateY(-1px); }
 
 .delete-confirm-btn       { background:#dc2626; color:#fff; border:none; }

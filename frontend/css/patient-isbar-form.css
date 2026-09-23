@@ -1040,6 +1040,14 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
    footer's `hidden` attribute directly. */
 #pat-a-footer[hidden] { display: none; }
 
+/* Age unit picker (2026-09-22 fix) — Years/Months/Days next to the Age
+   number, so an infant under 1 year can be entered precisely (e.g. "7" +
+   "Months") instead of a fractional-year value the backend used to reject
+   outright. See _patAgeInYears()/_onPatAgeUnitChange() in patients.js. */
+.pat-age-group { display: flex; gap: 6px; }
+.pat-age-group input { flex: 1 1 auto; min-width: 0; }
+.pat-age-unit { flex: 0 0 84px; cursor: pointer; }
+
 @media (max-width: 900px) {
     .pat-a-layout { grid-template-columns: 1fr; }
     .pat-a-roster-panel { position: static; }
@@ -1096,7 +1104,22 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     box-shadow: 0 1px 3px rgba(24,32,51,0.06);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - 160px);
+    /* No max-height/internal scroll (2026-09-22 fix) — the old cap forced a
+       cramped sub-scrollbox and, once the tab UI below made content short
+       and roughly constant-height anyway, left a large dead white gap
+       under "Open Full Record" for nothing. The pane now sizes to its own
+       content; the page scrolls if it ever needs to, same as everything
+       else on it. */
+    /* Sticky (2026-09-22 feedback, Option A of 3 proposed) — the table can
+       run to hundreds of rows; without this the pane (now short, thanks to
+       the tab redesign) scrolled away long before the table did, leaving a
+       confusing blank gap on the right and no way to tell which row it
+       belonged to. `top` matches the page's own edge padding (body has
+       20px) so it sits flush when stuck. `.hist-layout` already has
+       align-items:flex-start (needed for sticky to work inside a flex
+       row — a stretched item can't stick).*/
+    position: sticky;
+    top: 20px;
 }
 .hist-preview-pane[hidden] { display: none; }
 .hist-preview-header {
@@ -1118,7 +1141,64 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     border-radius: var(--radius-sm);
 }
 .hist-preview-close:hover { background: var(--color-bg); color: var(--color-text); }
-.hist-preview-body { overflow-y: auto; padding: var(--space-4); flex: 1 1 auto; }
+.hist-preview-body { padding: var(--space-4); flex: 1 1 auto; }
+
+/* "Open Full Record" pinned right under the summary header (2026-09-22
+   feedback) — always visible, not buried at the bottom of tab content. */
+.pdetails-preview-actions {
+    padding: 0 var(--space-4) var(--space-3);
+}
+
+/* Tab strip (preview pane only — modal/full still use the accordion further
+   below). Compact circular icon-number buttons (2026-09-22, Option 1 of 3
+   proposed) — small enough that all 6 always fit on one row in any pane
+   width, so they never wrap back into a vertical list (an earlier,
+   full-width-label version did exactly that, which just re-created the
+   accordion's summary list vertically and lost the whole point of tabs).
+   Status shows as a colored ring instead of a text badge; the full title/
+   icon/summary/Recorded-badge richness lives in the tabpanel heading below
+   instead — nothing is lost, it's just not duplicated on the selector. */
+.pdetails-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 var(--space-4) var(--space-4);
+}
+.pdetails-tab {
+    flex: 0 0 auto;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.pdetails-tab-complete { border-color: var(--color-success); }
+.pdetails-tab:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.pdetails-tab.active {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+.pdetails-tab-num { font-size: 14px; font-weight: 700; line-height: 1; }
+
+.pdetails-tabpanels { padding: 0 var(--space-4) var(--space-4); }
+.pdetails-tabpanel[hidden] { display: none; }
+.pdetails-tabpanel-heading {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    flex-wrap: wrap;
+}
+.pdetails-tabpanel-heading strong { font-size: 14px; color: var(--color-text); }
+.pdetails-tab-heading-summary { font-size: 12px; color: var(--color-text-muted); }
 
 .hist-row { cursor: pointer; }
 .hist-row:hover { background: #fafbff; }
@@ -1148,7 +1228,7 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 @media (max-width: 900px) {
     .hist-layout { flex-direction: column; }
     .hist-divider { display: none !important; }
-    .hist-preview-pane { max-width: 100%; width: 100% !important; max-height: none; }
+    .hist-preview-pane { max-width: 100%; width: 100% !important; }
 }
 
 /* Printing (UI-C4's Print/Export PDF) — scope the printed page to just the

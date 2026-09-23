@@ -88,6 +88,6 @@
 }
 
 .models-summary strong {
-    color: #667eea;
+    color: var(--brand-500);
     font-size: 18px;
 }

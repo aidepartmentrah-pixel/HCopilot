@@ -11,7 +11,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #3730a3 0%, #5a67d8 45%, #6b46c1 100%);
+    background: linear-gradient(135deg, #3730a3 0%, var(--brand-700) 45%, var(--brand-800) 100%);
     padding: 20px;
 }
 
@@ -42,7 +42,7 @@
 }
 
 .auth-card-head {
-    background: linear-gradient(135deg, #4f46e5 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-accent) 0%, var(--brand-800) 100%);
     padding: 32px 32px 28px;
     display: flex;
     align-items: center;
@@ -116,7 +116,7 @@
 }
 
 .auth-field input:focus {
-    border-color: #4f46e5;
+    border-color: var(--brand-accent);
     box-shadow: 0 0 0 3px rgba(79,70,229,.12);
 }
 
@@ -134,7 +134,7 @@
 .auth-login-btn {
     width: 100%;
     padding: 13px;
-    background: linear-gradient(135deg, #4f46e5 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-accent) 0%, var(--brand-800) 100%);
     color: #fff;
     border: none;
     border-radius: 10px;
@@ -338,7 +338,7 @@
 }
 
 .feat-toggle-label input:checked + .feat-slider {
-    background: #4f46e5;
+    background: var(--brand-accent);
 }
 
 .feat-toggle-label input:checked + .feat-slider::before {
@@ -396,7 +396,7 @@
     flex-shrink: 0;
 }
 
-.acc-avatar.role-admin { background: linear-gradient(135deg, #4f46e5, #6b46c1); }
+.acc-avatar.role-admin { background: linear-gradient(135deg, var(--brand-accent), var(--brand-800)); }
 .acc-avatar.role-user  { background: linear-gradient(135deg, #059669, #0d9488); }
 
 /* Role badge */
@@ -552,7 +552,7 @@
 }
 
 .acc-modal-head {
-    background: linear-gradient(135deg, #4f46e5 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-accent) 0%, var(--brand-800) 100%);
     padding: 20px 24px;
     display: flex;
     align-items: center;
@@ -634,7 +634,7 @@
 
 .acc-form-group input:focus,
 .acc-form-group select:focus {
-    border-color: #4f46e5;
+    border-color: var(--brand-accent);
     box-shadow: 0 0 0 3px rgba(79,70,229,.1);
 }
 
@@ -666,7 +666,7 @@
 }
 
 .acc-role-option input[type="radio"] {
-    accent-color: #4f46e5;
+    accent-color: var(--brand-accent);
     width: auto;
     padding: 0;
     border: none;
@@ -731,7 +731,7 @@
 }
 
 .acc-sec-check-item input[type="checkbox"] {
-    accent-color: #4f46e5;
+    accent-color: var(--brand-accent);
     width: auto;
     padding: 0;
     border: none;
@@ -809,7 +809,7 @@
 
 .acc-btn-save {
     padding: 9px 22px;
-    background: linear-gradient(135deg, #4f46e5, #6b46c1);
+    background: linear-gradient(135deg, var(--brand-accent), var(--brand-800));
     color: #fff;
     border: none;
     border-radius: 9px;

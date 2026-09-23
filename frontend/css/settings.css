@@ -148,7 +148,7 @@
     display: flex;
     gap: 3px;
     padding: 5px 6px;
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-800) 100%);
     border-radius: 14px;
     margin-bottom: 22px;
     width: 100%;
@@ -324,12 +324,12 @@
 }
 .s-btn-outline {
     background: transparent;
-    border: 2px solid #667eea;
-    color: #667eea;
+    border: 2px solid var(--brand-500);
+    color: var(--brand-500);
 }
-.s-btn-outline:hover { background:#667eea; color:#fff; }
+.s-btn-outline:hover { background:var(--brand-500); color:#fff; }
 .s-btn-primary {
-    background: linear-gradient(135deg,#667eea,#764ba2);
+    background: linear-gradient(135deg,var(--brand-500),var(--brand-600));
     border: none;
     color: #fff;
     box-shadow: 0 2px 8px rgba(102,126,234,0.35);
@@ -367,7 +367,7 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 3px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
+    background: linear-gradient(90deg, var(--brand-500), var(--brand-600));
     border-radius: 12px 12px 0 0;
 }
 .s-stat-card:hover {
@@ -399,7 +399,7 @@
 }
 .s-val-avail { color: #059669; }
 .s-val-occ   { color: #dc2626; }
-.s-val-blue  { color: #667eea; }
+.s-val-blue  { color: var(--brand-500); }
 
 .s-stat-lbl {
     font-size: 10px;
@@ -524,7 +524,7 @@
 }
 .s-search-input:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-500);
     box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 .s-search-input::placeholder { color: #c0c4d8; }
@@ -543,14 +543,14 @@
 }
 .s-filter-select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: var(--brand-500);
     box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
 }
 
 .s-result-count {
     margin-left: auto;
     font-size: 11px;
-    color: #667eea;
+    color: var(--brand-500);
     font-weight: 700;
     white-space: nowrap;
     background: #eef2ff;
@@ -666,7 +666,7 @@
 .s-stat-card-doctor::before  { background: linear-gradient(90deg, #2563eb, #60a5fa); }
 .s-stat-card-intern::before  { background: linear-gradient(90deg, #d97706, #fbbf24); }
 .s-stat-card-morning::before { background: linear-gradient(90deg, #d97706, #fcd34d); }
-.s-stat-card-night::before   { background: linear-gradient(90deg, #4f46e5, #818cf8); }
+.s-stat-card-night::before   { background: linear-gradient(90deg, var(--brand-accent), #818cf8); }
 .s-stat-card-pn::before      { background: linear-gradient(90deg, #0d9488, #34d399); }
 .s-stat-card-rn::before      { background: linear-gradient(90deg, #2563eb, #60a5fa); }
 .s-stat-card-ba::before      { background: linear-gradient(90deg, #9333ea, #c084fc); }
@@ -711,7 +711,7 @@
 
 /* Generic active state covers any dynamically-named shift (JS creates buttons without st-* class) */
 .shift-toggle-btn.active         { background:#eef2ff; color:#3730a3; font-weight:600; }
-.shift-toggle-btn.active .st-dot { background: #4f46e5; }
+.shift-toggle-btn.active .st-dot { background: var(--brand-accent); }
 /* Named overrides for well-known shifts */
 .shift-toggle-btn.st-morning.active         { background:#fffbeb; color:#92400e; }
 .shift-toggle-btn.st-morning.active .st-dot { background: #d97706; }
@@ -838,5 +838,5 @@
     transition: all 0.15s;
     white-space: nowrap;
 }
-.rel-tab-btn:hover { border-color: #667eea; color: #4338ca; }
-.rel-tab-btn.active { border-color: #667eea; background: #eef2ff; color: #4338ca; }
+.rel-tab-btn:hover { border-color: var(--brand-500); color: #4338ca; }
+.rel-tab-btn.active { border-color: var(--brand-500); background: #eef2ff; color: #4338ca; }
