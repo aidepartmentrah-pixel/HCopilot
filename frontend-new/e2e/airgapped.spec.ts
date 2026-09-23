@@ -26,6 +26,13 @@ test.describe('Air-gapped build (§29, NF8.5)', () => {
     await page.goto('/isbar')
     await page.waitForTimeout(1000)
 
+    // Statistics (V2.5) lazy-loads recharts — the exact kind of new
+    // runtime dependency this test exists to catch if it ever silently
+    // pulled a CDN font/script instead of bundling locally via npm/Vite.
+    await page.goto('/statistics')
+    await page.getByText('Active Patients').waitFor({ timeout: 10000 })
+    await page.waitForTimeout(1000)
+
     expect(externalRequests).toEqual([])
   })
 

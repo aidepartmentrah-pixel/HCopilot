@@ -1,9 +1,10 @@
 import { Activity, BedDouble, Clock, TimerOff, Users } from 'lucide-react'
 import { MetricCard } from '@/components/ui/MetricCard'
 import type { StatisticsOverview } from '@/types/statistics'
+import { longWaitTone, occupancyTone } from '../kpiThresholds'
 import styles from './KpiRow.module.css'
 
-/** 4-5 primary KPIs (§23) — not 7 equally-weighted cards. Picked from overview() for headline ER-flow signal. */
+/** 4-5 primary KPIs (§5/§23) — not 7 equally-weighted cards. Picked from overview() for headline ER-flow signal. Semantic tones come from the centralized kpiThresholds module (§7), never a hardcoded cutoff here. */
 export function KpiRow({ overview }: { overview: StatisticsOverview }) {
   return (
     <div className={styles.row}>
@@ -17,6 +18,7 @@ export function KpiRow({ overview }: { overview: StatisticsOverview }) {
         label="Occupancy"
         value={overview.occupancy_rate != null ? `${overview.occupancy_rate}%` : '—'}
         icon={<BedDouble size={18} />}
+        tone={occupancyTone(overview.occupancy_rate)}
       />
       <MetricCard
         label="Avg. Length of Stay"
@@ -27,7 +29,7 @@ export function KpiRow({ overview }: { overview: StatisticsOverview }) {
         label="Long Waits (>4h)"
         value={overview.long_wait_pct != null ? `${overview.long_wait_pct}%` : '—'}
         icon={<TimerOff size={18} />}
-        tone={overview.long_wait_pct != null && overview.long_wait_pct > 10 ? 'warning' : 'neutral'}
+        tone={longWaitTone(overview.long_wait_pct)}
       />
     </div>
   )

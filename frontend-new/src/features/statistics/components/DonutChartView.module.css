@@ -1,0 +1,4 @@
+.legendLabel {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}

@@ -1,0 +1,26 @@
+.tooltip {
+  background: var(--slate-950);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-md);
+  min-width: 140px;
+}
+
+.label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 2px;
+}
+
+.value {
+  font-size: var(--font-size-body);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.meta {
+  font-size: var(--font-size-metadata);
+  color: var(--slate-300);
+  margin: 2px 0 0;
+}

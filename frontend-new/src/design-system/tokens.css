@@ -44,6 +44,14 @@
   --waiting: #7c3aed;
   --waiting-bg: #f5f3ff;
 
+  /* Categorical chart palette (Statistics §26 "Multiple Neutral Categories")
+   * — restrained, non-rainbow, for donut/multi-series charts with no
+   * inherent semantic color (e.g. Safety Risks). Brand indigo + --waiting
+   * (violet) + --slate-500 are reused rather than duplicated; only blue and
+   * teal are genuinely new hues. */
+  --chart-blue: #2563eb;
+  --chart-teal: #0d9488;
+
   /* Text roles. */
   --text-primary: var(--slate-950);
   --text-secondary: var(--slate-500);

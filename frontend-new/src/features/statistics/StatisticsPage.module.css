@@ -1,3 +1,9 @@
+.dateContext {
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
 .alertsCard {
   background: var(--surface);
   border: 1px solid var(--border-default);
@@ -6,8 +12,16 @@
   margin-bottom: var(--space-6);
 }
 
+.sectionTitle {
+  font-size: var(--font-size-section-title);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: var(--space-8) 0 var(--space-4);
+}
+
 .chartGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
   gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
