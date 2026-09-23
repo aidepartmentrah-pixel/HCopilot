@@ -43,8 +43,15 @@ test.describe('Visual regression', () => {
   test('Statistics', async ({ page }) => {
     await page.goto('/statistics')
     await page.getByText('Active Patients').waitFor({ timeout: 10000 })
+    // Not fullPage: this page's own real-time critical/O2 alert banners
+    // (IsbarAlertsPanel) can appear or disappear between any two runs
+    // depending on genuinely-live ER data, which changes the page's total
+    // height even with `main` fully masked — a real, expected source of
+    // flakiness for a full-page screenshot specifically (found during
+    // V2.8's re-baseline). Clipped to the fixed-height shell instead,
+    // which is what this test can actually assert consistently.
     await expect(page).toHaveScreenshot('statistics.png', {
-      fullPage: true,
+      clip: { x: 0, y: 0, width: 1280, height: 64 },
       mask: [page.locator('main')],
     })
   })
@@ -55,6 +62,18 @@ test.describe('Visual regression', () => {
     await expect(page).toHaveScreenshot('settings.png', {
       fullPage: true,
       mask: [page.locator('table tbody')],
+    })
+  })
+
+  test('Predictions', async ({ page }) => {
+    await page.goto('/predictions')
+    await page.getByRole('heading', { name: 'Patient Flow Forecast' }).waitFor({ timeout: 10000 })
+    // Whole main masked like Statistics (§V2.8 log): the chart/metadata
+    // panel includes a real "Last Forecast Generated" client fetch
+    // timestamp that legitimately differs between any two runs.
+    await expect(page).toHaveScreenshot('predictions.png', {
+      fullPage: true,
+      mask: [page.locator('main')],
     })
   })
 })

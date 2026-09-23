@@ -6,10 +6,24 @@ against the same backend and database. This is not a redesign of the old
 frontend in place — the old frontend stays untouched as a fallback/reference
 until this one reaches parity and is explicitly promoted.
 
-Full mission spec: `../docs/development/New Frontend (React Rewrite)/source/
-HCopilot_New_Frontend_Master_Prompt.md`. Live build tracker, with a dated log
-entry per slice and every real bug/decision recorded as it happened:
-`../docs/development/New Frontend (React Rewrite)/0. Slicing Task Table.md`.
+Built in two waves. **NF0–NF9** (first wave) shipped the initial 6-page
+rewrite (Home/ISBAR/Live ER/History/Statistics/Settings) with a working but
+visually plain shell. **V2.0–V2.8** (second wave, this README's current
+state) restored clinical/operational depth the first wave simplified too
+aggressively, applied the real branded indigo/navy shell, added a 7th page
+(Predictions), and rebuilt Statistics/Settings around proper analytics and
+administration systems rather than each page's own ad hoc pattern.
+
+Mission specs and live build trackers (dated log entry per slice, every real
+bug/decision recorded as it happened — read these before assuming what's
+built):
+- First wave: `../docs/development/New Frontend (React Rewrite)/source/
+  HCopilot_New_Frontend_Master_Prompt.md` /
+  `../docs/development/New Frontend (React Rewrite)/0. Slicing Task Table.md`.
+- Second wave: `../docs/development/New Frontend V2 (Feature Parity &
+  Redesign)/source/11. New Stack Missing Functions.md` /
+  `../docs/development/New Frontend V2 (Feature Parity & Redesign)/0. Slicing
+  Task Table.md`.
 
 ## Architecture
 
@@ -47,15 +61,23 @@ src/
 │   │                # YesNoToggle, MultiSelectChips, SearchInput, FilterBar
 │   ├── feedback/    # EmptyState, ErrorState, LoadingState, ConfirmDialog, Toast
 │   ├── layout/      # AppShell, PageHeader, Drawer, ResizablePanel
-│   ├── navigation/  # TopNavigation
+│   ├── navigation/  # TopNavigation (branded shell, V2.0), GlobalSearch,
+│   │                # NotificationBell, UserMenu
 │   └── tables/      # DataTable (sort + pagination, headless via TanStack Table)
 ├── features/        # One folder per page — isbar/, live-er/, history/,
-│                    # statistics/, settings/, home/ — each owns its own
-│                    # components/, hooks live in the shared src/hooks/
+│                    # statistics/, settings/, predictions/, home/ — each
+│                    # owns its own components/, hooks live in the shared
+│                    # src/hooks/. statistics/ and predictions/ each keep
+│                    # their pure aggregation/formatting logic in plain
+│                    # top-level .ts files (chartData.ts, permissions.ts,
+│                    # forecastChartData.ts, errorClassification.ts, …)
+│                    # colocated with their own Vitest tests, separate from
+│                    # the React components that consume them.
 ├── hooks/           # TanStack Query hooks, one file per domain
 ├── design-system/   # tokens.css — the single source of design tokens
 ├── styles/          # fonts.css (self-hosted @font-face) + fonts/
-└── utils/           # small shared helpers (e.g. humanize())
+└── utils/           # small shared helpers (e.g. humanize(), initialsOf(),
+                       # formatClinicalDate())
 ```
 
 ## Design tokens
@@ -69,6 +91,18 @@ starting values — a real, computed WCAG AA contrast check (NF8.2) found the
 originals failed at small badge/label text sizes; the master prompt's own
 §6 explicitly allows this kind of tuning. Never reuse `--brand-*` for a
 clinical/operational state — brand indigo means selected/interactive only.
+
+Two additive extensions from the V2 wave, neither renaming nor retuning
+anything above:
+- **`--shell-*`** (V2.0) — the branded indigo/navy top-bar layer
+  (`--shell-bg`, `--shell-active-bg`, `--shell-text`, …), deliberately
+  distinct from the neutral `--canvas`/`--surface` workspace tokens the
+  rest of every page sits on. Never used outside `components/navigation/`.
+- **`--chart-blue` / `--chart-teal`** (V2.5) — the only two genuinely new
+  hues the Statistics/Predictions charting system needed for its
+  restrained categorical palette; the palette's other three colors
+  (indigo, violet, slate) reuse `--brand-600`/`--waiting`/`--slate-500`
+  rather than duplicating them (`features/statistics/chartPalette.ts`).
 
 ## Components
 
@@ -87,22 +121,72 @@ the rare case that genuinely needs every row visible at once) and accepts a
 
 `src/api/client.ts` — a small typed fetch wrapper (`ApiError` carries the
 real HTTP status + body text). `src/api/{patients,er,beds,history,
-statistics,directory,settings}.ts` — one module per backend domain, each
-built from actually reading the corresponding `backend/features/*/api.py`
-and its manager's row-shape method, not guessed. `src/types/*.ts` mirrors
-those real shapes, including nullability (a `Patient.gender` is genuinely
-optional because the backend's `check_required_by_origin` validator allows
-a roster-origin stay to omit it — the type isn't guessing, it's reading the
-same rule the server enforces). `src/hooks/*.ts` wraps each domain in
-TanStack Query — one query-key object per domain so cache invalidation
-targets stay consistent across files.
+statistics,directory,settings,predictions}.ts` — one module per backend
+domain, each built from actually reading the corresponding
+`backend/features/*/api.py` and its manager's row-shape method, not
+guessed. `src/types/*.ts` mirrors those real shapes, including nullability
+(a `Patient.gender` is genuinely optional because the backend's
+`check_required_by_origin` validator allows a roster-origin stay to omit
+it — the type isn't guessing, it's reading the same rule the server
+enforces). `src/hooks/*.ts` wraps each domain in TanStack Query — one
+query-key object per domain so cache invalidation targets stay consistent
+across files.
 
-Two domains (`staff-stats`, most of `auth`/shifts/groups) are deliberately
-left loosely typed (`Record<string, unknown>` / `unknown`) — real endpoints,
-confirmed to exist, not yet consumed by a built page. Typing them precisely
-is deferred to whichever future phase actually builds against them, per
-this project's own "audit when you actually need it, not before" discipline
-(a pre-typed guess can go stale before it's ever used).
+`api/settings.ts` (V2.6) grew from Beds/Doctors/Nurses/Wards-only into five
+real domains sharing that one file: `wardsApi`, `staffApi`,
+`hospitalDirectoryApi`, `modelTrainingApi`, `modelFilesApi`, and a now
+fully-typed `authApi.users` (previously loose — see below). `resetApi` was
+**removed entirely**, not just unused — the UI it powered
+(`DangerZone.tsx`, wired to the real `POST /api/reset/all`) was deleted in
+V2.6 because the V2 spec explicitly forbids any reset/data-wipe control in
+this frontend, hidden or otherwise.
+
+One domain (`staff-stats`) is still deliberately left loosely typed
+(`Record<string, unknown>`) — a real endpoint, confirmed to exist, not yet
+consumed by a built page. Typing it precisely is deferred to whichever
+future phase actually builds against it, per this project's own "audit
+when you actually need it, not before" discipline (a pre-typed guess can
+go stale before it's ever used). `auth`/`sections`/`settings_tabs` are now
+fully typed and built (V2.6's Accounts & Permissions) — see "Permission
+key compatibility" below for a real constraint on that domain specifically.
+
+## Charting
+
+**recharts** (V2.5) — chosen when Statistics needed real Bar/Line/Donut
+charts instead of the first wave's repetitive horizontal-progress-bar
+pattern, and reused as-is for Predictions' forecast chart (V2.7) rather
+than introducing a second library. Reasoning, still valid: React-native
+SVG rendering (no canvas/CDN runtime dependency), first-class TypeScript
+types, and it ships as a plain npm package Vite bundles locally like any
+other dependency — satisfying the air-gapped requirement by construction
+rather than needing special-casing. `e2e/airgapped.spec.ts` visits every
+chart-bearing page and asserts zero external network requests, not just
+that the source has no CDN `<script>` tag.
+
+Shared chart infrastructure lives in `features/statistics/`
+(`chartPalette.ts`'s categorical palette, `components/ChartTooltip.tsx`,
+`components/AnalyticsCard.tsx`'s Bar/Line/Donut/Table view-switching
+system) and is reused by Predictions rather than duplicated — Predictions
+keeps only what's genuinely forecast-specific (the historical/forecast
+line-connection technique, the boundary marker, production-model
+metadata). Vite/Rollup automatically factors recharts into one shared
+chunk across both pages' lazy-loaded routes, so it's downloaded once, not
+twice.
+
+## Permission key compatibility
+
+`UserAccount.sections` / `.settings_tabs` / `.statistics_tabs` (V2.6's
+Accounts & Permissions) are comma-separated key strings **shared with the
+old frontend's own permission enforcement** — `frontend/js/auth.js` reads
+these exact same fields off the same `Users` table to hide its own nav.
+`features/settings/permissions.ts` therefore works only with real,
+confirmed key vocabulary (audited from `users_manager.py`'s
+`ALL_SECTIONS`/`ALL_SETTINGS_TABS` constants plus a live data read that
+surfaced `patient-history`, a real in-use key missing from that constant)
+— inventing new key strings here would silently break the old frontend's
+nav gating for any account both frontends share. If a future page needs a
+new gated capability, extend this real key vocabulary deliberately, don't
+invent a parallel one.
 
 ## Commands
 
@@ -160,29 +244,63 @@ an Arabic-name-heavy page.
   calculation, pagination row counts, WCAG-relevant rendering (a "nothing
   recorded" empty state vs. a populated one) — never snapshot-only.
 - **E2E** (Playwright, `e2e/*.spec.ts`): real Chromium against the real
-  backend/database (`docker compose up` first). One spec file per page,
-  plus `rtl.spec.ts` (real Arabic data, not synthetic fixtures),
-  `airgapped.spec.ts` (real network-blocking), `visual-regression.spec.ts`
-  (baseline screenshots for all 6 major screens, `maxDiffPixelRatio: 0.02`
-  tolerance for genuinely-live ER data drift between runs).
+  backend/database (`docker compose up` first). One spec file per page —
+  `shell.spec.ts` (the branded shell, byte-identical across every route),
+  `home.spec.ts`, `isbar*.spec.ts`, `live-er*.spec.ts`,
+  `history*.spec.ts`, `statistics.spec.ts`, `settings.spec.ts`,
+  `predictions.spec.ts` — plus `rtl.spec.ts` (real Arabic data, not
+  synthetic fixtures), `airgapped.spec.ts` (real network-blocking, visits
+  every chart-bearing page), `visual-regression.spec.ts` (baseline
+  screenshots for all major screens, masked over anything time-dependent
+  or genuinely-live ER data).
 
 ## Known, named scope gaps
 
 Not silently dropped — each is a real, bounded follow-up:
 
-- **Settings**: only Resources (Beds/Doctors/Nurses/Wards) + Danger Zone
-  are built. Patients (covered by this rewrite's own ISBAR/History pages),
-  Scheduling, Data, and System tabs exist in the old frontend but belong to
-  Flow Prediction/ML-training/dataset-admin modules already out of this
-  rewrite's scope (same boundary NF1.3 drew for top-level nav).
-- **Settings resource tables** have no search/filter toolbar yet (the
-  master prompt's own §24 example shows one for Beds) — each table is
-  fully functional (sort, paginate, CRUD) without one.
 - **History's "Edit"** action isn't built — the old frontend reuses its
   existing log-patient edit modal; this rewrite has no equivalent yet
   (discharged-record editing is a real, separate manager/endpoint from the
-  active-stay ISBAR form).
-- **Deeper `/api/statistics/*` endpoints** (`staff-stats`) and most of
-  `/api/staff/shifts`, `/api/staff/groups`, `/api/auth/users` are real,
-  confirmed-to-exist, but not yet built into a page — types left loose on
-  purpose (see "API layer" above).
+  active-stay ISBAR form). The backend endpoint exists; only the frontend
+  destination doesn't.
+- **`staff-stats`** (`/api/statistics/staff-stats`) is a real, confirmed
+  endpoint not yet consumed by any page — left loosely typed on purpose
+  (see "API layer" above).
+- **Settings → Integrations / Accounts & Permissions have no dedicated
+  `settings_tabs` permission key** — the backend's real permission
+  whitelist (`ALL_SETTINGS_TABS`) only covers Resources and Model
+  Registry/Training, so anyone with general Settings access can currently
+  reach both; `PermissionsEditor` surfaces this gap visibly rather than
+  inventing keys the backend doesn't recognize. A real fix needs a backend
+  schema change, not a frontend workaround.
+- **`statistics_tabs`** granularity (old per-statistics-subtab permission
+  keys: `patients`/`nurses`/`doctors`/`wards`/`daily`) has no equivalent in
+  the redesigned single-page Statistics (V2.5) — there are no sub-tabs left
+  to gate.
+- **No frontend route/nav enforcement of `sections`/`settings_tabs`** —
+  Accounts & Permissions (V2.6) can fully manage these real, shared
+  permission fields, but nothing in `frontend-new` yet hides a nav item or
+  blocks a route based on them (the old frontend does enforce them for its
+  own nav). Backend authorization remains the real boundary either way; this
+  is a UI-convenience gap, not a security one.
+- **Predictions has one product** (Patient Flow) — the module/component
+  architecture (`ForecastHorizonSelector`, `HistoricalForecastChart`,
+  `PredictionMetadataPanel`, …) is built to hold Bed Demand/Wait
+  Time/Length of Stay later without a rewrite, but no placeholder tabs
+  exist for them since no real backend models exist for them yet.
+- **ESI4's color** is `neutral` (slate), not the V2 spec's suggested
+  light-green — an already-shipped, cross-product choice (`ACUITY_TONE` in
+  `features/isbar/constants.ts`, reused by ISBAR/Live ER/History/
+  Statistics) that predates the V2 spec's own §16; changing it now means
+  touching four already-tested pages at once, deliberately deferred rather
+  than done piecemeal.
+- **Settings resource tables** (Beds/Doctors/Nurses/Wards) still have no
+  search/filter toolbar — each table is fully functional (sort, paginate,
+  CRUD) without one; a real, bounded follow-up if resource lists grow
+  large enough to need it.
+- **Visual-regression baselines** (`e2e/visual-regression.spec.ts`) mask
+  whatever is time-dependent or live-data-driven per page (table bodies,
+  placement cards, waiting-duration badges); Statistics masks its entire
+  `main` region specifically, since its content changed the most across
+  the V2 wave (V2.5's full redesign). Re-baselined for V2.8 — see this
+  slice's log entry for the real diff-count/masking notes per page.
