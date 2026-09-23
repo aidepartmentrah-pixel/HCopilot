@@ -1,6 +1,7 @@
 import type { StatusTone } from '@/components/ui/StatusBadge'
 import type { Bed } from '@/types/bed'
 import type { BedlessPatient } from '@/types/bed'
+import { formatWaitingDuration, minutesSinceArrival } from './durationFormat'
 
 export interface PlacementCardData {
   id: string
@@ -9,7 +10,10 @@ export interface PlacementCardData {
   statusLabel: string
   primary: string
   sub: string
+  patientId?: number | null
+  bedType?: string | null
   acuity?: number | null
+  waitingMinutes?: number | null
   isWaitingOverThreshold: boolean
   bed?: Bed
   patient?: BedlessPatient
@@ -17,13 +21,17 @@ export interface PlacementCardData {
 
 const WAITING_THRESHOLD_MINUTES = 5
 
-/** Confirmed decision (ER UI Architecture Redesign): "handled" = triage_time set. */
-export function isWaitingOverThreshold(arrivalTime: string, triageTime: string | null): boolean {
-  if (triageTime) return false
-  const arrival = new Date(arrivalTime).getTime()
-  if (Number.isNaN(arrival)) return false
-  const minutesWaiting = (Date.now() - arrival) / 60000
-  return minutesWaiting > WAITING_THRESHOLD_MINUTES
+/**
+ * §5 fix: the old label conflated "not yet triaged" with "waiting for a
+ * bed" — two different conditions. `useBedlessPatients` already only
+ * returns patients currently without a bed, so *this* page's "waiting"
+ * concept is real elapsed time without a bed, regardless of triage
+ * status (a triaged patient can still wait a long time for a bed to open
+ * up). The "new patient, ISBAR not started" concept is a different alert
+ * that belongs to Home's OperationalAlertsPanel (V2.1), not here.
+ */
+export function isOverAttentionThreshold(minutes: number | null): boolean {
+  return minutes != null && minutes > WAITING_THRESHOLD_MINUTES
 }
 
 /** Same shared shape a bed row and a bedless-patient row both normalize into — one card renderer for both (§21). */
@@ -40,12 +48,15 @@ export function cardFromBed(bed: Bed): PlacementCardData {
           .filter(Boolean)
           .join(' · ')
       : '',
+    patientId: bed.patient_id,
+    bedType: bed.bed_type,
     isWaitingOverThreshold: false,
     bed,
   }
 }
 
-export function cardFromBedless(patient: BedlessPatient): PlacementCardData {
+export function cardFromBedless(patient: BedlessPatient, now: Date = new Date()): PlacementCardData {
+  const minutes = minutesSinceArrival(patient.arrival_time, now)
   return {
     id: `waiting-${patient.stay_id}`,
     kind: 'waiting',
@@ -53,8 +64,12 @@ export function cardFromBedless(patient: BedlessPatient): PlacementCardData {
     statusLabel: 'Waiting',
     primary: patient.name,
     sub: patient.chiefcomplaint || '',
+    patientId: patient.subject_id,
     acuity: patient.acuity,
-    isWaitingOverThreshold: isWaitingOverThreshold(patient.arrival_time, patient.triage_time),
+    waitingMinutes: minutes,
+    isWaitingOverThreshold: isOverAttentionThreshold(minutes),
     patient,
   }
 }
+
+export { formatWaitingDuration }

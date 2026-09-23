@@ -2,10 +2,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  flex: 0 0 168px;
+  flex: 0 0 200px;
   min-width: 0; /* flexbox min-width default beats flex-basis on long unbroken text otherwise (found in the old UI redesign — see NF4 log) */
-  width: 168px;
-  height: 108px;
+  width: 200px;
+  height: 144px;
   padding: var(--space-3);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
@@ -18,20 +18,62 @@
   box-shadow: var(--shadow-sm);
   border-color: var(--border-strong);
 }
+.card:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 1px;
+}
 
 .attention {
   border-color: var(--warning);
   box-shadow: 0 0 0 1px var(--warning);
 }
 
-.iconRow {
+/* Selected is an independent dimension from the card's own semantic state (§25). */
+.selected {
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 2px var(--brand-600);
+}
+
+/* An available bed while a waiting patient is selected — visually offered as the assignment target (§26). */
+.assignable {
+  border-color: var(--brand-600);
+  border-style: dashed;
+  background: var(--brand-50);
+}
+
+.illustrationRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.icon {
+.illustration {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+.tone-success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.tone-occupied {
+  background: var(--occupied-bg);
+  color: var(--occupied);
+}
+.tone-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.tone-waiting {
+  background: var(--waiting-bg);
+  color: var(--waiting);
+}
+.tone-neutral {
+  background: var(--slate-100);
   color: var(--text-secondary);
 }
 
@@ -52,6 +94,11 @@
   white-space: nowrap;
 }
 
+.meta {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
 .footer {
   margin-top: auto;
   display: flex;
@@ -60,11 +107,22 @@
   flex-wrap: wrap;
 }
 
+.bedType {
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
+
 .waitingFlag {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
   font-size: var(--font-size-metadata);
   font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+.waitingFlagAttention {
   color: var(--warning);
+  font-weight: var(--font-weight-semibold);
 }

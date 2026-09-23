@@ -25,7 +25,7 @@ export function SummaryStatRow({ occupied, available, withoutBed, waitingOverThr
       {waitingOverThreshold > 0 && (
         <div className={styles.alert} role="status">
           <AlertTriangle size={16} aria-hidden="true" />
-          {waitingOverThreshold} patient{waitingOverThreshold === 1 ? '' : 's'} waiting over 5 minutes without triage
+          {waitingOverThreshold} patient{waitingOverThreshold === 1 ? '' : 's'} waiting over 5 minutes without a bed
         </div>
       )}
     </div>

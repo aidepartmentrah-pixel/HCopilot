@@ -23,6 +23,20 @@
   padding: 0 var(--space-2);
 }
 
+.summary {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
+.empty {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-4);
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-label);
+}
+
 .scrollControls {
   margin-left: auto;
   display: flex;

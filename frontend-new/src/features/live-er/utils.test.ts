@@ -1,30 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cardFromBed, cardFromBedless, isWaitingOverThreshold } from './utils'
+import { describe, expect, it } from 'vitest'
+import { cardFromBed, cardFromBedless, isOverAttentionThreshold } from './utils'
 import type { Bed, BedlessPatient } from '@/types/bed'
 
-describe('isWaitingOverThreshold', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-22T12:00:00Z'))
+describe('isOverAttentionThreshold', () => {
+  it('is false under 5 minutes', () => {
+    expect(isOverAttentionThreshold(3)).toBe(false)
   })
-  afterEach(() => {
-    vi.useRealTimers()
+  it('is true over 5 minutes', () => {
+    expect(isOverAttentionThreshold(6)).toBe(true)
   })
-
-  it('is false when triage_time is set, regardless of how long ago arrival was', () => {
-    expect(isWaitingOverThreshold('2026-09-22T11:00:00Z', '2026-09-22T11:10:00Z')).toBe(false)
-  })
-
-  it('is false when arrival was less than 5 minutes ago', () => {
-    expect(isWaitingOverThreshold('2026-09-22T11:57:00Z', null)).toBe(false)
-  })
-
-  it('is true when arrival was more than 5 minutes ago and not yet triaged', () => {
-    expect(isWaitingOverThreshold('2026-09-22T11:50:00Z', null)).toBe(true)
-  })
-
-  it('is false for an unparseable arrival time rather than throwing', () => {
-    expect(isWaitingOverThreshold('not-a-date', null)).toBe(false)
+  it('is false for null (unparseable/future arrival)', () => {
+    expect(isOverAttentionThreshold(null)).toBe(false)
   })
 })
 
@@ -49,7 +35,7 @@ describe('cardFromBed / cardFromBedless', () => {
     expect(card.isWaitingOverThreshold).toBe(false)
   })
 
-  it('normalizes an occupied bed with patient identity in `sub`', () => {
+  it('normalizes an occupied bed with patient identity, ID, and bed type', () => {
     const bed: Bed = {
       bed_id: 2,
       bed_number: '102',
@@ -66,11 +52,12 @@ describe('cardFromBed / cardFromBedless', () => {
     const card = cardFromBed(bed)
     expect(card.statusTone).toBe('occupied')
     expect(card.sub).toBe('Chen, Marcus · 42y Male')
+    expect(card.patientId).toBe(42)
+    expect(card.bedType).toBe('normal')
   })
 
-  it('normalizes a bedless patient into the same card shape, flagged when waiting over threshold', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-22T12:00:00Z'))
+  it('normalizes a bedless patient with real elapsed waiting time, flagged when over threshold', () => {
+    const now = new Date('2026-09-22T12:00:00Z')
     const patient: BedlessPatient = {
       subject_id: 1,
       stay_id: 100,
@@ -93,10 +80,38 @@ describe('cardFromBed / cardFromBedless', () => {
       doctor_ids: [],
       nurse_ids: [],
     }
-    const card = cardFromBedless(patient)
+    const card = cardFromBedless(patient, now)
     expect(card.kind).toBe('waiting')
     expect(card.statusTone).toBe('waiting')
+    expect(card.waitingMinutes).toBeCloseTo(10, 5)
     expect(card.isWaitingOverThreshold).toBe(true)
-    vi.useRealTimers()
+  })
+
+  it('flags a bedless patient as over-threshold even when already triaged (§5 fix — waiting-for-bed is independent of triage status)', () => {
+    const now = new Date('2026-09-22T12:00:00Z')
+    const patient: BedlessPatient = {
+      subject_id: 2,
+      stay_id: 101,
+      name: 'Triaged Patient',
+      gender: 'Male',
+      age: 50,
+      temperature: null,
+      heartrate: null,
+      resprate: null,
+      o2sat: null,
+      sbp: null,
+      dbp: null,
+      pain: null,
+      acuity: 3,
+      chiefcomplaint: null,
+      arrival_time: '2026-09-22T11:00:00Z',
+      triage_time: '2026-09-22T11:05:00Z',
+      er_visit_id: null,
+      unurgent: false,
+      doctor_ids: [],
+      nurse_ids: [],
+    }
+    const card = cardFromBedless(patient, now)
+    expect(card.isWaitingOverThreshold).toBe(true)
   })
 })

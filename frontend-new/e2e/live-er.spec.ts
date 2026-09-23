@@ -26,14 +26,17 @@ test.describe('Live ER Board', () => {
     expect(widths.size).toBe(1)
   })
 
-  test('clicking an available bed opens the assign dialog; clicking occupied opens discharge', async ({ page }) => {
+  test('clicking an available bed with nothing selected opens an informational drawer, not an immediate assignment; clicking occupied opens discharge', async ({
+    page,
+  }) => {
     await page.goto('/live-er')
     await page.getByTestId('placement-card').first().waitFor({ timeout: 10000 })
 
     const availableCard = page.getByTestId('placement-card').filter({ hasText: 'Available' }).first()
     if (await availableCard.count()) {
       await availableCard.click()
-      await expect(page.getByRole('dialog').getByText('Assign Patient')).toBeVisible()
+      await expect(page.getByText('Select a patient from the Waiting / No Bed lane, then click this bed to assign it.')).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Discharge Patient' })).toHaveCount(0)
       await page.keyboard.press('Escape')
     }
 
@@ -45,12 +48,18 @@ test.describe('Live ER Board', () => {
     }
   })
 
-  test('waiting lane renders with discharge action', async ({ page }) => {
+  test('clicking a waiting card selects it; clicking the same card again opens its detail drawer with a discharge action', async ({
+    page,
+  }) => {
     await page.goto('/live-er')
     await expect(page.getByRole('heading', { name: 'Waiting / No Bed' })).toBeVisible({ timeout: 10000 })
 
     const waitingCard = page.getByTestId('placement-card').filter({ hasText: 'Waiting' }).first()
     if (await waitingCard.count()) {
+      await waitingCard.click()
+      await expect(waitingCard).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByText(/selected — click an available bed to assign it/)).toBeVisible()
+
       await waitingCard.click()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toBeVisible()
       await page.keyboard.press('Escape')
