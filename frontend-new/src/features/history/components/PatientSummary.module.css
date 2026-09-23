@@ -17,6 +17,12 @@
   margin: 0;
 }
 
+.identity {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

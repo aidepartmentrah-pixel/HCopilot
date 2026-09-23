@@ -16,6 +16,16 @@ export interface FieldSpec {
   multi?: boolean
 }
 
+export type RecordedStatus = 'recorded' | 'partially-recorded' | 'not-recorded'
+
+/** Derived only from which fields actually have a value — never inferred from anything else (History spec §26). */
+export function sectionRecordedStatus(fields: FieldSpec[]): RecordedStatus {
+  const populated = fields.filter((f) => f.value).length
+  if (populated === 0) return 'not-recorded'
+  if (populated === fields.length) return 'recorded'
+  return 'partially-recorded'
+}
+
 export function vitalsFields(isbar: ISBARDetails | null | undefined): FieldSpec[] {
   return [
     { label: 'Blood Glucose', value: isbar?.blood_glucose != null ? `${isbar.blood_glucose} mg/dL` : null },

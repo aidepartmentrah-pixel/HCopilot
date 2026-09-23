@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import styles from './ResizablePanel.module.css'
 
 interface ResizablePanelProps {
@@ -10,13 +10,25 @@ interface ResizablePanelProps {
   defaultRightWidth?: number
   minLeftWidth?: number
   minRightWidth?: number
+  /** When set, the dragged width persists to localStorage under this key and restores on mount (History spec §9's own example key name, "history-preview-width") — a per-viewer convenience, omitted entirely for callers that don't opt in. */
+  storageKey?: string
+}
+
+function readStoredWidth(key: string | undefined, fallback: number): number {
+  if (!key) return fallback
+  try {
+    const raw = localStorage.getItem(key)
+    const parsed = raw ? Number(raw) : NaN
+    return Number.isFinite(parsed) ? parsed : fallback
+  } catch {
+    return fallback
+  }
 }
 
 /**
  * Two-pane split with a draggable divider — plain mouse events, no
  * library, matching the pattern already proven in the old frontend's own
- * History redesign. Width lives in local state only (doesn't need to
- * survive a reload, per the master prompt's own §35 assumption).
+ * History redesign.
  */
 export function ResizablePanel({
   left,
@@ -24,8 +36,26 @@ export function ResizablePanel({
   defaultRightWidth = 480,
   minLeftWidth = 420,
   minRightWidth = 360,
+  storageKey,
 }: ResizablePanelProps) {
-  const [rightWidth, setRightWidth] = useState(defaultRightWidth)
+  const [rightWidth, setRightWidthState] = useState(() => readStoredWidth(storageKey, defaultRightWidth))
+
+  const setRightWidth = useCallback(
+    (update: number | ((w: number) => number)) => {
+      setRightWidthState((prev) => {
+        const next = typeof update === 'function' ? update(prev) : update
+        if (storageKey) {
+          try {
+            localStorage.setItem(storageKey, String(next))
+          } catch {
+            // best-effort only — a private window or blocked storage just means this session doesn't persist
+          }
+        }
+        return next
+      })
+    },
+    [storageKey],
+  )
   const containerRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef(false)
 
@@ -62,7 +92,7 @@ export function ResizablePanel({
       document.removeEventListener('pointermove', onPointerMove)
       document.removeEventListener('pointerup', stopDragging)
     }
-  }, [])
+  }, [setRightWidth])
 
   const startDragging = (e: React.PointerEvent) => {
     e.preventDefault()

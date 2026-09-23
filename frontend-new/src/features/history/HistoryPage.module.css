@@ -6,8 +6,25 @@
 }
 
 .filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   margin-bottom: var(--space-4);
   flex-shrink: 0;
+}
+.filters > :first-child {
+  flex: 1;
+}
+
+.recordCount {
+  font-size: var(--font-size-label);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-1);
 }
 
 .splitArea {

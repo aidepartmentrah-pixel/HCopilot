@@ -1,9 +1,12 @@
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { ACUITY_TONE } from '@/features/isbar/constants'
+import { formatClinicalDate } from '@/utils/dateFormat'
 import type { PatientDetails } from '@/types/patient'
 import styles from './PatientSummary.module.css'
 
 export function PatientSummary({ patient }: { patient: PatientDetails }) {
+  const isDischarged = !!patient.departure_time
+
   return (
     <div className={styles.summary}>
       <div className={styles.nameRow}>
@@ -11,16 +14,19 @@ export function PatientSummary({ patient }: { patient: PatientDetails }) {
           {patient.name || `Patient #${patient.patient_id}`}
         </h2>
         {patient.acuity != null && <StatusBadge label={`ESI ${patient.acuity}`} tone={ACUITY_TONE[patient.acuity] ?? 'neutral'} />}
+        <StatusBadge label={isDischarged ? 'Discharged' : 'Open'} tone={isDischarged ? 'neutral' : 'success'} />
       </div>
+      <p className={styles.identity}>
+        Patient #{patient.patient_id} · Stay #{patient.stay_id}
+      </p>
       <dl className={styles.grid}>
-        <Field label="Patient #" value={String(patient.patient_id)} />
-        <Field label="Stay #" value={String(patient.stay_id)} />
         <Field label="Age / Gender" value={[patient.age != null ? `${patient.age}y` : null, patient.gender].filter(Boolean).join(' · ')} />
-        <Field label="Arrival" value={patient.arrival_time} />
-        <Field label="Departure" value={patient.departure_time} />
+        <Field label="Arrival" value={formatClinicalDate(patient.arrival_time)} />
+        <Field label="Departure" value={patient.departure_time ? formatClinicalDate(patient.departure_time) : null} />
         <Field label="Bed(s)" value={patient.bed_history} />
         <Field label="Ward" value={patient.admission_ward_name} />
         <Field label="Destination" value={patient.destination} />
+        <Field label="Clinical Status" value={patient.isbar?.clinical_status} />
         <Field label="Chief Complaint" value={patient.chiefcomplaint} />
       </dl>
     </div>
