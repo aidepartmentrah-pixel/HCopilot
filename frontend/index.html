@@ -1094,8 +1094,15 @@
                                             <option value="Male">Male</option>
                                             <option value="Female">Female</option>
                                         </select></div>
-                                    <div class="isbar-field"><label>Age <span class="pat-hint">(required)</span></label>
-                                        <input class="isbar-input" type="number" id="pat-age" placeholder="e.g. 45" min="0" required></div>
+                                    <div class="isbar-field"><label>Age <span class="pat-hint">(required — pick a unit for infants under 1 year)</span></label>
+                                        <div class="pat-age-group">
+                                            <input class="isbar-input" type="number" id="pat-age" placeholder="e.g. 45" min="0" step="any" required>
+                                            <select class="isbar-input pat-age-unit" id="pat-age-unit" onchange="_onPatAgeUnitChange()">
+                                                <option value="years" selected>Years</option>
+                                                <option value="months">Months</option>
+                                                <option value="days">Days</option>
+                                            </select>
+                                        </div>
                                     <div class="isbar-field"><label>Arrival Time <span class="pat-hint">(auto, required)</span></label>
                                         <input class="isbar-input dt-picker" type="text" id="pat-arrival-time" required></div>
                                     <!-- Departure Time / Bed Occupation Time removed from this entry
