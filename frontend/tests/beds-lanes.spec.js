@@ -128,4 +128,47 @@ test.describe('Page B — Live ER Board', () => {
       await request.delete(`${API_BASE}/api/patients/delete/${stayId}`).catch(() => {});
     }
   });
+
+  test('waiting-patient avatar is gendered and age-appropriate (2026-09-22 feedback: man/woman/boy/girl)', async ({ page, request }) => {
+    // Man (U+1F468), Woman (U+1F469), Boy (U+1F466), Girl (U+1F467) — the
+    // real distinct codepoints, checked directly rather than relying on a
+    // screenshot: a headless container without full emoji font coverage can
+    // render all four visually similarly even when the underlying character
+    // is correct (confirmed manually against the live DOM before writing
+    // this), so a pixel comparison here would be the wrong tool.
+    const cases = [
+      { gender: 'Male',   age: 40, expect: '\u{1F468}' },
+      { gender: 'Female', age: 40, expect: '\u{1F469}' },
+      { gender: 'Male',   age: 10, expect: '\u{1F466}' },
+      { gender: 'Female', age: 10, expect: '\u{1F467}' },
+    ];
+    const seeded = [];
+    try {
+      for (const c of cases) {
+        const ids = await nextIds(request);
+        const name = 'PLAYWRIGHT_AVATAR_' + c.gender + '_' + c.age + '_' + Date.now();
+        const addRes = await request.post(`${API_BASE}/api/patients/add`, {
+          data: {
+            patient_id: ids.next_patient_id, stay_id: ids.next_stay_id, name,
+            gender: c.gender, age: c.age, arrival_time: '2026-02-01T08:00',
+            chiefcomplaint: 'Test complaint', acuity: 3,
+          },
+        });
+        expect(addRes.ok()).toBeTruthy();
+        seeded.push({ ...c, patientId: ids.next_patient_id, stayId: ids.next_stay_id });
+      }
+
+      await login(page);
+      await gotoBedsDisplay(page);
+
+      for (const s of seeded) {
+        const avatarChar = await page.locator(`#bedless-card-${s.patientId} .erb-card-avatar`).textContent();
+        expect(avatarChar).toBe(s.expect);
+      }
+    } finally {
+      for (const s of seeded) {
+        await request.delete(`${API_BASE}/api/patients/delete/${s.stayId}`).catch(() => {});
+      }
+    }
+  });
 });

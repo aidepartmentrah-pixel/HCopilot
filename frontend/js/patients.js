@@ -235,7 +235,7 @@ function _patDirectoryStatusMessage(status, message) {
 
 function selectPatDirectoryResult(item) {
     document.getElementById('pat-name').value = item.full_name || '';
-    if (item.age != null) document.getElementById('pat-age').value = item.age;
+    if (item.age != null) _setPatAgeField(item.age);
 
     const mappedGender = _mapDirectorySexToGender(item.sex);
     if (mappedGender) document.getElementById('pat-gender').value = mappedGender;
@@ -476,6 +476,89 @@ function _combineWithDatePart(timeStr, dateSourceStr) {
     if (!timeStr) return null;
     const datePart = (dateSourceStr ? String(dateSourceStr) : _currentDatetimeLocal()).slice(0, 10);
     return datePart + 'T' + timeStr;
+}
+
+// ── Age unit picker (2026-09-22 fix) ─────────────────────────────────────────
+// #pat-age's raw number is interpreted per #pat-age-unit (years/months/days)
+// — the backend (and every table/filter/stat elsewhere) still only ever
+// sees a single plain "age in years" float, exactly like before this
+// existed; only the ENTRY UI gained a unit picker so an infant under 1 year
+// can be typed precisely (e.g. "7" + Months) instead of a fractional-year
+// value that used to be flatly rejected server-side (age was typed as int
+// there even though the database column has always been a float — see
+// patient_management/api.py).
+
+function _patAgeInYears() {
+    const raw = _patVal('pat-age');
+    if (raw === '') return null;
+    const num = parseFloat(raw);
+    if (isNaN(num)) return null;
+    const unit = document.getElementById('pat-age-unit')?.value || 'years';
+    if (unit === 'months') return num / 12;
+    if (unit === 'days')   return num / 365;
+    return num;
+}
+
+// Converts the currently-typed number when the unit changes, so switching
+// from Months to Years (or vice versa) preserves the same real age instead
+// of silently reinterpreting "7" as 7 years.
+let _patAgePrevUnit = 'years';
+function _onPatAgeUnitChange() {
+    const input = document.getElementById('pat-age');
+    const select = document.getElementById('pat-age-unit');
+    const raw = input.value.trim();
+    const newUnit = select.value;
+    if (raw !== '' && !isNaN(parseFloat(raw))) {
+        const years = (() => {
+            const num = parseFloat(raw);
+            if (_patAgePrevUnit === 'months') return num / 12;
+            if (_patAgePrevUnit === 'days')   return num / 365;
+            return num;
+        })();
+        let converted;
+        if (newUnit === 'months') converted = years * 12;
+        else if (newUnit === 'days') converted = years * 365;
+        else converted = years;
+        // Round to something a human would actually type — whole days/months,
+        // up to 2 decimal places for years.
+        input.value = newUnit === 'years' ? (Math.round(converted * 100) / 100) : Math.round(converted);
+    }
+    _patAgePrevUnit = newUnit;
+    refreshPatientCoreSectionStatus();
+}
+
+// Reverse mapping for loading an existing stored age (always plain decimal
+// years) back into the picker in whatever unit reads most naturally.
+function _setPatAgeField(ageYears) {
+    const input = document.getElementById('pat-age');
+    const select = document.getElementById('pat-age-unit');
+    if (ageYears == null) {
+        input.value = '';
+        select.value = 'years';
+        _patAgePrevUnit = 'years';
+        return;
+    }
+    if (ageYears < (1 / 12)) {
+        select.value = 'days';
+        input.value = Math.round(ageYears * 365);
+    } else if (ageYears < 1) {
+        select.value = 'months';
+        input.value = Math.round(ageYears * 12);
+    } else {
+        select.value = 'years';
+        input.value = Math.round(ageYears * 100) / 100;
+    }
+    _patAgePrevUnit = select.value;
+}
+
+// Shared display formatting for age wherever it's shown read-only (tables,
+// banners, avatars) — "7 mo" reads far better than a bare "0.58" for an
+// infant, without changing what's actually stored.
+function _formatAgeDisplay(ageYears) {
+    if (ageYears == null) return null;
+    if (ageYears < (1 / 12)) return Math.round(ageYears * 365) + 'd';
+    if (ageYears < 1) return Math.round(ageYears * 12) + 'mo';
+    return (Number.isInteger(ageYears) ? ageYears : Math.round(ageYears * 10) / 10) + ' y/o';
 }
 
 function _formatDatetime(v) {
@@ -781,7 +864,7 @@ function selectPatStay(row) {
     document.getElementById('pat-stay-id').value    = row.stay_id;
     document.getElementById('pat-name').value       = row.name != null ? row.name : '';
     document.getElementById('pat-gender').value     = row.gender != null ? row.gender : '';
-    document.getElementById('pat-age').value        = row.age != null ? row.age : '';
+    _setPatAgeField(row.age);
     setDateTimeValue('pat-arrival-time', row.arrival_time ? String(row.arrival_time).slice(0, 16) : _currentDatetimeLocal());
     // Not shown on this form (see the HTML comment at their old location) —
     // cached so a save doesn't overwrite a real bed assignment with null.
@@ -809,7 +892,7 @@ function selectPatStay(row) {
 
     document.getElementById('pat-a-banner-name').textContent = row.name || 'Unnamed Patient';
     const metaBits = [];
-    if (row.age != null) metaBits.push(row.age + ' y/o');
+    if (row.age != null) metaBits.push(_formatAgeDisplay(row.age));
     if (row.gender) metaBits.push(row.gender);
     metaBits.push('Arrived ' + _formatDatetime(row.arrival_time));
     metaBits.push('Patient #' + row.patient_id);
@@ -819,7 +902,13 @@ function selectPatStay(row) {
     setPatAddError('');
     setPatAddErrorSummary('');
     refreshPatientCoreSectionStatus();
+    // Explicit, not just relying on the exclusive-accordion's toggle-event
+    // side effect — if section 1 was already open from a previous
+    // selection, setting .open = true again fires no toggle event at all,
+    // which would otherwise leave Vitals open if a previous patient had it
+    // expanded.
     document.getElementById('isbar-details-patient-arrival-add').open = true;
+    document.getElementById('isbar-details-vitals-add').open = false;
     _renderPatErRosterItems(); // reflect the new "Selected" chip in the roster list
 }
 
@@ -888,9 +977,33 @@ function updatePatAddRequiredRemaining() {
     el.textContent = remaining > 0 ? `Required fields remaining: ${remaining}` : 'All required fields complete';
 }
 
+// Exclusive accordion (2026-09-22 feedback) — opening any ISBAR section on
+// Page A (via its own header, or a "Continue to X →" button) collapses
+// every other section, so filling one card's worth of data at a time
+// doesn't leave the whole page full of expanded sections. This is a
+// capture-phase listener rather than delegation because the native
+// `toggle` event on <details> does not bubble — capture still sees it on
+// the way down regardless. Applies equally to a user's own click and any
+// programmatic `.open = true` (e.g. selectPatStay() opening section 1),
+// since both fire the same native toggle event.
+//
+// Exception: a failed save that needs to show several sections with
+// validation errors at once (see createPatientFromForm()'s error path)
+// sets _isbarSuppressExclusiveAccordion around its own force-open loop —
+// showing everything that's wrong beats tidying up mid-error.
+let _isbarSuppressExclusiveAccordion = false;
 document.addEventListener('DOMContentLoaded', function() {
     const accordion = document.getElementById('pat-add-accordion');
     if (!accordion) return;
+    accordion.addEventListener('toggle', e => {
+        if (_isbarSuppressExclusiveAccordion) return;
+        const opened = e.target;
+        if (!opened.open || !opened.classList.contains('isbar-section')) return;
+        accordion.querySelectorAll('details.isbar-section').forEach(d => {
+            if (d !== opened) d.open = false;
+        });
+    }, true);
+
     accordion.addEventListener('input', refreshPatientCoreSectionStatus);
     accordion.addEventListener('change', refreshPatientCoreSectionStatus);
     accordion.addEventListener('click', e => {
@@ -1308,10 +1421,11 @@ function validateVitalsGroup(vals) {
 }
 
 function clearPatientForm() {
-    ['pat-name','pat-gender','pat-age',
+    ['pat-name','pat-gender',
      'pat-temperature','pat-heartrate','pat-resprate',
      'pat-o2sat','pat-sbp','pat-dbp','pat-pain','pat-acuity','pat-chiefcomplaint']
         .forEach(id => { document.getElementById(id).value = ''; });
+    _setPatAgeField(null); // also resets the unit picker back to Years
     setDateTimeValue('pat-triage-time', ''); // dt-picker-time — needs the picker's own clear, not a raw .value reset
     patActiveBedOccupationTime = null;
     resetVitalsAdditions('add');
@@ -1350,7 +1464,7 @@ async function createPatientFromForm() {
     const arrival   = _patVal('pat-arrival-time') || null;
     // Freshly created — no discharge or bed assignment has happened yet.
     const triageTime = _combineWithDatePart(_patVal('pat-triage-time'), arrival);
-    const age       = _patInt('pat-age');
+    const age       = _patAgeInYears(); // may be a decimal (e.g. 0.58 for a 7-month-old) — see the age unit picker
     const name      = _patVal('pat-name');
     const gender    = _patVal('pat-gender');
     const pain      = _patVal('pat-pain');
@@ -1418,10 +1532,16 @@ async function createPatientFromForm() {
             // checks above, so open the metadata accordion generally rather
             // than guessing which of the 4 sections.
             if (errMsg.toLowerCase().includes('isbar') || errMsg.includes('allergy') || errMsg.includes('o2_')) {
+                // Suppressed here deliberately — the exclusive accordion
+                // (see the DOMContentLoaded listener above) would otherwise
+                // collapse each of these as the next one opens, defeating
+                // "show every section that has a problem".
+                _isbarSuppressExclusiveAccordion = true;
                 ['situation', 'background', 'focused', 'recommendation'].forEach(id => {
                     const d = document.getElementById(`isbar-details-${id}-add`);
                     if (d) d.open = true;
                 });
+                _isbarSuppressExclusiveAccordion = false;
             }
             return;
         }
@@ -1459,7 +1579,7 @@ async function saveActivePatientForm() {
     const acuity    = _patFloat('pat-acuity');
     const arrival   = _patVal('pat-arrival-time') || null;
     const triageTime = _combineWithDatePart(_patVal('pat-triage-time'), arrival);
-    const age       = _patInt('pat-age');
+    const age       = _patAgeInYears(); // may be a decimal (e.g. 0.58 for a 7-month-old) — see the age unit picker
     const name      = _patVal('pat-name');
     const gender    = _patVal('pat-gender');
     const pain      = _patVal('pat-pain');

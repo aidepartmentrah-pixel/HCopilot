@@ -70,6 +70,70 @@ test.describe('Page C — History', () => {
     }
   });
 
+  test('preview pane stays pinned in view while the table scrolls past it (2026-09-22 fix: position:sticky)', async ({ page }) => {
+    // Not seeded — this only needs *some* row to exist to open the preview,
+    // and the real environment already has hundreds of historical stays.
+    await login(page);
+    await gotoHistory(page);
+    await page.locator('.hist-row').first().click();
+    await expect(page.locator('#hist-preview-pane')).toBeVisible();
+
+    // Sticky only clamps once scrolling would otherwise carry the pane
+    // above its `top` offset — comparing straight from the unscrolled
+    // position would just measure that one normal engage transition, not
+    // whether it's actually pinned. Scroll once to engage it, then compare
+    // two points *after* that: a genuinely stuck element won't move
+    // between them no matter how much further the table scrolls.
+    await page.mouse.wheel(0, 400);
+    await page.waitForTimeout(200);
+    const stuckBox1 = await page.locator('#hist-preview-pane').boundingBox();
+
+    await page.mouse.wheel(0, 2000); // scroll much deeper into the (long) table
+    await page.waitForTimeout(300);
+    const stuckBox2 = await page.locator('#hist-preview-pane').boundingBox();
+
+    expect(Math.abs(stuckBox2.y - stuckBox1.y)).toBeLessThan(5);
+    await expect(page.locator('#hist-preview-pane')).toBeVisible();
+  });
+
+  test('preview pane uses tabs, not an accordion — switching tabs swaps content, and Open Full Record is always visible without scrolling (2026-09-22 fix)', async ({ page, request }) => {
+    const { name, stayId } = await seedDischargedPatient(request);
+    try {
+      await login(page);
+      await gotoHistory(page);
+      await page.fill('#hist-search', name);
+      await page.locator('.hist-row', { hasText: name }).click();
+      await expect(page.locator('#hist-preview-pane')).toBeVisible();
+
+      // "Open Full Record" sits right under the header, before the tab
+      // strip — reachable without scrolling, unlike the old accordion
+      // layout where it sat after however many sections a user had opened.
+      // Checked structurally (above the tabs) rather than against an
+      // absolute pixel budget, which is fragile to unrelated layout changes.
+      const openFullBtn = page.locator('#hist-preview-content button:has-text("Open Full Record")');
+      await expect(openFullBtn).toBeVisible();
+      const btnBox = await openFullBtn.boundingBox();
+      const tabsBox = await page.locator('#hist-preview-content .pdetails-tabs').boundingBox();
+      expect(btnBox.y).toBeLessThan(tabsBox.y);
+
+      // No accordion left in the preview — tabs instead.
+      await expect(page.locator('#hist-preview-content .pdetails-tabs')).toBeVisible();
+      await expect(page.locator('#hist-preview-content details.isbar-section')).toHaveCount(0);
+
+      // Tab 1 (Patient & Arrival) is active by default and shows its fields.
+      await expect(page.locator('#hist-preview-content .pdetails-tabpanel[data-tabpanel-idx="0"]')).toBeVisible();
+      await expect(page.locator('#hist-preview-content')).toContainText('Test complaint');
+
+      // Switching to tab 3 (Situation) swaps the panel — doesn't stack it.
+      await page.click('#hist-preview-content .pdetails-tab[data-tab-idx="2"]');
+      await expect(page.locator('#hist-preview-content .pdetails-tabpanel[data-tabpanel-idx="0"]')).toBeHidden();
+      await expect(page.locator('#hist-preview-content .pdetails-tabpanel[data-tabpanel-idx="2"]')).toBeVisible();
+      await expect(page.locator('#hist-preview-content .pdetails-tabpanel-heading', { hasText: 'Situation' })).toBeVisible();
+    } finally {
+      await request.delete(`${API_BASE}/api/data/log-patients/delete/${stayId}`).catch(() => {});
+    }
+  });
+
   test('the resizable divider changes the preview pane width within bounds', async ({ page, request }) => {
     const { name, stayId } = await seedDischargedPatient(request);
     try {

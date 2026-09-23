@@ -186,6 +186,10 @@ test.describe('ISBAR entry form (Page A)', () => {
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'entry-form-expanded.png'), fullPage: true });
 
     // ── Missing-required-field messaging: clear name, try to submit ────────
+    // The exclusive accordion (2026-09-22) collapsed Patient & Arrival once
+    // later sections were opened — re-open it first, exactly as a real user
+    // would need to click back to it.
+    await page.click('#isbar-details-patient-arrival-add summary');
     await page.fill('#pat-name', '');
     await page.click('#pat-add-btn');
     await expect(page.locator('#pat-add-error')).toBeVisible();

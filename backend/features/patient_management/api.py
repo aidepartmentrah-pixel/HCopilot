@@ -30,7 +30,16 @@ class _PatientBase(BaseModel):
     # enforces the full requirement for every OTHER origin unchanged.
     name:        str
     gender:      Optional[str] = None
-    age:         Optional[int] = None
+    # Float, not int (2026-09-22 fix) — an age under 1 year (an infant) is a
+    # real, common ED case and needs sub-year precision. The DB column
+    # (db/models.py) was already Float; this int typing here was the actual
+    # bug, silently making it impossible to save an infant's age at all
+    # (Pydantic rejects e.g. 0.6 outright with "Input should be a valid
+    # integer"). The frontend still collects a whole number in a Years/
+    # Months/Days unit picker and converts to decimal years before sending —
+    # see _patAgeInYears() in patients.js — so this just needs to accept
+    # what that conversion produces.
+    age:         Optional[float] = None
     arrival_time: str
     departure_time: Optional[str] = None
     bed_occupation_time: Optional[str] = None
@@ -79,7 +88,7 @@ class _PatientBase(BaseModel):
 
     @field_validator('age')
     @classmethod
-    def check_age(cls, v: Optional[int]) -> Optional[int]:
+    def check_age(cls, v: Optional[float]) -> Optional[float]:
         if v is not None and v < 0:
             raise ValueError('must be a positive number')
         return v

@@ -3,10 +3,28 @@
 // Fetches the full stay record (core fields + ISBAR) from
 // GET /api/patients/{stay_id}/details (falls back to LogPatients server-side,
 // so this works for both active and discharged stays) and renders it as a
-// sticky summary header + the same 6 accordion sections as the entry form,
-// reusing ISBAR_METADATA_SECTIONS (patient-isbar-fields.js) so the two views
-// never drift out of sync. Missing values always render as "Not recorded" —
-// never fabricated — per the task's explicit requirement.
+// sticky summary header + the same 6 sections as the entry form, reusing
+// ISBAR_METADATA_SECTIONS (patient-isbar-fields.js) so the two views never
+// drift out of sync. Missing values always render as "Not recorded" — never
+// fabricated — per the task's explicit requirement.
+//
+// Three surfaces share one field-building pass (_pdBuildSectionsData below)
+// but present it differently:
+//   'modal'   — the original read-only Patient Details modal (Page A "View"),
+//               unchanged: an accordion, Patient & Arrival/Vitals open by
+//               default, footer is Close + Edit Patient Data.
+//   'preview' — Page C's persistent preview pane: a horizontal TAB strip,
+//               not an accordion (2026-09-22 feedback — stacking all 6
+//               sections vertically in a narrow pane meant expanding even
+//               two of them made it very tall with an awkward internal
+//               scrollbar; tabs show exactly one section's fields at a
+//               time, so the pane's height stays short and predictable
+//               regardless of which tab is open). "Open Full Record" sits
+//               right under the summary header, always visible — not
+//               buried at the bottom of accumulated content.
+//   'full'    — Page C's dedicated full-width page (UI-C4): an accordion
+//               with every section open (the "long text, deep review"
+//               surface), footer is Print / Export PDF / Edit Record.
 
 let pdetailsCurrentRow = null; // last-fetched full record, kept for the "Edit Patient Data" handoff
 
@@ -64,24 +82,6 @@ function _pdField(label, valueHtml) {
     return '<div class="pdetails-field"><div class="label">' + label + '</div>' + valueHtml + '</div>';
 }
 
-// Read-only sections have no in-progress/error state (they only ever show
-// what was saved), so status here is purely informational: "complete" (green)
-// when the section has any recorded data, "none" (gray) when it's entirely
-// unrecorded — never blue/red, those describe active data entry only.
-function _pdSectionHeader(number, iconSvg, title, summaryText, hasData, open) {
-    const status = hasData ? 'complete' : 'none';
-    const badge = '<span class="isbar-status-badge isbar-status-' + status + '">' + (hasData ? 'Recorded' : 'Not recorded') + '</span>';
-    const detail = summaryText ? ' <span class="isbar-status-detail">' + _isbarEsc(summaryText) + '</span>' : '';
-    return '<details class="isbar-section" data-status="' + status + '"' + (open ? ' open' : '') + '>' +
-        '<summary class="isbar-section-summary">' +
-            '<span class="isbar-section-number">' + number + '</span>' +
-            '<span class="isbar-section-icon" aria-hidden="true">' + iconSvg + '</span>' +
-            '<span class="isbar-section-title">' + title + '</span>' +
-            '<span class="isbar-section-status">' + badge + detail + '</span>' +
-            '<span class="isbar-chevron" aria-hidden="true"></span>' +
-        '</summary>';
-}
-
 function _pdCsvLabels(section, fieldId, csv) {
     if (!csv) return null;
     const field = section.fields.find(f => f.id === fieldId);
@@ -89,9 +89,61 @@ function _pdCsvLabels(section, fieldId, csv) {
     return csv.split(',').map(t => t.trim()).filter(Boolean).map(t => isbarOptionLabel(field, t)).join(', ');
 }
 
-// Renders one metadata-driven section (Situation/Background/Focused/Recommendation)
-// as a read-only accordion section, reusing the same field list as the entry form.
-function renderReadOnlyMetaSection(section, isbar, defaultOpen) {
+// ── Section data builders ────────────────────────────────────────────────
+// Each returns { number, icon, title, summary, hasData, bodyHtml, gridClass }
+// — pure field-formatting, no accordion/tab markup. Both renderers below
+// (accordion for modal/full, tabs for preview) consume the same array, so
+// the two presentations can never drift apart on what data they show.
+
+function _pdPatientArrivalData(d) {
+    const bed = patientBedMap && d.patient_id != null ? patientBedMap[d.patient_id] : null;
+    const bedStr = bed ? (bed.bed_number + (bed.bed_type ? ' (' + bed.bed_type + ')' : '')) : null;
+    const bodyHtml =
+        _pdField('Patient ID', _pdVal(d.patient_id)) +
+        _pdField('Stay ID', _pdVal(d.stay_id)) +
+        _pdField('Name', _pdVal(d.name)) +
+        _pdField('Age', _pdVal(d.age != null ? _formatAgeDisplay(d.age) : null)) +
+        _pdField('Gender', _pdVal(d.gender)) +
+        _pdField('Arrival Time', d.arrival_time ? '<span class="value">' + _formatDatetime(d.arrival_time) + '</span>' : '<span class="value not-recorded">Not recorded</span>') +
+        _pdField('Departure Time', _pdVal(d.departure_time)) +
+        _pdField('Bed Occupation Time', _pdVal(d.bed_occupation_time)) +
+        _pdField('Bed', _pdVal(bedStr)) +
+        _pdField('Chief Complaint', _pdVal(d.chiefcomplaint));
+    return {
+        number: 1, icon: ISBAR_SECTION_ICONS['patient-arrival'], title: 'Patient & Arrival',
+        summary: d.chiefcomplaint ? d.chiefcomplaint : 'Not recorded',
+        hasData: !!d.chiefcomplaint, bodyHtml, gridClass: 'isbar-grid-patient-arrival',
+    };
+}
+
+function _pdVitalsData(d) {
+    const isbar = d.isbar || {};
+    const bodyHtml =
+        _pdField('Temperature', _pdVal(d.temperature, '°C')) +
+        _pdField('Heart Rate', _pdVal(d.heartrate, 'bpm')) +
+        _pdField('Respiratory Rate', _pdVal(d.resprate, '/min')) +
+        _pdField('O₂ Saturation', _pdVal(d.o2sat, '%')) +
+        _pdField('Blood Pressure', (d.sbp != null || d.dbp != null) ? _pdVal((d.sbp ?? '–') + ' / ' + (d.dbp ?? '–'), 'mmHg') : _pdVal(null)) +
+        _pdField('Pain Score', _pdVal(d.pain)) +
+        _pdField('Blood Glucose', _pdVal(isbar.blood_glucose, 'mg/dL')) +
+        _pdField('Oxygen / Airway Support', _pdVal(isbar.o2_support ? isbarOptionLabel({options:[
+            {value:'room_air',label:'Room air'},{value:'nasal_cannula',label:'Nasal cannula'},
+            {value:'simple_mask',label:'Simple mask'},{value:'non_rebreather',label:'Non-rebreather'},
+            {value:'high_flow_nc',label:'High-flow nasal cannula'},{value:'cpap_bipap',label:'CPAP / BiPAP'},
+            {value:'mechanical_vent',label:'Mechanical ventilation'}]}, isbar.o2_support) : null)) +
+        _pdField('O₂ Flow Rate', _pdVal(isbar.o2_flow_rate, 'L/min')) +
+        _pdField('Measured At', _pdVal(isbar.vitals_measured_at)) +
+        _pdField('Recorded By', _pdVal(isbar.vitals_recorded_by));
+    return {
+        number: 2, icon: ISBAR_SECTION_ICONS.vitals, title: 'Initial Vital Signs',
+        summary: 'BP ' + (d.sbp ?? '–') + '/' + (d.dbp ?? '–') + ' · HR ' + (d.heartrate ?? '–') + ' · SpO₂ ' + (d.o2sat ?? '–') + '%',
+        hasData: d.sbp != null || d.heartrate != null, bodyHtml, gridClass: 'isbar-grid-vitals',
+    };
+}
+
+// One metadata-driven section (Situation/Background/Focused/Recommendation) —
+// reuses the same field list as the entry form.
+function _pdMetaSectionData(section, isbar) {
     isbar = isbar || {};
     let lastSubheading = null;
     let bodyHtml = '';
@@ -127,76 +179,103 @@ function renderReadOnlyMetaSection(section, isbar, defaultOpen) {
         bodyHtml += _pdField(field.label, displayHtml);
     });
 
-    const summary = filledLabels.length
-        ? filledLabels.slice(0, 3).join(' · ')
-        : 'Not recorded';
-
-    return _pdSectionHeader(section.number, section.icon, section.title, summary, filledLabels.length > 0, !!defaultOpen) +
-        '<div class="pdetails-section-body isbar-grid-' + section.id + '">' + (bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
-    '</details>';
+    return {
+        number: section.number, icon: section.icon, title: section.title,
+        summary: filledLabels.length ? filledLabels.slice(0, 3).join(' · ') : 'Not recorded',
+        hasData: filledLabels.length > 0, bodyHtml, gridClass: 'isbar-grid-' + section.id,
+    };
 }
 
-function renderPatientArrivalReadOnly(d, defaultOpen) {
-    const bed = patientBedMap && d.patient_id != null ? patientBedMap[d.patient_id] : null;
-    const bedStr = bed ? (bed.bed_number + (bed.bed_type ? ' (' + bed.bed_type + ')' : '')) : null;
-    const body =
-        _pdField('Patient ID', _pdVal(d.patient_id)) +
-        _pdField('Stay ID', _pdVal(d.stay_id)) +
-        _pdField('Name', _pdVal(d.name)) +
-        _pdField('Age', _pdVal(d.age)) +
-        _pdField('Gender', _pdVal(d.gender)) +
-        _pdField('Arrival Time', d.arrival_time ? '<span class="value">' + _formatDatetime(d.arrival_time) + '</span>' : '<span class="value not-recorded">Not recorded</span>') +
-        _pdField('Departure Time', _pdVal(d.departure_time)) +
-        _pdField('Bed Occupation Time', _pdVal(d.bed_occupation_time)) +
-        _pdField('Bed', _pdVal(bedStr)) +
-        _pdField('Chief Complaint', _pdVal(d.chiefcomplaint));
-    const summary = d.chiefcomplaint ? d.chiefcomplaint : 'Not recorded';
-    return _pdSectionHeader(1, ISBAR_SECTION_ICONS['patient-arrival'], 'Patient & Arrival', summary, !!d.chiefcomplaint, defaultOpen) +
-        '<div class="pdetails-section-body isbar-grid-patient-arrival">' + body + '</div>' +
-    '</details>';
-}
-
-function renderVitalsReadOnly(d, defaultOpen) {
+function _pdBuildSectionsData(d) {
     const isbar = d.isbar || {};
-    const body =
-        _pdField('Temperature', _pdVal(d.temperature, '°C')) +
-        _pdField('Heart Rate', _pdVal(d.heartrate, 'bpm')) +
-        _pdField('Respiratory Rate', _pdVal(d.resprate, '/min')) +
-        _pdField('O₂ Saturation', _pdVal(d.o2sat, '%')) +
-        _pdField('Blood Pressure', (d.sbp != null || d.dbp != null) ? _pdVal((d.sbp ?? '–') + ' / ' + (d.dbp ?? '–'), 'mmHg') : _pdVal(null)) +
-        _pdField('Pain Score', _pdVal(d.pain)) +
-        _pdField('Blood Glucose', _pdVal(isbar.blood_glucose, 'mg/dL')) +
-        _pdField('Oxygen / Airway Support', _pdVal(isbar.o2_support ? isbarOptionLabel({options:[
-            {value:'room_air',label:'Room air'},{value:'nasal_cannula',label:'Nasal cannula'},
-            {value:'simple_mask',label:'Simple mask'},{value:'non_rebreather',label:'Non-rebreather'},
-            {value:'high_flow_nc',label:'High-flow nasal cannula'},{value:'cpap_bipap',label:'CPAP / BiPAP'},
-            {value:'mechanical_vent',label:'Mechanical ventilation'}]}, isbar.o2_support) : null)) +
-        _pdField('O₂ Flow Rate', _pdVal(isbar.o2_flow_rate, 'L/min')) +
-        _pdField('Measured At', _pdVal(isbar.vitals_measured_at)) +
-        _pdField('Recorded By', _pdVal(isbar.vitals_recorded_by));
-    const summary = 'BP ' + (d.sbp ?? '–') + '/' + (d.dbp ?? '–') + ' · HR ' + (d.heartrate ?? '–') + ' · SpO₂ ' + (d.o2sat ?? '–') + '%';
-    return _pdSectionHeader(2, ISBAR_SECTION_ICONS.vitals, 'Initial Vital Signs', summary, d.sbp != null || d.heartrate != null, defaultOpen) +
-        '<div class="pdetails-section-body isbar-grid-vitals">' + body + '</div>' +
+    return [
+        _pdPatientArrivalData(d),
+        _pdVitalsData(d),
+        ...ISBAR_METADATA_SECTIONS.map(s => _pdMetaSectionData(s, isbar)),
+    ];
+}
+
+// ── Accordion presentation (modal / full) ───────────────────────────────────
+
+// Read-only sections have no in-progress/error state (they only ever show
+// what was saved), so status here is purely informational: "complete" (green)
+// when the section has any recorded data, "none" (gray) when it's entirely
+// unrecorded — never blue/red, those describe active data entry only.
+function _pdAccordionSection(s, defaultOpen) {
+    const status = s.hasData ? 'complete' : 'none';
+    const badge = '<span class="isbar-status-badge isbar-status-' + status + '">' + (s.hasData ? 'Recorded' : 'Not recorded') + '</span>';
+    const detail = s.summary ? ' <span class="isbar-status-detail">' + _isbarEsc(s.summary) + '</span>' : '';
+    return '<details class="isbar-section" data-status="' + status + '"' + (defaultOpen ? ' open' : '') + '>' +
+        '<summary class="isbar-section-summary">' +
+            '<span class="isbar-section-number">' + s.number + '</span>' +
+            '<span class="isbar-section-icon" aria-hidden="true">' + s.icon + '</span>' +
+            '<span class="isbar-section-title">' + s.title + '</span>' +
+            '<span class="isbar-section-status">' + badge + detail + '</span>' +
+            '<span class="isbar-chevron" aria-hidden="true"></span>' +
+        '</summary>' +
+        '<div class="pdetails-section-body ' + s.gridClass + '">' + (s.bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
     '</details>';
 }
 
-// ER UI Architecture Redesign, Page C (UI-C2) — this is the shared render
-// function the doc asked to extract: the same markup now backs three
-// surfaces instead of duplicating it per-surface.
-//   'modal'   — the original read-only Patient Details modal (Page A "View"),
-//               unchanged: Patient & Arrival/Vitals open by default, footer
-//               is Close + Edit Patient Data.
-//   'preview' — Page C's persistent preview pane: every section starts
-//               collapsed (confirmed decision #10: "compact/collapsed
-//               form"), footer is just "Open Full Record" — no direct edit
-//               here, the pane stays inspection-focused.
-//   'full'    — Page C's dedicated full-width page (UI-C4): every section
-//               starts open (this is the "long text, deep review" surface),
-//               footer is Print / Export PDF / Edit Record. The Option 4
-//               mockup shows these three buttons on the preview pane itself,
-//               but the tracking doc's own confirmed decision #10 is explicit
-//               that the preview stays inspection-only — see the doc's log
-//               for that call.
+function _pdAccordionHtml(sectionsData, mode) {
+    const bodyParts = sectionsData.map((s, i) => _pdAccordionSection(s, mode === 'full' ? true : i < 2));
+    return '<div class="isbar-accordion">' + bodyParts.join('') + '</div>';
+}
+
+// ── Tab presentation (preview pane) ──────────────────────────────────────────
+// 2026-09-22 feedback: a narrow pane doesn't suit a vertically-stacking
+// accordion — expanding even two sections made it very tall with an
+// internal scrollbar cropping the rest. Tabs show exactly one section's
+// fields at a time instead, so the pane's height stays short and
+// consistent no matter which one is open.
+//
+// First cut used full-width tabs (icon + title + status badge each), which
+// looked "nicer" in isolation but meant each one filled the pane's whole
+// width and wrapped onto its own row — six of them stacked vertically,
+// which is visually just the accordion's summary list again, defeating the
+// point. Fixed (Option 1 of 3 proposed) by shrinking tabs to small circular
+// icon buttons with a colored status ring — compact enough that all 6
+// always fit on one row, in any pane width, no wrapping. The title/icon/
+// summary/Recorded-badge richness this cost on the tab itself already
+// lives one place down, in the tabpanel heading below, so no information
+// is actually lost — it just isn't duplicated on the selector too.
+
+function _pdTabsHtml(sectionsData) {
+    const tabs = sectionsData.map((s, i) =>
+        '<button type="button" class="pdetails-tab pdetails-tab-' + (s.hasData ? 'complete' : 'none') + (i === 0 ? ' active' : '') + '" data-tab-idx="' + i + '" ' +
+            'title="' + _isbarEsc(s.title) + ' — ' + (s.hasData ? 'Recorded' : 'Not recorded') + '" onclick="_pdSwitchTab(this)">' +
+            '<span class="pdetails-tab-num">' + s.number + '</span>' +
+        '</button>'
+    ).join('');
+
+    const heading = (s) =>
+        '<span class="isbar-section-icon" aria-hidden="true">' + s.icon + '</span>' +
+        '<strong>' + s.title + '</strong>' +
+        '<span class="pdetails-tab-heading-summary">' + _isbarEsc(s.summary) + '</span>';
+
+    const panels = sectionsData.map((s, i) =>
+        '<div class="pdetails-tabpanel" data-tabpanel-idx="' + i + '"' + (i === 0 ? '' : ' hidden') + '>' +
+            '<div class="pdetails-tabpanel-heading" data-tabheading-idx="' + i + '">' + heading(s) + '</div>' +
+            '<div class="pdetails-section-body ' + s.gridClass + '">' + (s.bodyHtml || '<p class="isbar-empty-hint">No applicable fields.</p>') + '</div>' +
+        '</div>'
+    ).join('');
+
+    return '<div class="pdetails-tabs" role="tablist">' + tabs + '</div>' +
+        '<div class="pdetails-tabpanels">' + panels + '</div>';
+}
+
+function _pdSwitchTab(btn) {
+    const container = btn.closest('.pdetails-body');
+    if (!container) return;
+    const idx = btn.dataset.tabIdx;
+    container.querySelectorAll('.pdetails-tab').forEach(t => t.classList.toggle('active', t === btn));
+    container.querySelectorAll('[data-tabpanel-idx]').forEach(p => { p.hidden = p.dataset.tabpanelIdx !== idx; });
+}
+
+// ER UI Architecture Redesign, Page C (UI-C2) — the shared render function
+// the doc asked to extract: one field-building pass (_pdBuildSectionsData)
+// now backs three presentations instead of duplicating field markup per
+// surface. See the file header for what 'modal'/'preview'/'full' each mean.
 function renderPatientDetailsHtml(d, opts) {
     const mode = (opts && opts.mode) || 'modal';
     const isbar = d.isbar || {};
@@ -218,32 +297,29 @@ function renderPatientDetailsHtml(d, opts) {
                 (badges.length ? '<div class="pdetails-badges">' + badges.join('') + '</div>' : '') +
             '</div>' +
             '<div class="pdetails-summary-grid">' +
-                '<div class="pdetails-summary-item"><div class="label">Age / Gender</div><div class="value">' + (d.age ?? '–') + (d.gender ? ' / ' + d.gender : '') + '</div></div>' +
+                '<div class="pdetails-summary-item"><div class="label">Age / Gender</div><div class="value">' + (d.age != null ? _formatAgeDisplay(d.age) : '–') + (d.gender ? ' / ' + d.gender : '') + '</div></div>' +
                 '<div class="pdetails-summary-item"><div class="label">Arrival</div><div class="value">' + _formatDatetime(d.arrival_time) + '</div></div>' +
                 '<div class="pdetails-summary-item"><div class="label">Acuity</div><div class="value">' + (acuityLvl ? acuityLvl + ' — ' + acuityLabels[acuityLvl] : '–') + '</div></div>' +
                 '<div class="pdetails-summary-item"><div class="label">Clinical Status</div><div class="value">' + (isbar.clinical_status || '–') + '</div></div>' +
             '</div>' +
         '</div>';
 
-    // 'preview' starts every section collapsed; 'modal' keeps its original
-    // behavior (arrival/vitals open); 'full' opens everything for reading.
-    const coreOpen = mode !== 'preview';
-    const body =
-        '<div class="pdetails-body">' +
-        '<div class="isbar-accordion">' +
-            renderPatientArrivalReadOnly(d, coreOpen) +
-            renderVitalsReadOnly(d, coreOpen) +
-            ISBAR_METADATA_SECTIONS.map(s => renderReadOnlyMetaSection(s, isbar, mode === 'full')).join('') +
-        '</div>' +
+    const sectionsData = _pdBuildSectionsData(d);
+
+    if (mode === 'preview') {
+        // "Open Full Record" sits right under the header — always visible,
+        // never buried at the bottom of content (2026-09-22 feedback).
+        const actions = '<div class="pdetails-preview-actions">' +
+            '<button class="s-btn s-btn-primary" onclick="openFullRecordPage(' + d.stay_id + ')">📄 Open Full Record</button>' +
         '</div>';
+        const body = '<div class="pdetails-body">' + _pdTabsHtml(sectionsData) + '</div>';
+        return header + actions + body;
+    }
+
+    const body = '<div class="pdetails-body">' + _pdAccordionHtml(sectionsData, mode) + '</div>';
 
     let footer;
-    if (mode === 'preview') {
-        footer =
-            '<div class="pdetails-footer">' +
-                '<button class="s-btn s-btn-primary" onclick="openFullRecordPage(' + d.stay_id + ')">📄 Open Full Record</button>' +
-            '</div>';
-    } else if (mode === 'full') {
+    if (mode === 'full') {
         footer =
             '<div class="pdetails-footer">' +
                 '<button class="s-btn s-btn-outline" onclick="window.print()">🖨️ Print</button>' +

@@ -82,7 +82,10 @@ class _DailyPatientBase(BaseModel):
     subject_id: int
     name:        Optional[str]   = None
     gender:      Optional[str]   = None
-    age:         Optional[int]   = None
+    # Float, not int (2026-09-22 fix, matching patient_management/api.py) —
+    # the DB column is already Float; an infant's age needs sub-year
+    # precision, which a strict-int Pydantic field silently made impossible.
+    age:         Optional[float] = None
     arrival_time: Optional[str] = None
     departure_time: Optional[str] = None
     bed_occupation_time: Optional[str] = None

@@ -79,21 +79,29 @@ function _erbStatCard(icon, value, label, modifierClass) {
 }
 
 // Unified card renderer (confirmed decision #5) — one shape for both a bed
-// and a waiting (no-bed) patient; only the icon and the status/color variant
-// differ. `c` is a plain descriptor built by _erbCardFromBed()/
-// _erbCardFromBedless() below, never rendered directly from raw API shapes,
-// so the two data sources never leak their differing field names into here.
+// and a waiting (no-bed) patient; only .graphicHtml's content (a real bed
+// graphic vs. a gendered/age avatar — see _erbGenderAgeIcon()) and the
+// status/color variant differ. `c` is a plain descriptor built by
+// _erbCardFromBed()/_erbCardFromBedless() below, never rendered directly
+// from raw API shapes, so the two data sources never leak their differing
+// field names into here.
 function _erbCardHtml(c) {
     return `<div class="erb-card erb-card-${c.statusClass}${c.attentionClass || ''}" id="${c.domId}" onclick="${c.onclick}">
-        <div class="erb-card-top">
-            <span class="erb-card-icon" aria-hidden="true">${c.icon}</span>
-            <span class="erb-card-status-badge">${c.statusLabel}</span>
-        </div>
+        <div class="erb-card-graphic">${c.graphicHtml}</div>
         <div class="erb-card-primary">${c.primary}</div>
+        <span class="erb-card-status-badge">${c.statusLabel}</span>
         <div class="erb-card-sub">${c.sub}</div>
         ${c.patientHtml ? `<div class="erb-card-patient">${c.patientHtml}</div>` : ''}
     </div>`;
 }
+
+// The decorative bed graphic (2026-09-22 feedback: users specifically liked
+// this look from the pre-redesign card and asked for it to stay) — colored
+// per status via the .erb-card-occupied/-available/-under-repair rules in
+// beds.css, exactly like the old .bed-item/.bed-graphic it's ported from.
+const _ERB_BED_GRAPHIC_HTML =
+    '<div class="erb-card-bed-graphic"><div class="erb-card-bed-pillow"></div>' +
+    '<div class="erb-card-bed-mattress"></div><div class="erb-card-bed-frame"></div></div>';
 
 function _erbCardFromBed(bed) {
     const statusClass = bed.bed_status.toLowerCase().replace(/ /g, '-'); // available|occupied|under-repair
@@ -102,7 +110,7 @@ function _erbCardFromBed(bed) {
     if (bed.patient_id != null) {
         const nameLine = bed.patient_name ? `<div class="erb-card-name">${_escapeHtml(bed.patient_name)}</div>` : '';
         const metaParts = [];
-        if (bed.patient_age != null) metaParts.push(bed.patient_age + ' y/o');
+        if (bed.patient_age != null) metaParts.push(_formatAgeDisplay(bed.patient_age));
         if (bed.patient_gender)      metaParts.push(bed.patient_gender);
         patientHtml = `<div class="erb-card-id">#${bed.patient_id}</div>${nameLine}` +
             (metaParts.length ? `<div class="erb-card-meta">${_escapeHtml(metaParts.join(' · '))}</div>` : '');
@@ -111,12 +119,25 @@ function _erbCardFromBed(bed) {
         domId: `bed-card-${bed.bed_id}`,
         statusClass,
         statusLabel: bed.bed_status,
-        icon: '🛏️',
+        graphicHtml: _ERB_BED_GRAPHIC_HTML,
         primary: _escapeHtml(bed.bed_number),
         sub: _escapeHtml((bed.ward_name ? bed.ward_name + ' · ' : '') + btype),
         patientHtml,
         onclick: `openBedModal(${bed.bed_id}, '${bed.bed_number}', '${bed.bed_status}', ${bed.patient_id}, '${btype}')`,
     };
+}
+
+// Gendered, age-appropriate avatar for a waiting patient (2026-09-22
+// feedback) — man/woman/boy/girl instead of one generic icon for everyone,
+// with neutral fallbacks when gender and/or age aren't known yet (a
+// roster-origin pick often doesn't have them at all — see patients.js).
+// 18 is the standard adult/pediatric ED cutoff.
+function _erbGenderAgeIcon(gender, age) {
+    const isChild = age != null && age < 18;
+    const g = (gender || '').trim().toLowerCase();
+    if (g === 'male')   return isChild ? '👦' : '👨';
+    if (g === 'female') return isChild ? '👧' : '👩';
+    return isChild ? '🧒' : '🧑';
 }
 
 // Interaction parity with a bed card (confirmed decision #5: "same...
@@ -128,16 +149,17 @@ function _erbCardFromBed(bed) {
 function _erbCardFromBedless(p) {
     const attention = _erbIsWaitingOverThreshold(p);
     const name = p.name
-        ? `<div class="erb-card-name">${_escapeHtml(p.name)}${p.age != null ? ', ' + p.age + ' y/o' : ''}${p.gender ? ' · ' + _escapeHtml(p.gender) : ''}</div>`
+        ? `<div class="erb-card-name">${_escapeHtml(p.name)}${p.age != null ? ', ' + _escapeHtml(_formatAgeDisplay(p.age)) : ''}${p.gender ? ' · ' + _escapeHtml(p.gender) : ''}</div>`
         : '<div class="erb-card-name unknown">Unknown Patient</div>';
     const complaint = p.chiefcomplaint ? `<div class="erb-card-complaint">${_escapeHtml(p.chiefcomplaint)}</div>` : '';
     const mins = _erbMinutesSince(p.arrival_time);
     const waitBadge = attention ? `<div class="erb-card-wait-badge">⏱️ Waiting ${mins}m</div>` : '';
+    const avatar = _erbGenderAgeIcon(p.gender, p.age);
     return {
         domId: `bedless-card-${p.subject_id}`,
         statusClass: 'waiting',
         statusLabel: 'Waiting',
-        icon: '🧑',
+        graphicHtml: `<span class="erb-card-avatar" aria-hidden="true">${avatar}</span>`,
         primary: 'Acuity ' + (p.acuity ?? '—'),
         sub: '#' + p.subject_id,
         patientHtml: `${name}${complaint}${waitBadge}`,
@@ -146,6 +168,9 @@ function _erbCardFromBedless(p) {
     };
 }
 
+// Wraps onto as many rows as needed (2026-09-22 feedback: no horizontal
+// scrolling — the old system just wrapped beds onto more rows, and that's
+// what users want back) rather than one horizontal-scrolling strip.
 function _renderErbLane(laneKey, title, cardDescriptors) {
     const trackId = 'erb-lane-' + laneKey;
     const noun = laneKey === 'waiting' ? 'patient' : 'bed';
@@ -154,20 +179,11 @@ function _renderErbLane(laneKey, title, cardDescriptors) {
         <div class="erb-lane-header">
             <h3>${_escapeHtml(title)}</h3>
             <span class="erb-lane-count">${count}</span>
-            <div class="erb-lane-nav">
-                <button type="button" class="erb-lane-nav-btn" onclick="_erbScrollLane('${trackId}', -1)" aria-label="Scroll ${_escapeHtml(title)} left">‹</button>
-                <button type="button" class="erb-lane-nav-btn" onclick="_erbScrollLane('${trackId}', 1)" aria-label="Scroll ${_escapeHtml(title)} right">›</button>
-            </div>
         </div>
         <div class="erb-lane-track" id="${trackId}">
             ${cardDescriptors.length ? cardDescriptors.map(_erbCardHtml).join('') : '<div class="erb-lane-empty">Nothing here right now.</div>'}
         </div>
     </div>`;
-}
-
-function _erbScrollLane(trackId, direction) {
-    const el = document.getElementById(trackId);
-    if (el) el.scrollBy({ left: direction * 340, behavior: 'smooth' });
 }
 
 async function loadBeds() {
@@ -255,7 +271,7 @@ function openBedlessDischargeModal(patientId) {
     if (chipsEl && p) {
         const chips = [];
         if (p.acuity  != null) chips.push(`Acuity ${p.acuity}`);
-        if (p.age     != null) chips.push(`${p.age} y/o`);
+        if (p.age     != null) chips.push(_formatAgeDisplay(p.age));
         if (p.gender)          chips.push(p.gender);
         if (p.chiefcomplaint)  chips.push(p.chiefcomplaint);
         if (p.arrival_time)    chips.push(`Arrived: ${p.arrival_time}`);
