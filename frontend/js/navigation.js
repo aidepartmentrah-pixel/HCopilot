@@ -108,6 +108,7 @@ function showSection(sectionId) {
     closeNavDropdowns();
 
     // ── Lazy data loaders — each section loads its own data on first visit ──
+    if (sectionId === 'home')          { loadHomeDashboard(); }
     if (sectionId === 'flow-prediction') { loadFlowStats(); loadFlowPrediction(30); }
     if (sectionId === 'beds-display')  { loadBeds(); }
     if (sectionId === 'patients')      { initPatientForm(); loadPatients(); }

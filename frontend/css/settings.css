@@ -840,3 +840,78 @@
 }
 .rel-tab-btn:hover { border-color: var(--brand-500); color: #4338ca; }
 .rel-tab-btn.active { border-color: var(--brand-500); background: #eef2ff; color: #4338ca; }
+
+/* ── Appearance tab (UI-T8) — theme picker ───────────────────────────── */
+.theme-picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 20px;
+}
+
+.theme-option {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    width: 190px;
+    padding: 16px;
+    border: 2px solid var(--border, #e5e7eb);
+    border-radius: var(--radius-md, 10px);
+    background: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color .15s, box-shadow .15s, transform .1s;
+}
+
+.theme-option:hover {
+    border-color: var(--brand-500);
+    transform: translateY(-2px);
+}
+
+.theme-option.active {
+    border-color: var(--brand-600);
+    box-shadow: 0 0 0 3px var(--brand-soft, #eef2ff);
+}
+
+.theme-swatch {
+    display: flex;
+    gap: 6px;
+    padding: 10px;
+    border-radius: 8px;
+    background: var(--canvas);
+    width: 100%;
+}
+
+.theme-swatch-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+
+.theme-option-label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.theme-option-check {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--brand-600);
+    color: #fff;
+    font-size: 11px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.theme-option.active .theme-option-check { display: flex; }

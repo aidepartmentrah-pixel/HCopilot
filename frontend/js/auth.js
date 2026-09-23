@@ -41,6 +41,7 @@ var HCOPILOT_SETTINGS_TABS = [
     { id: 'training',       label: '🧠 Training',        group: 'System'     },
     { id: 'features',       label: '⚙️ Features',        group: 'System'     },
     { id: 'hospital-directory', label: '🏥 Hospital Directory API', group: 'System' },
+    { id: 'appearance',     label: '🎨 Appearance',      group: null         },
     { id: 'reset',          label: '⚠️ Reset',           group: null         },
 ];
 
@@ -150,6 +151,10 @@ async function authLogin() {
         document.getElementById('auth-overlay').style.display = 'none';
         _updateBadge(data.user);
         _redirectToFirstAccessible();
+        const home = document.getElementById('home');
+        if (home && home.classList.contains('active') && typeof loadHomeDashboard === 'function') {
+            loadHomeDashboard();
+        }
 
     } catch (err) {
         _showAuthError(err.message);
@@ -265,6 +270,13 @@ function authBoot() {
         _updateBadge(_user);
         document.getElementById('auth-overlay').style.display = 'none';
         _redirectToFirstAccessible();
+        // Home doesn't go through showSection() on initial load (it's already
+        // marked active in the HTML), so its dashboard data needs an explicit
+        // kick here if the user actually landed on it.
+        const home = document.getElementById('home');
+        if (home && home.classList.contains('active') && typeof loadHomeDashboard === 'function') {
+            loadHomeDashboard();
+        }
     } else {
         document.getElementById('auth-overlay').style.display = 'flex';
     }

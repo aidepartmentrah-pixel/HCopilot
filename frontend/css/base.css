@@ -1,9 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — Legacy Frontend Shell & Dashboard Refresh, UI-T1.
-   Values here are today's real hardcoded brand colors, only moved into
-   variables (no visual change). Theme variants (UI-T7) override these
-   under [data-theme="..."] later; semantic colors (success/warning/
-   danger) are intentionally separate and never theme-dependent.
+   DESIGN TOKENS — Legacy Frontend Shell & Dashboard Refresh.
+   UI-T1: today's real hardcoded brand colors, moved into variables (no
+   visual change). UI-T7 extends this with the full token set (canvas/
+   surface/text/border/semantic/shadow) plus [data-theme="..."] variants
+   below — semantic colors (success/warning/danger) are intentionally
+   separate and never theme-dependent, per Theme Edits.md §9.
+   Default (no data-theme attribute, or [data-theme="indigo"]) keeps the
+   existing purple identity — the user confirmed this matches the
+   approved logo and should not change.
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
     --brand-500: #667eea;
@@ -11,6 +15,74 @@
     --brand-700: #5a67d8;
     --brand-800: #6b46c1;
     --brand-accent: #4f46e5;
+    --brand-soft: #DCE1FA;
+    --brand-wash: #C7CEF6;
+    --page-decoration: rgba(102, 126, 234, 0.32);
+
+    --canvas: #E4E8FB;
+    --surface: #FFFFFF;
+    --surface-soft: #F8F9FC;
+
+    --text-primary: #1F2333;
+    --text-secondary: #667085;
+
+    --border: #E4E7EF;
+
+    --success: #16A34A;
+    --success-soft: #DCFCE7;
+    --warning: #D97706;
+    --warning-soft: #FEF3C7;
+    --danger: #DC2626;
+    --danger-soft: #FEE2E2;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+
+    --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+    --shadow-nav: 0 4px 16px rgba(15, 23, 42, 0.16);
+}
+
+/* Theme 1 — Indigo Clinical (default). Restated explicitly (not just via
+   :root) so the Settings > Appearance preview swatch can be scoped with
+   [data-theme="indigo"] and render correctly regardless of which theme
+   is currently active on the page. */
+[data-theme="indigo"] {
+    --brand-500: #667eea;
+    --brand-600: #764ba2;
+    --brand-700: #5a67d8;
+    --brand-800: #6b46c1;
+    --brand-accent: #4f46e5;
+    --brand-soft: #DCE1FA;
+    --brand-wash: #C7CEF6;
+    --page-decoration: rgba(102, 126, 234, 0.32);
+    --canvas: #E4E8FB;
+}
+
+/* Theme 2 — Teal Clinical (Theme Edits.md §7) */
+[data-theme="teal"] {
+    --brand-500: #14B8A6;
+    --brand-600: #0D9488;
+    --brand-700: #0F766E;
+    --brand-800: #134E4A;
+    --brand-accent: #0D9488;
+    --brand-soft: #C8F1E9;
+    --brand-wash: #A9E7DA;
+    --page-decoration: rgba(20, 184, 166, 0.34);
+    --canvas: #DEF5F0;
+}
+
+/* Theme 3 — Burgundy Clinical (Theme Edits.md §8) */
+[data-theme="burgundy"] {
+    --brand-500: #BE4962;
+    --brand-600: #9F2942;
+    --brand-700: #7F1D2D;
+    --brand-800: #58151F;
+    --brand-accent: #9F2942;
+    --brand-soft: #F6D6DE;
+    --brand-wash: #EFBBC8;
+    --page-decoration: rgba(159, 41, 66, 0.30);
+    --canvas: #F8E1E6;
 }
 
 * {
@@ -21,14 +93,47 @@
 
 body {
     font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
+    background: linear-gradient(160deg, var(--brand-wash) 0%, var(--canvas) 45%, var(--brand-soft) 100%);
     min-height: 100vh;
     padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+    transition: background .25s ease;
+}
+
+/* Branded background decoration (Theme Edits.md §20-21, Option A — CSS-only
+   radial shapes, fixed so they don't scroll with long pages, recolored
+   automatically per theme via --page-decoration). Deliberately denser than
+   a bare-minimum tint per direct user feedback (2026-09-23): the first pass
+   read as "total white" — this version keeps white cards legible on top
+   but makes the canvas itself visibly branded again. */
+body::before, body::after {
+    content: '';
+    position: fixed;
+    z-index: 0;
+    border-radius: 50%;
+    pointer-events: none;
+}
+body::before {
+    top: -22vw;
+    right: -16vw;
+    width: 58vw;
+    height: 58vw;
+    background: radial-gradient(circle, var(--page-decoration) 0%, transparent 72%);
+}
+body::after {
+    bottom: -24vw;
+    left: -18vw;
+    width: 62vw;
+    height: 62vw;
+    background: radial-gradient(circle, var(--page-decoration) 0%, transparent 72%);
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -75,6 +180,14 @@ body {
     line-height: 1;
     flex-shrink: 0;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,.3));
+}
+
+.app-logo-img {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,.25));
 }
 
 .app-brand-text {
@@ -134,7 +247,8 @@ body {
     line-height: 1;
 }
 
-.nav-btn .nav-icon  { font-size: 15px; line-height: 1; }
+.nav-btn .nav-icon  { font-size: 15px; line-height: 1; display: inline-flex; }
+.nav-btn .nav-icon svg { width: 16px; height: 16px; stroke: currentColor; }
 .nav-btn .nav-label { line-height: 1; }
 
 .nav-btn:hover {
@@ -207,7 +321,8 @@ body {
     transition: background .12s, color .12s;
 }
 
-.nav-dd-icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+.nav-dd-icon { font-size: 16px; line-height: 1; flex-shrink: 0; display: inline-flex; }
+.nav-dd-icon svg { width: 17px; height: 17px; stroke: currentColor; }
 
 .nav-dd-item:hover {
     background: #f0f4ff;
@@ -352,7 +467,7 @@ body {
     flex-shrink: 0;
 }
 
-.nav-drawer-logo { font-size: 22px; line-height: 1; }
+.nav-drawer-logo { width: 26px; height: 26px; object-fit: contain; flex-shrink: 0; }
 
 .nav-drawer-name {
     font-size: 15px;
@@ -404,7 +519,8 @@ body {
     transition: background .15s, color .15s, transform .1s;
     font-family: inherit;
 }
-.nav-drawer-btn .nav-icon { font-size: 17px; flex-shrink: 0; }
+.nav-drawer-btn .nav-icon { font-size: 17px; flex-shrink: 0; display: inline-flex; }
+.nav-drawer-btn .nav-icon svg { width: 18px; height: 18px; stroke: currentColor; }
 .nav-drawer-btn:hover {
     background: #f0f4ff;
     color: var(--brand-accent);

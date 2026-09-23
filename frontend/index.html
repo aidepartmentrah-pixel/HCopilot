@@ -4,6 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HCopilot - Healthcare Data Management</title>
+    <!-- Applied before CSS loads so the saved theme paints on first frame
+         instead of flashing the default (Theme Edits.md §26). -->
+    <script>
+        (function () {
+            try {
+                var t = localStorage.getItem('hcopilot-theme');
+                if (t === 'teal' || t === 'burgundy') {
+                    document.documentElement.setAttribute('data-theme', t);
+                }
+            } catch (_) {}
+        })();
+    </script>
     <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/vendor/flatpickr.css">
     <link rel="stylesheet" href="css/base.css">
@@ -35,7 +47,7 @@
         <header class="app-header">
             <!-- Brand strip -->
             <div class="app-header-brand">
-                <span class="app-logo">🏥</span>
+                <img class="app-logo-img" src="assets/logo-mark.png" alt="HCopilot">
                 <div class="app-brand-text">
                     <span class="app-brand-name">HCopilot</span>
                     <span class="app-brand-sub">Healthcare Data Management</span>
@@ -50,17 +62,17 @@
                 <!-- Standalone sections -->
                 <button class="nav-btn active" data-section="home"
                         onclick="showSection('home')">
-                    <span class="nav-icon">🏠</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V19a1 1 0 0 0 1 1H10v-5.5h4V20h3.5a1 1 0 0 0 1-1V9.5"/></svg></span>
                     <span class="nav-label">Home</span>
                 </button>
                 <button class="nav-btn" data-section="flow-prediction"
                         onclick="showSection('flow-prediction')">
-                    <span class="nav-icon">📈</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5 9.5 11l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg></span>
                     <span class="nav-label">Flow Prediction</span>
                 </button>
                 <button class="nav-btn" data-section="patients"
                         onclick="showSection('patients')">
-                    <span class="nav-icon">🧑‍⚕️</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 13.7c2.3.4 4 2.5 4 5.3"/></svg></span>
                     <span class="nav-label">Patients</span>
                 </button>
                 <!-- ER UI Architecture Redesign, Page C — History is now its
@@ -68,31 +80,31 @@
                      inside Patients. -->
                 <button class="nav-btn" data-section="patient-history"
                         onclick="showSection('patient-history')">
-                    <span class="nav-icon">📜</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 1 1 2 6.5"/><path d="M4 5.5V10h4.5"/><path d="M12 8v4.5l3 2"/></svg></span>
                     <span class="nav-label">History</span>
                 </button>
                 <!-- Group: Care (Beds Display, including its bedless section) -->
                 <button class="nav-btn nav-group-btn" id="navg-care-btn"
                         onclick="toggleNavGroup('navg-care', event)">
-                    <span class="nav-icon">🛏️</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span>
                     <span class="nav-label">Care</span>
                     <span class="nav-chevron">▾</span>
                 </button>
                 <!-- Group: Operations (Scheduling + Simulation) -->
                 <button class="nav-btn nav-group-btn" id="navg-ops-btn"
                         onclick="toggleNavGroup('navg-ops', event)">
-                    <span class="nav-icon">📅</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.7h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span>
                     <span class="nav-label">Operations</span>
                     <span class="nav-chevron">▾</span>
                 </button>
                 <button class="nav-btn" data-section="statistics"
                         onclick="showSection('statistics')">
-                    <span class="nav-icon">📊</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 20V11"/><path d="M12 20V5"/><path d="M19.5 20v-7"/><path d="M3 20h18"/></svg></span>
                     <span class="nav-label">Statistics</span>
                 </button>
                 <button class="nav-btn" data-section="settings"
                         onclick="showSection('settings')">
-                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.9-1.5-2-3.4-2.3.7a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.3a7.6 7.6 0 0 0-2.6 1.5l-2.3-.7-2 3.4L4.6 10.5a7.7 7.7 0 0 0 0 3l-1.9 1.5 2 3.4 2.3-.7a7.6 7.6 0 0 0 2.6 1.5l.4 2.3h4l.4-2.3a7.6 7.6 0 0 0 2.6-1.5l2.3.7 2-3.4-1.9-1.5Z"/></svg></span>
                     <span class="nav-label">Settings</span>
                 </button>
             </nav>
@@ -105,7 +117,7 @@
                     <span class="auth-user-display" id="auth-user-badge">Admin</span>
                     <span class="auth-user-role" id="auth-user-role-badge">admin</span>
                 </div>
-                <button class="auth-logout-btn" onclick="authLogout()" title="Sign out">⏻</button>
+                <button class="auth-logout-btn" onclick="authLogout()" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 3.5v8"/><path d="M18 6.3a8 8 0 1 1-12 0"/></svg></button>
             </div>
         </header>
 
@@ -113,39 +125,73 @@
 
         <section id="home" class="section active">
             <div class="home-container">
-                <div class="welcome-card">
-                    <h2>🏥 Welcome to HCopilot</h2>
-                    <p class="welcome-text">Healthcare Data Management System</p>
-                    <p class="welcome-description">Manage and view healthcare datasets with ease. Access patient flow data, patient records, vital signs, and more.</p>
+                <!-- Page header (UI-D1) -->
+                <div class="hd-page-header">
+                    <div>
+                        <h1 class="hd-page-title">HCopilot Overview</h1>
+                        <p class="hd-page-subtitle">Central workspace for ER operations and hospital insights.</p>
+                    </div>
+                    <div class="hd-datetime">
+                        <span class="hd-date" id="hd-date">–</span>
+                        <span class="hd-time" id="hd-time">–</span>
+                    </div>
                 </div>
 
-                <div class="feature-cards">
-                    <div class="feature-card" onclick="showSection('patients')">
-                        <div class="feature-icon">🧑‍⚕️</div>
-                        <h3>Patients</h3>
-                        <p>Add and manage patient stays, view vital signs, and track patient records</p>
-                        <button class="feature-btn">View Patients →</button>
-                    </div>
+                <!-- Welcome panel (UI-D2) -->
+                <div class="hd-welcome">
+                    <span class="hd-greeting" id="hd-greeting">GOOD MORNING</span>
+                    <h2 class="hd-username" id="hd-username">–</h2>
+                    <p class="hd-welcome-msg">Here's what's happening in the ER today. HCopilot helps you stay informed, act faster, and keep patient flow visible.</p>
+                </div>
 
-                    <div class="feature-card" onclick="showSection('flow-prediction')">
-                        <div class="feature-icon">📈</div>
-                        <h3>Flow Prediction</h3>
-                        <p>Predict patient flow using XGBoost machine learning model</p>
-                        <button class="feature-btn">View Predictions →</button>
+                <!-- Operational KPI row (UI-D3 + UI-D4) -->
+                <div class="hd-kpi-row" id="hd-kpi-row"></div>
+
+                <!-- Quick Actions (UI-D5) -->
+                <div class="hd-section-label">
+                    <h3>Quick Actions</h3>
+                    <p>Common tasks, one click away.</p>
+                </div>
+                <div class="feature-cards hd-quick-actions">
+                    <div class="feature-card feature-card-primary" onclick="showSection('patients')">
+                        <div class="feature-icon">📝</div>
+                        <h3>New ISBAR Entry</h3>
+                        <p>Create a new ER handover</p>
+                        <button class="feature-btn">Start Entry →</button>
                     </div>
 
                     <div class="feature-card" onclick="showSection('beds-display')">
                         <div class="feature-icon">🛏️</div>
-                        <h3>Beds Display</h3>
-                        <p>View all hospital beds with status and ward information</p>
+                        <h3>Open Live ER</h3>
+                        <p>View current patient placement</p>
                         <button class="feature-btn">View Beds →</button>
                     </div>
 
-                    <div class="feature-card" onclick="showSection('scheduling')">
-                        <div class="feature-icon">📅</div>
-                        <h3>Scheduling</h3>
-                        <p>Assign patients to beds, doctors, and nurses to manage care assignments</p>
-                        <button class="feature-btn">View Scheduling →</button>
+                    <div class="feature-card" onclick="showSection('patient-history')">
+                        <div class="feature-icon">📜</div>
+                        <h3>View History</h3>
+                        <p>Search previous ER encounters</p>
+                        <button class="feature-btn">View History →</button>
+                    </div>
+
+                    <div class="feature-card" onclick="showSection('statistics')">
+                        <div class="feature-icon">📊</div>
+                        <h3>Review Statistics</h3>
+                        <p>Explore ER trends and analytics</p>
+                        <button class="feature-btn">View Statistics →</button>
+                    </div>
+                </div>
+
+                <!-- Operational Alerts (UI-D7, partial) -->
+                <div class="hd-panels">
+                    <div class="hd-panel">
+                        <div class="hd-panel-header">
+                            <h3>Operational Alerts</h3>
+                            <span class="hd-last-updated" id="hd-alerts-updated"></span>
+                        </div>
+                        <div class="hd-panel-body" id="hd-alerts-body">
+                            <div class="loading"><div class="spinner"></div>Loading…</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2023,6 +2069,8 @@
                 <div class="stab-sep"></div>
                 <!-- Standalone: Accounts (admin only) -->
                 <button class="settings-tab" data-tab="accounts" onclick="showSettingsTab('accounts')" style="display:none">👤<span class="stab-label"> Accounts</span></button>
+                <!-- Standalone: Appearance (UI-T8) -->
+                <button class="settings-tab" data-tab="appearance" onclick="showSettingsTab('appearance')">🎨<span class="stab-label"> Appearance</span></button>
                 <!-- Standalone: Reset -->
                 <button class="settings-tab" data-tab="reset" onclick="showSettingsTab('reset')">⚠️<span class="stab-label"> Reset</span></button>
             </div>
@@ -2845,6 +2893,45 @@
                     </div>
                 </div>
 
+                <!-- ── Appearance Section (UI-T8) ────────────────────────── -->
+                <div class="settings-card" data-settings-tab="appearance" style="display:none">
+                    <div class="settings-card-top">
+                        <div class="settings-card-info">
+                            <h3>🎨 Appearance</h3>
+                            <p>Choose a brand theme for the HCopilot interface. Saved on this device.</p>
+                        </div>
+                    </div>
+                    <div class="theme-picker">
+                        <button class="theme-option" data-theme="indigo" onclick="setTheme('indigo')">
+                            <span class="theme-swatch" data-theme="indigo">
+                                <span class="theme-swatch-dot" style="background:var(--brand-800)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-600)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-500)"></span>
+                            </span>
+                            <span class="theme-option-label">Indigo Clinical</span>
+                            <span class="theme-option-check">✓</span>
+                        </button>
+                        <button class="theme-option" data-theme="teal" onclick="setTheme('teal')">
+                            <span class="theme-swatch" data-theme="teal">
+                                <span class="theme-swatch-dot" style="background:var(--brand-800)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-600)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-500)"></span>
+                            </span>
+                            <span class="theme-option-label">Teal Clinical</span>
+                            <span class="theme-option-check">✓</span>
+                        </button>
+                        <button class="theme-option" data-theme="burgundy" onclick="setTheme('burgundy')">
+                            <span class="theme-swatch" data-theme="burgundy">
+                                <span class="theme-swatch-dot" style="background:var(--brand-800)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-600)"></span>
+                                <span class="theme-swatch-dot" style="background:var(--brand-500)"></span>
+                            </span>
+                            <span class="theme-option-label">Burgundy Clinical</span>
+                            <span class="theme-option-check">✓</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- ── Reset Section ──────────────────────────────────── -->
                 <div class="settings-card" data-settings-tab="reset" style="display:none">
                     <div class="rst-warning-banner">
@@ -3226,17 +3313,19 @@
     <script src="js/statistics.js"></script>
     <script src="js/settings_reset.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/settings_features.js"></script>
     <script src="js/settings_hospital_directory.js"></script>
     <script src="js/settings_accounts.js"></script>
     <script src="js/navigation.js"></script>
+    <script src="js/home_dashboard.js"></script>
     <script src="js/app.js"></script>
 
     <!-- Mobile nav drawer -->
     <div class="nav-overlay" id="nav-overlay" onclick="closeNavMenu()"></div>
     <div class="nav-drawer" id="nav-drawer">
         <div class="nav-drawer-header">
-            <span class="nav-drawer-logo">🏥</span>
+            <img class="nav-drawer-logo" src="assets/logo-mark.png" alt="HCopilot">
             <span class="nav-drawer-name">HCopilot</span>
             <button class="nav-drawer-close" onclick="closeNavMenu()">✕</button>
         </div>
@@ -3244,57 +3333,57 @@
             <!-- Standalone -->
             <button class="nav-drawer-btn active" data-section="home"
                     onclick="showSection('home')">
-                <span class="nav-icon">🏠</span><span>Home</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V19a1 1 0 0 0 1 1H10v-5.5h4V20h3.5a1 1 0 0 0 1-1V9.5"/></svg></span><span>Home</span>
             </button>
             <button class="nav-drawer-btn" data-section="flow-prediction"
                     onclick="showSection('flow-prediction')">
-                <span class="nav-icon">📈</span><span>Flow Prediction</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5 9.5 11l3.5 3.5L20 7"/><path d="M14.5 7H20v5.5"/></svg></span><span>Flow Prediction</span>
             </button>
             <button class="nav-drawer-btn" data-section="patients"
                     onclick="showSection('patients')">
-                <span class="nav-icon">🧑‍⚕️</span><span>Patients</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5c0-3.3 2.5-6 5.5-6s5.5 2.7 5.5 6"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 13.7c2.3.4 4 2.5 4 5.3"/></svg></span><span>Patients</span>
             </button>
             <button class="nav-drawer-btn" data-section="patient-history"
                     onclick="showSection('patient-history')">
-                <span class="nav-icon">📜</span><span>History</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 1 1 2 6.5"/><path d="M4 5.5V10h4.5"/><path d="M12 8v4.5l3 2"/></svg></span><span>History</span>
             </button>
             <!-- Group: Care -->
             <div class="nav-drawer-group" id="dg-care">
                 <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-care')">
-                    <span class="nav-icon">🛏️</span><span>Care</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span><span>Care</span>
                     <span class="nav-drawer-caret">▾</span>
                 </button>
                 <div class="nav-drawer-group-items">
                     <button class="nav-drawer-btn nav-drawer-sub" data-section="beds-display"
                             onclick="showSection('beds-display')">
-                        <span class="nav-icon">🛏️</span><span>Beds Display</span>
+                        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span><span>Beds Display</span>
                     </button>
                 </div>
             </div>
             <!-- Group: Operations -->
             <div class="nav-drawer-group" id="dg-ops">
                 <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-ops')">
-                    <span class="nav-icon">📅</span><span>Operations</span>
+                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.7h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span><span>Operations</span>
                     <span class="nav-drawer-caret">▾</span>
                 </button>
                 <div class="nav-drawer-group-items">
                     <button class="nav-drawer-btn nav-drawer-sub" data-section="scheduling"
                             onclick="showSection('scheduling')">
-                        <span class="nav-icon">📅</span><span>Scheduling</span>
+                        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.7h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span><span>Scheduling</span>
                     </button>
                     <button class="nav-drawer-btn nav-drawer-sub" data-section="simulation"
                             onclick="showSection('simulation')">
-                        <span class="nav-icon">🧪</span><span>Simulation</span>
+                        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5"/><path d="M10.5 3.5V9L5.8 17.3A1.6 1.6 0 0 0 7.2 19.7h9.6a1.6 1.6 0 0 0 1.4-2.4L13.5 9V3.5"/><path d="M8.3 14.5h7.4"/></svg></span><span>Simulation</span>
                     </button>
                 </div>
             </div>
             <button class="nav-drawer-btn" data-section="statistics"
                     onclick="showSection('statistics')">
-                <span class="nav-icon">📊</span><span>Statistics</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 20V11"/><path d="M12 20V5"/><path d="M19.5 20v-7"/><path d="M3 20h18"/></svg></span><span>Statistics</span>
             </button>
             <button class="nav-drawer-btn" data-section="settings"
                     onclick="showSection('settings')">
-                <span class="nav-icon">⚙️</span><span>Settings</span>
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.7 7.7 0 0 0 0-3l1.9-1.5-2-3.4-2.3.7a7.6 7.6 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.3a7.6 7.6 0 0 0-2.6 1.5l-2.3-.7-2 3.4L4.6 10.5a7.7 7.7 0 0 0 0 3l-1.9 1.5 2 3.4 2.3-.7a7.6 7.6 0 0 0 2.6 1.5l.4 2.3h4l.4-2.3a7.6 7.6 0 0 0 2.6-1.5l2.3.7 2-3.4-1.9-1.5Z"/></svg></span><span>Settings</span>
             </button>
         </div>
     </div>
@@ -3303,17 +3392,17 @@
     <div class="nav-dropdown" id="navg-care-dd">
         <button class="nav-dd-item" data-section="beds-display"
                 onclick="showSection('beds-display')">
-            <span class="nav-dd-icon">🛏️</span> Beds Display
+            <span class="nav-dd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span> Beds Display
         </button>
     </div>
     <div class="nav-dropdown" id="navg-ops-dd">
         <button class="nav-dd-item" data-section="scheduling"
                 onclick="showSection('scheduling')">
-            <span class="nav-dd-icon">📅</span> Scheduling
+            <span class="nav-dd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.7h17"/><path d="M8 3v4"/><path d="M16 3v4"/></svg></span> Scheduling
         </button>
         <button class="nav-dd-item" data-section="simulation"
                 onclick="showSection('simulation')">
-            <span class="nav-dd-icon">🧪</span> Simulation
+            <span class="nav-dd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 3.5h5"/><path d="M10.5 3.5V9L5.8 17.3A1.6 1.6 0 0 0 7.2 19.7h9.6a1.6 1.6 0 0 0 1.4-2.4L13.5 9V3.5"/><path d="M8.3 14.5h7.4"/></svg></span> Simulation
         </button>
     </div>
 
