@@ -1,4 +1,4 @@
-import { AlertOctagon, BedDouble, Stethoscope, UserRound, Building2 } from 'lucide-react'
+import { BedDouble, BookUser, BrainCircuit, Building2, Stethoscope, UsersRound, UserRound } from 'lucide-react'
 import type { ComponentType } from 'react'
 
 export interface SettingsNavItem {
@@ -13,16 +13,14 @@ export interface SettingsNavGroup {
 }
 
 /**
- * Real current settings tabs, audited from frontend/js/auth.js's own
- * HCOPILOT_SETTINGS_TABS (not guessed) — scoped to the "Resources" group
- * plus Danger Zone this phase. Scheduling (Shifts/Groups), Patients
- * (Daily/Log — already covered by this rewrite's own ISBAR/History
- * pages), Data (Datasets/Relations), and System (Models/Training/
- * Features/Hospital Directory API) are real, existing tabs left out of
- * this pass — named here, not silently dropped — because they belong to
- * modules (Flow Prediction/ML training, dataset admin) outside this
- * rewrite's declared scope (master prompt's 5 pages), same boundary
- * NF1.3 already drew for top-level nav.
+ * V2.6 IA (spec §2/§39/§52) — left sidebar, three groups. Reset is gone
+ * completely (§3/§38, see V2.6 log for the DangerZone removal); no
+ * generic Patients/Scheduling/Data tab (§6–§8, all three real old
+ * capabilities inspected and found to belong elsewhere or nowhere — see
+ * log); no General item (§10 — no real application-wide config exists in
+ * the backend to put there, confirmed by inspection, so it's omitted
+ * rather than shipped empty per §8's "do not introduce generic empty
+ * categories" applied the same way).
  */
 export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
@@ -35,7 +33,14 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
     ],
   },
   {
-    label: 'Danger Zone',
-    items: [{ id: 'reset', label: 'Reset', icon: AlertOctagon }],
+    label: 'System',
+    items: [
+      { id: 'integrations', label: 'Integrations', icon: BookUser },
+      { id: 'ai-models', label: 'AI & Models', icon: BrainCircuit },
+    ],
+  },
+  {
+    label: 'Access',
+    items: [{ id: 'accounts', label: 'Accounts & Permissions', icon: UsersRound }],
   },
 ]

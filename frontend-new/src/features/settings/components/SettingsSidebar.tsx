@@ -19,9 +19,7 @@ export function SettingsSidebar({ activeId, onSelect }: SettingsSidebarProps) {
               <button
                 key={item.id}
                 type="button"
-                className={[styles.item, active ? styles.active : '', item.id === 'reset' ? styles.danger : '']
-                  .filter(Boolean)
-                  .join(' ')}
+                className={[styles.item, active ? styles.active : ''].filter(Boolean).join(' ')}
                 onClick={() => onSelect(item.id)}
                 aria-current={active ? 'page' : undefined}
               >

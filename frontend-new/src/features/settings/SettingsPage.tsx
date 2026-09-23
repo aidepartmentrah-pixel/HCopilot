@@ -1,8 +1,11 @@
+import { ShieldAlert } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { AccountsSettings } from './components/AccountsSettings'
+import { AiModelsSettings } from './components/AiModelsSettings'
 import { BedsSettings } from './components/BedsSettings'
-import { DangerZone } from './components/DangerZone'
 import { DoctorsSettings } from './components/DoctorsSettings'
+import { IntegrationsSettings } from './components/IntegrationsSettings'
 import { NursesSettings } from './components/NursesSettings'
 import { SettingsSidebar } from './components/SettingsSidebar'
 import { WardsSettings } from './components/WardsSettings'
@@ -13,7 +16,9 @@ const PANELS: Record<string, React.ComponentType> = {
   doctors: DoctorsSettings,
   nurses: NursesSettings,
   wards: WardsSettings,
-  reset: DangerZone,
+  integrations: IntegrationsSettings,
+  'ai-models': AiModelsSettings,
+  accounts: AccountsSettings,
 }
 
 export function SettingsPage() {
@@ -26,6 +31,13 @@ export function SettingsPage() {
       <div className={styles.layout}>
         <SettingsSidebar activeId={activeId} onSelect={setActiveId} />
         <div className={styles.content}>
+          {/* Compact, always-visible notice (§4) — replaces the old huge permanent Restricted Area banner; contextual confirmations on each sensitive action carry the real warning weight instead. */}
+          <div className={styles.notice}>
+            <ShieldAlert size={16} aria-hidden="true" />
+            <span>
+              <strong>Administrative Settings —</strong> changes made here may affect live HCopilot operation.
+            </span>
+          </div>
           <ActivePanel />
         </div>
       </div>

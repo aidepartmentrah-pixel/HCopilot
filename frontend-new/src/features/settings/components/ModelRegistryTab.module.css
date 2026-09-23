@@ -1,0 +1,107 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 720px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.subtitle {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+.metaGrid dt {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.metaGrid dd {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+}
+.metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metricLabel {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
+.metricValue {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.technicalDetails {
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+}
+.technicalDetails summary {
+  cursor: pointer;
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  padding: var(--space-2) 0;
+}
+
+.filesTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-metadata);
+}
+.filesTable th {
+  text-align: left;
+  color: var(--text-secondary);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+}
+.filesTable td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.path {
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.empty {
+  font-size: var(--font-size-label);
+  margin: var(--space-2) 0 0;
+}

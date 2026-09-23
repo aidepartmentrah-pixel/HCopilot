@@ -2,14 +2,8 @@ import { ChevronDown, LogOut } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useAuth } from '@/app/providers/useAuth'
 import { useClickOutside } from '@/hooks/useClickOutside'
+import { initialsOf } from '@/utils/initials'
 import styles from './UserMenu.module.css'
-
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
-}
 
 /** Real authenticated identity (§10/§13) — degrades to username-only initials when `name` is blank, never a hardcoded example user. */
 export function UserMenu() {
