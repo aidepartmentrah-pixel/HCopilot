@@ -1,0 +1,7 @@
+.historical {
+  color: var(--brand-700);
+}
+
+.forecast {
+  color: var(--waiting);
+}

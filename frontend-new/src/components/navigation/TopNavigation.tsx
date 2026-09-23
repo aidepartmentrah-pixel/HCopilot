@@ -1,4 +1,4 @@
-import { BarChart3, BedDouble, ClipboardPlus, History, Home, Settings } from 'lucide-react'
+import { BarChart3, BedDouble, ClipboardPlus, History, Home, LineChart, Settings } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
 import { HCopilotMark } from '@/components/brand/HCopilotMark'
@@ -15,11 +15,11 @@ interface NavItem {
 }
 
 /**
- * Real HCopilot modules only (§7/NF1.3) — Home + the 5 pages this rewrite
- * targets (master prompt §25). Flow Prediction/Scheduling/Simulation exist
- * in the old frontend but aren't part of this rewrite's scope yet (§39
- * step 11 — "remaining feature parity pages" is deliberately later);
- * left out of nav rather than linked to a page that doesn't exist here.
+ * Real HCopilot modules — Home + the pages this rewrite targets. V2.7
+ * restores Predictions (Patient Flow), the last previously-missing page;
+ * Scheduling/Simulation remain out of this rewrite's scope (see V2.6's
+ * log — both were inspected and found superseded by Live ER's placement
+ * board, not left out by oversight).
  */
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', icon: <Home size={18} /> },
@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/live-er', label: 'Live ER', icon: <BedDouble size={18} /> },
   { to: '/history', label: 'History', icon: <History size={18} /> },
   { to: '/statistics', label: 'Statistics', icon: <BarChart3 size={18} /> },
+  { to: '/predictions', label: 'Predictions', icon: <LineChart size={18} /> },
   { to: '/settings', label: 'Settings', icon: <Settings size={18} /> },
 ]
 

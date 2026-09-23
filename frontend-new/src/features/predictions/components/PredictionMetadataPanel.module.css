@@ -1,0 +1,49 @@
+.panel {
+  margin-top: var(--space-4);
+}
+
+.title {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 var(--space-1);
+}
+
+.modelName {
+  font-size: var(--font-size-card-title);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-4);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
+.grid dt {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+  margin: 0;
+}
+.grid dd {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin: 2px 0 0;
+}
+
+.runRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.runId {
+  font-family: monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

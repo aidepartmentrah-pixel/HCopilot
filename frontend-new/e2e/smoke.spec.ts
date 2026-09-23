@@ -5,7 +5,7 @@ test('app shell loads with the real HCopilot modules in nav', async ({ page }) =
   await expect(page.getByRole('heading', { name: 'HCopilot' })).toBeVisible()
 
   const nav = page.getByRole('navigation', { name: 'Primary' })
-  for (const label of ['Home', 'ER ISBAR Entry', 'Live ER', 'History', 'Statistics', 'Settings']) {
+  for (const label of ['Home', 'ER ISBAR Entry', 'Live ER', 'History', 'Statistics', 'Predictions', 'Settings']) {
     await expect(nav.getByRole('link', { name: new RegExp(label) })).toBeVisible()
   }
 })

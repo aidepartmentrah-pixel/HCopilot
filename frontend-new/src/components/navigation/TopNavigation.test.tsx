@@ -46,7 +46,7 @@ describe('TopNavigation', () => {
     expect(screen.getByText('HCopilot')).toBeInTheDocument()
 
     const nav = within(screen.getByRole('navigation', { name: 'Primary' }))
-    for (const label of ['Home', 'ER ISBAR Entry', 'Live ER', 'History', 'Statistics', 'Settings']) {
+    for (const label of ['Home', 'ER ISBAR Entry', 'Live ER', 'History', 'Statistics', 'Predictions', 'Settings']) {
       expect(nav.getByRole('link', { name: new RegExp(label) })).toBeInTheDocument()
     }
 

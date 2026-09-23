@@ -4,7 +4,7 @@ test.describe('Application shell (V2.0)', () => {
   test('the branded shell — logo, nav, search, notifications, real user identity — is byte-identical across every route', async ({
     page,
   }) => {
-    const routes = ['/', '/isbar', '/live-er', '/history', '/statistics', '/settings']
+    const routes = ['/', '/isbar', '/live-er', '/history', '/statistics', '/predictions', '/settings']
     for (const route of routes) {
       await page.goto(route)
       const header = page.locator('header')

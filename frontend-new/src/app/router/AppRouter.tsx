@@ -14,6 +14,7 @@ const LiveErPage = lazy(() => import('@/features/live-er/LiveErPage').then((m) =
 const HistoryPage = lazy(() => import('@/features/history/HistoryPage').then((m) => ({ default: m.HistoryPage })))
 const FullRecordPage = lazy(() => import('@/features/history/FullRecordPage').then((m) => ({ default: m.FullRecordPage })))
 const StatisticsPage = lazy(() => import('@/features/statistics/StatisticsPage').then((m) => ({ default: m.StatisticsPage })))
+const PredictionsPage = lazy(() => import('@/features/predictions/PredictionsPage').then((m) => ({ default: m.PredictionsPage })))
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 function LazyPage({ children }: { children: ReactNode }) {
@@ -62,6 +63,14 @@ export function AppRouter() {
           element={
             <LazyPage>
               <StatisticsPage />
+            </LazyPage>
+          }
+        />
+        <Route
+          path="predictions"
+          element={
+            <LazyPage>
+              <PredictionsPage />
             </LazyPage>
           }
         />
