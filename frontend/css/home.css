@@ -46,13 +46,23 @@
     letter-spacing: -.3px;
 }
 
-/* ── Welcome panel (UI-D2) — compact branded panel, ~180-220px ──────── */
+/* ── Welcome panel (UI-D2) — compact branded panel, ~180-220px ────────
+   Locally-bundled hero photo (Dashboard Edit.md §4/§22) tinted with the
+   same brand-gradient tokens used everywhere else via
+   background-blend-mode, so it re-colors automatically per theme
+   instead of needing a separate baked-in overlay image per theme. */
 .hd-welcome {
-    background: linear-gradient(120deg, var(--brand-700) 0%, var(--brand-800) 100%);
+    background-image: linear-gradient(100deg, var(--brand-800) 0%, var(--brand-700) 55%, var(--brand-600) 100%),
+                       linear-gradient(100deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.4) 45%, rgba(0,0,0,.15) 100%),
+                       url('../assets/welcome-hero.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-blend-mode: multiply, multiply, normal;
     border-radius: var(--radius-lg, 14px);
     padding: 26px 30px;
     margin-bottom: 22px;
-    min-height: 130px;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -60,18 +70,6 @@
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
-}
-
-.hd-welcome::after {
-    content: '';
-    position: absolute;
-    top: -40%;
-    right: -8%;
-    width: 260px;
-    height: 260px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.06);
-    pointer-events: none;
 }
 
 .hd-greeting {
