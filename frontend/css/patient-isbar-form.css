@@ -466,6 +466,11 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 }
 .pat-scale-btn {
     flex: 1 1 0;
+    min-width: 0; /* flex items default to min-width:auto, which floors shrinking
+                     at the nowrap text's full width — without this, a narrow
+                     container (e.g. the Acuity scale's 5 long labels) doesn't
+                     shrink the buttons, it just overflows and gets clipped by
+                     .isbar-scale's overflow:hidden, silently hiding buttons 4-5. */
     min-height: 34px;
     padding: 6px 6px;
     border: none;
@@ -477,6 +482,8 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     cursor: pointer;
     transition: all 0.12s;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .pat-scale-btn:last-child { border-right: none; }
 .pat-scale-btn:hover { filter: brightness(0.97); }
