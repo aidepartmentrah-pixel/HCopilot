@@ -471,8 +471,13 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
                      container (e.g. the Acuity scale's 5 long labels) doesn't
                      shrink the buttons, it just overflows and gets clipped by
                      .isbar-scale's overflow:hidden, silently hiding buttons 4-5. */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
     min-height: 34px;
-    padding: 6px 6px;
+    padding: 6px 4px;
     border: none;
     border-right: 1px solid rgba(0,0,0,0.06);
     background: var(--color-surface);
@@ -481,11 +486,33 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     color: var(--color-text-muted);
     cursor: pointer;
     transition: all 0.12s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 .pat-scale-btn:last-child { border-right: none; }
+
+/* Acuity buttons (2 spans: number + clinical label) — the number stays on
+   one line, the label wraps instead of truncating, so at narrow widths
+   "Less Urgent"/"Non-Urgent" break onto a second line rather than losing
+   the word entirely to an ellipsis (2026-09-24 feedback: ellipsis-only
+   numbers were worse than the original overflow, since every button lost
+   its clinical meaning, not just 4-5). Pain-scale buttons are a single
+   bare digit and are unaffected by these rules. */
+.pat-scale-num {
+    font-size: 13.5px;
+    font-weight: 800;
+    line-height: 1;
+}
+.pat-scale-label {
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    -webkit-hyphens: auto;
+    hyphens: auto; /* "Immediate"/"Emergent" have no space to wrap at — proper
+                      hyphenation (Immedi-ate) reads far better than the raw
+                      break-word midpoint ("Immedia"/"te") this replaced. */
+}
 .pat-scale-btn:hover { filter: brightness(0.97); }
 .pat-scale-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; position: relative; z-index: 1; }
 
