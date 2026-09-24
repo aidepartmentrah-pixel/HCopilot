@@ -88,7 +88,7 @@ function _hdRenderWelcome() {
     if (!greetEl || !nameEl) return;
 
     const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Good morning' : (hour < 18 ? 'Good afternoon' : 'Good evening');
+    const greeting = hour < 12 ? 'Good morning' : (hour < 17 ? 'Good afternoon' : 'Good evening');
     greetEl.textContent = greeting.toUpperCase();
 
     const user = typeof currentUser === 'function' ? currentUser() : null;
