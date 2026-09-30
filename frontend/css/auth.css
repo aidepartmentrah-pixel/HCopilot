@@ -166,9 +166,9 @@
     align-items: center;
     gap: 10px;
     padding: 0 16px;
-    height: 62px;
-    border-left: 1px solid rgba(255,255,255,.15);
-    background: rgba(0,0,0,.08);
+    height: var(--topnav-height);
+    border-left: none;
+    background: transparent;
 }
 
 .auth-user-avatar {
