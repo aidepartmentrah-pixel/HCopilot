@@ -39,10 +39,11 @@ describe('WardLane', () => {
     expect(screen.getByText('No beds configured for this area.')).toBeInTheDocument()
   })
 
-  it('rail scroll buttons start disabled when there is nothing to scroll to', () => {
-    const cards = [bedCard({})]
+  it('renders every card in the lane with no scroll controls', () => {
+    const cards = Array.from({ length: 12 }, (_, i) => bedCard({ id: `bed-${i}`, primary: `Bed ${i}` }))
     render(<WardLane title="Section A" kind="bed" cards={cards} onCardClick={() => {}} />)
-    expect(screen.getByRole('button', { name: 'Scroll Section A left' })).toBeDisabled()
+    expect(screen.getAllByTestId('placement-card')).toHaveLength(12)
+    expect(screen.queryByRole('button', { name: /Scroll/ })).not.toBeInTheDocument()
   })
 
   it('calls onCardClick with the clicked card', async () => {

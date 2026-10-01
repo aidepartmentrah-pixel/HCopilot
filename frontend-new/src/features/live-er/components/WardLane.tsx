@@ -1,6 +1,3 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { IconButton } from '@/components/ui/IconButton'
 import type { PlacementCardData } from '../utils'
 import { PlacementCard } from './PlacementCard'
 import styles from './WardLane.module.css'
@@ -15,28 +12,8 @@ interface WardLaneProps {
   assignableBedIds?: Set<string>
 }
 
-/** One ward = one horizontal, scrollable lane (§21) — not a wrap-grid. */
+/** One ward = one framed panel whose cards wrap onto as many rows as needed, so every bed is visible without scrolling. */
 export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assignableBedIds }: WardLaneProps) {
-  const trackRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
-  function updateScrollBounds() {
-    const el = trackRef.current
-    if (!el) return
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
-  }
-
-  useEffect(() => {
-    updateScrollBounds()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cards.length])
-
-  function scrollBy(delta: number) {
-    trackRef.current?.scrollBy({ left: delta, behavior: 'smooth' })
-  }
-
   const occupiedCount = cards.filter((c) => c.statusLabel === 'Occupied').length
   const availableCount = cards.filter((c) => c.statusLabel === 'Available').length
 
@@ -51,29 +28,13 @@ export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assi
         ) : (
           <span className={styles.count}>{cards.length}</span>
         )}
-        <div className={styles.scrollControls}>
-          <IconButton
-            icon={<ChevronLeft size={16} />}
-            label={`Scroll ${title} left`}
-            size="sm"
-            disabled={!canScrollLeft}
-            onClick={() => scrollBy(-420)}
-          />
-          <IconButton
-            icon={<ChevronRight size={16} />}
-            label={`Scroll ${title} right`}
-            size="sm"
-            disabled={!canScrollRight}
-            onClick={() => scrollBy(420)}
-          />
-        </div>
       </div>
       {cards.length === 0 ? (
         <p className={styles.empty}>
           {kind === 'bed' ? 'No beds configured for this area.' : 'No patients currently waiting without a bed.'}
         </p>
       ) : (
-        <div ref={trackRef} className={styles.track} onScroll={updateScrollBounds}>
+        <div className={styles.track}>
           {cards.map((card) => (
             <PlacementCard
               key={card.id}

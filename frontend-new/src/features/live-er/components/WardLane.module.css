@@ -1,22 +1,29 @@
 .lane {
   margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  background: var(--slate-50);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
 .header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .title {
   font-size: var(--font-size-card-title);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   margin: 0;
 }
 
 .count {
+  margin-left: auto;
   font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
   background: var(--slate-100);
   border-radius: var(--radius-full);
@@ -29,7 +36,7 @@
 }
 
 .empty {
-  margin: 0 0 var(--space-4);
+  margin: 0;
   padding: var(--space-4);
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
@@ -37,16 +44,9 @@
   font-size: var(--font-size-label);
 }
 
-.scrollControls {
-  margin-left: auto;
-  display: flex;
-  gap: var(--space-1);
-}
-
+/* Cards wrap onto as many rows as needed — no horizontal scrolling. */
 .track {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-3);
-  overflow-x: auto;
-  padding-bottom: var(--space-2);
-  scroll-behavior: smooth;
 }

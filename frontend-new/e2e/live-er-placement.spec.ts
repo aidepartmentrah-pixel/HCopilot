@@ -53,17 +53,13 @@ test.describe('Live ER — placement/assignment flow (V2.3)', () => {
     }
   })
 
-  test('ward rail scroll controls disable at the boundary and enable once scrolled', async ({ page }) => {
+  test('ward lanes wrap their beds — no horizontal scrolling inside a lane', async ({ page }) => {
     await page.goto('/live-er')
     await page.getByTestId('placement-card').first().waitFor({ timeout: 10000 })
 
     const lane = page.locator('section').filter({ hasText: 'Occupied' }).first()
-    const rightButton = lane.getByRole('button', { name: /Scroll .* right/ })
-    if (await rightButton.isEnabled()) {
-      await rightButton.click()
-      await page.waitForTimeout(500)
-      const leftButton = lane.getByRole('button', { name: /Scroll .* left/ })
-      await expect(leftButton).toBeEnabled()
-    }
+    await expect(lane.getByRole('button', { name: /Scroll/ })).toHaveCount(0)
+    const overflows = await lane.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+    expect(overflows).toBe(false)
   })
 })
