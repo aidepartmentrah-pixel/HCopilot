@@ -41,6 +41,7 @@ export function IsbarPage() {
   })
 
   const activePatients = patientsData?.patients ?? []
+  const draftErVisitId = mode === 'draft' ? methods.watch('er_visit_id') || null : null
 
   function startDraft(seed: Partial<IsbarFormValues>) {
     if (!nextIds) return
@@ -57,30 +58,27 @@ export function IsbarPage() {
     setMode('active')
   }
 
+  /**
+   * Picking a roster name only FILLS the form (create on Add, 2026-10-01).
+   * Nothing is saved until the user clicks "Add Patient" (handleSubmit in
+   * draft mode), which creates the stay as roster-origin, drops the person
+   * from the roster list and puts them on the Live ER waiting list.
+   */
   async function handleSelectRosterItem(item: ErRosterItem, existingStayId: number | null) {
     if (existingStayId != null) {
       await loadActive(existingStayId)
       return
     }
-    if (!nextIds) return
     const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unknown'
-    try {
-      await createPatient.mutateAsync({
-        patient_id: nextIds.next_patient_id,
-        stay_id: nextIds.next_stay_id,
-        name,
-        arrival_time: item.arrival_time ? item.arrival_time.slice(0, 16) : new Date().toISOString().slice(0, 16),
-        er_visit_id: String(item.er_visit_id),
-        record_source: 'external',
-        gender: mapExternalGender(item.gender) || undefined,
-        age: item.age ?? undefined,
-        chiefcomplaint: item.chief_complaint ?? undefined,
-      })
-      await loadActive(nextIds.next_stay_id)
-      showToast(`${name} added from the ER roster — continue with ISBAR below.`, 'success')
-    } catch {
-      showToast('Could not add this patient from the roster. Please try again.', 'error')
-    }
+    startDraft({
+      name,
+      ...(item.arrival_time ? { arrival_time: item.arrival_time.slice(0, 16) } : {}),
+      gender: mapExternalGender(item.gender) || '',
+      age: item.age ?? undefined,
+      chiefcomplaint: item.chief_complaint ?? '',
+      er_visit_id: String(item.er_visit_id),
+      record_source: 'external',
+    })
   }
 
   function handleSelectDirectoryPatient(item: DirectoryPatient) {
@@ -123,7 +121,12 @@ export function IsbarPage() {
         await createPatient.mutateAsync(formValuesToCreateInput(values))
         setActiveStayId(values.stay_id)
         setMode('active')
-        showToast('Patient added — ISBAR entry started.', 'success')
+        showToast(
+          values.er_visit_id
+            ? `${values.name} added — now on the Live ER waiting list. Assign a bed in Live ER.`
+            : 'Patient added — ISBAR entry started.',
+          'success',
+        )
       } else if (mode === 'active' && activeStayId != null) {
         await modifyPatient.mutateAsync({ stayId: activeStayId, body: formValuesToModifyInput(values) })
         showToast('Changes saved.', 'success')
@@ -164,7 +167,7 @@ export function IsbarPage() {
       <div className={styles.layout}>
         <LiveErRoster
           activePatients={activePatients}
-          activeStayId={activeStayId}
+          draftErVisitId={draftErVisitId}
           onSelect={handleSelectRosterItem}
           onOpenFallback={() => setFallbackOpen(true)}
         />
@@ -174,6 +177,7 @@ export function IsbarPage() {
           methods={methods}
           onSubmit={handleSubmit}
           onChangePatient={handleChangePatient}
+          onCancelDraft={handleChangePatient}
           isSaving={createPatient.isPending || modifyPatient.isPending}
         />
       </div>

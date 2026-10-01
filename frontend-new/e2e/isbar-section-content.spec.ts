@@ -14,7 +14,7 @@ test.describe('ER ISBAR Entry — section content parity (V2.2c)', () => {
     await page.getByRole('spinbutton', { name: 'Age' }).fill('45')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Fever')
     await page.getByRole('radio', { name: /^3/ }).click()
-    await page.getByRole('button', { name: 'Start ISBAR' }).click()
+    await page.getByRole('button', { name: 'Add Patient' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // Situation — Clinical Status is now a visible tile, not a <select>.

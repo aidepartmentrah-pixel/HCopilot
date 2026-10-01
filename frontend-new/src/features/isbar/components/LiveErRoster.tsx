@@ -11,15 +11,20 @@ import styles from './LiveErRoster.module.css'
 
 interface LiveErRosterProps {
   activePatients: Patient[]
-  activeStayId: number | null
+  /** er_visit_id of the roster person currently picked into an unsaved draft (shown as "Selected"). */
+  draftErVisitId: string | null
   onSelect: (item: ErRosterItem, existingStayId: number | null) => void
   onOpenFallback: () => void
 }
 
-export function LiveErRoster({ activePatients, activeStayId, onSelect, onOpenFallback }: LiveErRosterProps) {
+export function LiveErRoster({ activePatients, draftErVisitId, onSelect, onOpenFallback }: LiveErRosterProps) {
   const { data, isLoading, error, refetch, isFetching } = useErRoster()
 
   const byVisitId = new Map(activePatients.filter((p) => p.er_visit_id).map((p) => [String(p.er_visit_id), p]))
+  // Create on Add (2026-10-01): anyone who has already been added (an active
+  // stay carries their er_visit_id) leaves this list — they live on the Live
+  // ER waiting list / Active Patients table from then on.
+  const pending = data?.status === 'ok' ? data.items.filter((item) => !byVisitId.has(String(item.er_visit_id))) : []
 
   return (
     <div className={styles.panel}>
@@ -48,11 +53,14 @@ export function LiveErRoster({ activePatients, activeStayId, onSelect, onOpenFal
         {data && data.status === 'ok' && data.items.length === 0 && (
           <EmptyState icon={<Siren size={24} />} title="No patients on the roster" description="Nothing currently in the live ER feed." />
         )}
+        {data && data.status === 'ok' && data.items.length > 0 && pending.length === 0 && (
+          <EmptyState icon={<Siren size={24} />} title="Everyone has been added" description="All patients on the live roster are already in the waiting list or a bed." />
+        )}
         {data &&
           data.status === 'ok' &&
-          data.items.map((item) => {
+          pending.map((item) => {
             const existing = byVisitId.get(String(item.er_visit_id))
-            const isActive = !!existing && existing.stay_id === activeStayId
+            const isActive = draftErVisitId != null && String(item.er_visit_id) === draftErVisitId
             const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unnamed'
             return (
               <button
@@ -67,7 +75,7 @@ export function LiveErRoster({ activePatients, activeStayId, onSelect, onOpenFal
                   <span className={styles.rowName} dir="auto">
                     {name}
                   </span>
-                  {existing && <Badge tone="brand">{isActive ? 'Selected' : 'In Progress'}</Badge>}
+                  {isActive && <Badge tone="brand">Selected</Badge>}
                 </div>
                 <div className={styles.rowMeta}>
                   {[item.age != null ? `${item.age}${item.gender ? item.gender[0] : ''}` : null, item.chief_complaint]

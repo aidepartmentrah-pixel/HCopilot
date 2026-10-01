@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { deleteStayByVisitId } from './rosterCleanup'
 
 test.describe('ER ISBAR Entry', () => {
   test('form is disabled until a patient is selected, roster loads', async ({ page }) => {
@@ -12,31 +13,60 @@ test.describe('ER ISBAR Entry', () => {
     await expect(page.getByTestId('er-roster-row').first()).toBeVisible({ timeout: 10000 })
   })
 
-  test('picking a roster patient creates the stay and activates the form in place', async ({ page }) => {
+  test('picking a roster patient only fills the form; Add Patient creates the stay and removes them from the roster', async ({ page, request }) => {
     await page.goto('/isbar')
 
     const firstRow = page.getByTestId('er-roster-row').first()
     await firstRow.waitFor({ state: 'visible', timeout: 15000 })
     const visitId = await firstRow.getAttribute('data-er-visit-id')
 
-    await firstRow.click()
+    try {
+      await firstRow.click()
 
-    await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
-    // Patient & Arrival auto-completes and collapses once a roster patient
-    // with a real name loads (V2.2a §9 auto-progression) — reopen it to
-    // confirm the field is populated and editable, rather than assuming
-    // it's still the open section.
-    const nameField = page.getByRole('textbox', { name: 'Full Name' })
-    if (!(await nameField.isVisible())) {
-      await page.getByTestId('isbar-section-patient-arrival').click()
+      // Picked, NOT created: still a draft (no Change Patient banner yet), pre-filled, row marked Selected.
+      const nameField = page.getByRole('textbox', { name: 'Full Name' })
+      // Patient & Arrival auto-completes and collapses for a named roster pick (V2.2a §9) — reopen it to inspect the field.
+      if (!(await nameField.isVisible())) {
+        await page.getByTestId('isbar-section-patient-arrival').click()
+      }
+      await expect(nameField).toBeEnabled()
+      await expect(nameField).not.toHaveValue('')
+      await expect(page.getByRole('button', { name: 'Change Patient' })).toHaveCount(0)
+      const pickedRow = page.locator(`[data-er-visit-id="${visitId}"]`)
+      await expect(pickedRow).toHaveCount(1)
+      await expect(pickedRow.getByText('Selected')).toBeVisible()
+
+      // Add Patient (roster picks only need a name + arrival) creates the stay in place.
+      await page.getByRole('button', { name: 'Add Patient' }).click()
+      await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
+
+      // ... and the person has left the not-yet-added roster list.
+      await expect(page.locator(`[data-testid="er-roster-row"][data-er-visit-id="${visitId}"]`)).toHaveCount(0)
+    } finally {
+      await deleteStayByVisitId(request, visitId)
     }
-    await expect(nameField).toBeEnabled()
+  })
 
-    // The picked roster entry shows as "Selected", exactly once — not
-    // duplicated into a second row.
-    const pickedRow = page.locator(`[data-er-visit-id="${visitId}"]`)
-    await expect(pickedRow).toHaveCount(1)
-    await expect(pickedRow.getByText('Selected')).toBeVisible()
+  test('picking without clicking Add creates nothing: Cancel returns to the empty state and the person stays in the roster', async ({ page, request }) => {
+    await page.goto('/isbar')
+
+    const firstRow = page.getByTestId('er-roster-row').first()
+    await firstRow.waitFor({ state: 'visible', timeout: 15000 })
+    const visitId = await firstRow.getAttribute('data-er-visit-id')
+    await firstRow.click()
+    await expect(page.getByRole('button', { name: 'Add Patient' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    // Pre-filled values count as unsaved edits only if the form is dirty; either way discard.
+    const discard = page.getByRole('button', { name: 'Discard Changes' })
+    if (await discard.isVisible().catch(() => false)) await discard.click()
+
+    await expect(page.getByText('No patient selected')).toBeVisible()
+    await expect(page.locator(`[data-testid="er-roster-row"][data-er-visit-id="${visitId}"]`)).toHaveCount(1)
+
+    const list = await (await request.get('/api/patients/list')).json()
+    const rows: Array<{ er_visit_id?: string | null }> = Array.isArray(list) ? list : list.patients ?? []
+    expect(rows.some((r) => String(r.er_visit_id) === String(visitId))).toBe(false)
   })
 
   test('manual entry: filling required fields and submitting creates a new patient', async ({ page }) => {
@@ -54,7 +84,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Abdominal pain')
     await page.getByRole('radio', { name: /^3/ }).click()
 
-    await page.getByRole('button', { name: 'Start ISBAR' }).click()
+    await page.getByRole('button', { name: 'Add Patient' }).click()
 
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
     // Patient & Arrival auto-completes and collapses once submitted (§9) — reopen it to confirm the saved value.
@@ -76,7 +106,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('spinbutton', { name: 'Age' }).fill('50')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Chest pain')
     await page.getByRole('radio', { name: /^2/ }).click()
-    await page.getByRole('button', { name: 'Start ISBAR' }).click()
+    await page.getByRole('button', { name: 'Add Patient' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     await page.getByRole('button', { name: 'Change Patient' }).click()
@@ -95,7 +125,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('spinbutton', { name: 'Age' }).fill('60')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Fall')
     await page.getByRole('radio', { name: /^2/ }).click()
-    await page.getByRole('button', { name: 'Start ISBAR' }).click()
+    await page.getByRole('button', { name: 'Add Patient' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // V2.2a auto-opens the next section once Patient & Arrival is complete

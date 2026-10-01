@@ -37,10 +37,12 @@ interface IsbarWorkspaceProps {
   methods: UseFormReturn<IsbarFormValues>
   onSubmit: (values: IsbarFormValues) => void
   onChangePatient: () => void
+  /** Discards an unsaved draft (asks first if it has edits). */
+  onCancelDraft: () => void
   isSaving: boolean
 }
 
-export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePatient, isSaving }: IsbarWorkspaceProps) {
+export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePatient, onCancelDraft, isSaving }: IsbarWorkspaceProps) {
   const disabled = mode === 'disabled'
   const values = methods.watch()
   const { statuses, openSections, currentId, toggleSection, handleContinue, onWorkspaceBlur } = useSectionStatuses(methods, resetKey)
@@ -124,8 +126,13 @@ export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePati
           </Accordion>
 
           <div className={styles.footer}>
+            {mode === 'draft' && (
+              <Button type="button" variant="secondary" onClick={onCancelDraft}>
+                Cancel
+              </Button>
+            )}
             <Button type="submit" loading={isSaving}>
-              {mode === 'draft' ? 'Start ISBAR' : 'Save Changes'}
+              {mode === 'draft' ? 'Add Patient' : 'Save Changes'}
             </Button>
           </div>
         </form>

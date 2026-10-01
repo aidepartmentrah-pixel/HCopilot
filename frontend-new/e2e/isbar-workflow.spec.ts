@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { deleteStayByVisitId } from './rosterCleanup'
 
 async function startManualDraft(page: import('@playwright/test').Page) {
   await page.goto('/isbar')
@@ -58,11 +59,16 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
 
   test('Change Patient with unsaved changes shows the confirmation dialog (§38), and each choice behaves correctly', async ({
     page,
+    request,
   }) => {
     await page.goto('/isbar')
     const firstRow = page.getByTestId('er-roster-row').first()
     await firstRow.waitFor({ state: 'visible', timeout: 15000 })
+    const visitIds: string[] = []
+    visitIds.push((await firstRow.getAttribute('data-er-visit-id')) ?? '')
     await firstRow.click()
+    // Create on Add (2026-10-01): a pick only fills a draft; add the patient to reach the active workspace.
+    await page.getByRole('button', { name: 'Add Patient' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // No unsaved changes yet — Change Patient goes straight through.
@@ -70,8 +76,12 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     await expect(page.getByText('No patient selected')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Unsaved ISBAR changes' })).toHaveCount(0)
 
-    // Re-select and make a real, unsaved edit this time.
-    await firstRow.click()
+    // Re-select (the first person has left the roster - pick the next one), add, and make a real, unsaved edit.
+    const nextRow = page.getByTestId('er-roster-row').first()
+    await nextRow.waitFor({ state: 'visible', timeout: 15000 })
+    visitIds.push((await nextRow.getAttribute('data-er-visit-id')) ?? '')
+    await nextRow.click()
+    await page.getByRole('button', { name: 'Add Patient' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
     const complaintField = page.getByRole('textbox', { name: 'Chief Complaint (Triage)' })
     if (!(await complaintField.isVisible())) {
@@ -92,5 +102,7 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     await page.getByRole('button', { name: 'Change Patient' }).click()
     await page.getByRole('button', { name: 'Discard Changes' }).click()
     await expect(page.getByText('No patient selected')).toBeVisible()
+
+    for (const id of visitIds) await deleteStayByVisitId(request, id)
   })
 })
