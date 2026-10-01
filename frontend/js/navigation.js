@@ -82,6 +82,8 @@ function showSection(sectionId) {
 
     const section = document.getElementById(sectionId);
     if (section) section.classList.add('active');
+    // Lets home.css widen the page for Home only (Home Dashboard Layout Plan, HD-1).
+    document.body.classList.toggle('home-active', sectionId === 'home');
 
     // Multiple nav buttons can link to the same section (e.g. desktop + mobile),
     // so querySelectorAll is used rather than getElementById

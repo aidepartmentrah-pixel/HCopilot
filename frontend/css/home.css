@@ -1,6 +1,19 @@
+/* Home-only wide layout (Home Dashboard Layout Plan, HD-1). The shared
+   .container is capped at 1400px for every other page; Home opts into the
+   New frontend's 1600px content width via the body.home-active class that
+   showSection() toggles, so no other page changes. */
+body.home-active .container { max-width: 1600px; }
+body.home-active { padding-left: 32px; padding-right: 32px; }
+
 .home-container {
-    max-width: 1200px;
+    width: 100%;
     margin: 0 auto;
+}
+@media (max-width: 1200px) {
+    body.home-active { padding-left: 24px; padding-right: 24px; }
+}
+@media (max-width: 680px) {
+    body.home-active { padding-left: 16px; padding-right: 16px; }
 }
 
 /* ── Page header (UI-D1) ─────────────────────────────────────────────── */
