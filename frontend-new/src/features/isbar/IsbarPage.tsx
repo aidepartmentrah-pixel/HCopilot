@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ColumnDef } from '@tanstack/react-table'
+import { ChevronDown, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { patientsApi } from '@/api/patients'
 import { DataTable } from '@/components/tables/DataTable'
+import { Badge } from '@/components/ui/Badge'
+import { IconButton } from '@/components/ui/IconButton'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/feedback/useToast'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
@@ -23,11 +26,35 @@ import styles from './IsbarPage.module.css'
 
 type PanelMode = 'disabled' | 'draft' | 'active'
 
+// Active Patients is a secondary browse/resume tool, so it starts collapsed
+// (matches the legacy frontend); the choice is remembered for the session.
+const PATIENTS_OPEN_KEY = 'hcopilot-isbar-active-patients-open'
+
+function readPatientsOpen(): boolean {
+  try {
+    return sessionStorage.getItem(PATIENTS_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function IsbarPage() {
   const [mode, setMode] = useState<PanelMode>('disabled')
   const [activeStayId, setActiveStayId] = useState<number | null>(null)
   const [fallbackOpen, setFallbackOpen] = useState(false)
   const [unsavedGuardOpen, setUnsavedGuardOpen] = useState(false)
+  const [patientsOpen, setPatientsOpen] = useState(readPatientsOpen)
+
+  function togglePatientsOpen() {
+    setPatientsOpen((open) => {
+      try {
+        sessionStorage.setItem(PATIENTS_OPEN_KEY, open ? '0' : '1')
+      } catch {
+        /* session storage unavailable - the toggle still works for this visit */
+      }
+      return !open
+    })
+  }
 
   const { data: patientsData, isLoading: patientsLoading, error: patientsError, refetch: refetchPatients } = usePatients()
   const { data: nextIds } = useNextIds()
@@ -182,22 +209,52 @@ export function IsbarPage() {
         />
       </div>
 
-      <div className={styles.tableSection}>
-        <h2 className={styles.tableTitle}>Active Patients</h2>
-        <DataTable
-          data={activePatients}
-          columns={columns}
-          getRowId={(p) => String(p.stay_id)}
-          isLoading={patientsLoading}
-          error={patientsError ? 'Could not load active patients.' : null}
-          onRetry={() => refetchPatients()}
-          emptyTitle="No active patients"
-          emptyDescription="Patients picked from the roster or added manually will appear here."
-          onRowClick={(p) => loadActive(p.stay_id)}
-          selectedRowId={activeStayId != null ? String(activeStayId) : null}
-          defaultSort={[{ id: 'arrival_time', desc: true }]}
-        />
-      </div>
+      <section className={styles.tableSection} aria-labelledby="active-patients-title">
+        <div className={styles.tableHeader}>
+          <button
+            type="button"
+            className={styles.tableToggle}
+            aria-expanded={patientsOpen}
+            aria-controls="active-patients-body"
+            onClick={togglePatientsOpen}
+          >
+            <span className={styles.tableHeading}>
+              <span className={styles.tableTitleRow}>
+                <h2 id="active-patients-title" className={styles.tableTitle}>
+                  Active Patients
+                </h2>
+                <Badge>{patientsLoading ? '…' : `${activePatients.length} active`}</Badge>
+              </span>
+              <span className={styles.tableSubtitle}>Patients currently in the ER, from the live roster or entered manually</span>
+            </span>
+            <ChevronDown size={18} className={[styles.chevron, patientsOpen ? styles.chevronOpen : ''].filter(Boolean).join(' ')} aria-hidden="true" />
+          </button>
+          <IconButton
+            icon={<RefreshCw size={16} />}
+            label="Refresh active patients"
+            variant="secondary"
+            onClick={() => refetchPatients()}
+          />
+        </div>
+
+        {patientsOpen && (
+          <div id="active-patients-body" className={styles.tableBody}>
+            <DataTable
+              data={activePatients}
+              columns={columns}
+              getRowId={(p) => String(p.stay_id)}
+              isLoading={patientsLoading}
+              error={patientsError ? 'Could not load active patients.' : null}
+              onRetry={() => refetchPatients()}
+              emptyTitle="No active patients"
+              emptyDescription="Patients picked from the roster or added manually will appear here."
+              onRowClick={(p) => loadActive(p.stay_id)}
+              selectedRowId={activeStayId != null ? String(activeStayId) : null}
+              defaultSort={[{ id: 'arrival_time', desc: true }]}
+            />
+          </div>
+        )}
+      </section>
 
       <FallbackEntryDrawer
         open={fallbackOpen}

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expandActivePatients } from './activePatients'
 
 test.describe('ER ISBAR Entry — section content parity (V2.2c)', () => {
   test('restored tile/segmented fields (Clinical Status, Allergies, Isolation Precautions) persist through a real save and reload', async ({
@@ -31,6 +32,7 @@ test.describe('ER ISBAR Entry — section content parity (V2.2c)', () => {
     await expect(page.getByText('Changes saved.')).toBeVisible({ timeout: 10000 })
 
     await page.reload()
+    await expandActivePatients(page)
     await page.getByRole('cell', { name: uniqueName }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 

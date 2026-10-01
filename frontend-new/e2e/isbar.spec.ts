@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expandActivePatients } from './activePatients'
 import { deleteStayByVisitId } from './rosterCleanup'
 
 test.describe('ER ISBAR Entry', () => {
@@ -67,6 +68,23 @@ test.describe('ER ISBAR Entry', () => {
     const list = await (await request.get('/api/patients/list')).json()
     const rows: Array<{ er_visit_id?: string | null }> = Array.isArray(list) ? list : list.patients ?? []
     expect(rows.some((r) => String(r.er_visit_id) === String(visitId))).toBe(false)
+  })
+
+  test('Active Patients starts collapsed and toggles open and closed', async ({ page }) => {
+    await page.goto('/isbar')
+    const toggle = page.getByRole('button', { name: /Active Patients/ })
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('table')).toHaveCount(0)
+    // The count badge is visible even while collapsed.
+    await expect(page.getByText(/\d+ active/)).toBeVisible({ timeout: 10000 })
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.locator('table')).toBeVisible()
+
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.locator('table')).toHaveCount(0)
   })
 
   test('manual entry: filling required fields and submitting creates a new patient', async ({ page }) => {
@@ -143,6 +161,7 @@ test.describe('ER ISBAR Entry', () => {
     // stay from the Active Patients table below to confirm the save really
     // reached the backend, not just this session's in-memory form state.
     await page.reload()
+    await expandActivePatients(page)
     await page.getByRole('cell', { name: uniqueName }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
     const reloadedHeartRateField = page.getByRole('spinbutton', { name: 'Heart Rate (bpm)' })

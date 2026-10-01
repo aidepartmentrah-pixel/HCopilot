@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { expandActivePatients } from './activePatients'
 
 test.describe('ER ISBAR Entry — clinical controls (V2.2b)', () => {
   test('ESI, units, blood pressure, and pain scale all round-trip through a real save', async ({ page }) => {
@@ -37,6 +38,7 @@ test.describe('ER ISBAR Entry — clinical controls (V2.2b)', () => {
 
     // Reload and re-select from Active Patients to confirm this reached the real backend.
     await page.reload()
+    await expandActivePatients(page)
     await page.getByRole('cell', { name: uniqueName }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
