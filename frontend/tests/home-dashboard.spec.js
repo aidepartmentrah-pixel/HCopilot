@@ -32,6 +32,27 @@ test.describe('Home dashboard', () => {
     });
 });
 
+test.describe('Home dashboard layout (Home Dashboard Layout Plan, HD-1..HD-4)', () => {
+    test('uses the wide layout on Home only, with one shared grid and no emoji/inner buttons', async ({ page }) => {
+        await login(page);
+        const edges = await page.evaluate(() => ['.hd-page-title', '.hd-welcome', '.hd-kpi-row', '.hd-quick-actions', '.hd-panels']
+            .map(s => Math.round(document.querySelector(s).getBoundingClientRect().left)));
+        expect(new Set(edges).size).toBe(1);                       // all blocks share the same left edge
+        const homeW = await page.evaluate(() => document.querySelector('.hd-welcome').getBoundingClientRect().width);
+        expect(homeW).toBeGreaterThan(1200);                       // was capped at 1200px before HD-1
+
+        await expect(page.locator('.hd-quick-actions button')).toHaveCount(4);   // whole card is the button
+        await expect(page.locator('.hd-quick-actions .hd-action svg')).toHaveCount(8); // line icon + arrow each
+        const text = await page.locator('.hd-quick-actions').innerText();
+        expect(text).not.toMatch(/Start Entry|View Beds|View History →|View Statistics/);
+
+        // Other pages keep the standard 1400px container.
+        await page.click('.nav-btn[data-section="patients"]');
+        const w = await page.evaluate(() => document.querySelector('.container').getBoundingClientRect().width);
+        expect(w).toBeLessThanOrEqual(1400);
+    });
+});
+
 test.describe('Theme switching (UI-T7/UI-T8)', () => {
     test('selecting a theme applies it live and persists across reload', async ({ page }) => {
         await login(page);
