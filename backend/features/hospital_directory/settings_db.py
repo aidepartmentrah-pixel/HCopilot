@@ -21,7 +21,7 @@ INTEGRATION_NAME = "hospital_directory"
 
 _DEFAULTS = {
     "base_url": None, "api_key_encrypted": None,
-    "timeout_seconds": 10, "verify_tls": True,
+    "timeout_seconds": 10, "verify_tls": True, "er_roster_enabled": False,
     "last_test_status": None, "last_test_message": None, "last_test_at": None,
 }
 
@@ -32,6 +32,7 @@ def _row_to_dict(row: ExternalApiSettings) -> dict:
         "api_key_encrypted":  row.api_key_encrypted,
         "timeout_seconds":    row.timeout_seconds,
         "verify_tls":         row.verify_tls,
+        "er_roster_enabled":  bool(row.er_roster_enabled),
         "last_test_status":   row.last_test_status,
         "last_test_message":  row.last_test_message,
         "last_test_at":       row.last_test_at.isoformat() if row.last_test_at else None,
@@ -84,3 +85,20 @@ def update_last_test_result(status: str, message: str) -> None:
         row.last_test_message = message
         row.last_test_at      = datetime.now(timezone.utc)
         session.commit()
+
+
+def set_er_roster_enabled(enabled: bool) -> bool:
+    """
+    Flip only the Live ER roster switch, leaving every other setting alone.
+    Returns False (and does nothing) if no settings row exists yet — the
+    switch has no meaning before a base_url has been saved.
+    """
+    with SessionLocal() as session:
+        row = session.query(ExternalApiSettings).filter(
+            ExternalApiSettings.integration_name == INTEGRATION_NAME
+        ).first()
+        if row is None:
+            return False
+        row.er_roster_enabled = bool(enabled)
+        session.commit()
+        return True

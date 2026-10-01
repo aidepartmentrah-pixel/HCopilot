@@ -52,7 +52,7 @@ def test_get_er_current_visits_against_mock(client):
     # configured (dev: the v1.2 mock). Skips rather than fails if the
     # external API isn't reachable/configured in this environment — this
     # test proves the client function's shape, not environment uptime.
-    result = hd_client.get_er_current_visits()
+    result = hd_client.get_er_current_visits(force=True)
     if result["status"] != "ok":
         pytest.skip(f"Hospital Directory API not usable in this environment: {result}")
     assert "items" in result and "total" in result

@@ -58,6 +58,11 @@ def reconcile_er_departures() -> dict:
         raises.
     """
     result = client.get_er_current_visits()
+    if result["status"] == "roster_off":
+        # Switch is OFF (deployed directory API may predate the endpoint):
+        # not an error, nothing to reconcile, and crucially no discharges.
+        logger.debug("er_sync: live ER roster switch is off — nothing to do")
+        return {"discharged": 0, "status": "roster_off"}
     if result["status"] != "ok":
         logger.warning("er_sync: could not poll the ER roster (%s) — skipping this cycle", result["status"])
         return {"discharged": 0, "status": result["status"]}

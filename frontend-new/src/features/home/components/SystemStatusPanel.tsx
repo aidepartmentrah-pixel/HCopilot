@@ -42,7 +42,9 @@ export function SystemStatusPanel() {
         ? { tone: 'neutral' as StatusTone, text: 'Checking…' }
         : roster.isError
           ? { tone: 'danger' as StatusTone, text: 'Unavailable' }
-          : roster.data?.status !== 'ok'
+          : roster.data?.status === 'roster_off'
+            ? { tone: 'neutral' as StatusTone, text: 'ER roster not enabled' }
+            : roster.data?.status !== 'ok'
             ? { tone: 'warning' as StatusTone, text: 'Degraded' }
             : { tone: 'success' as StatusTone, text: 'Operational' }),
     },

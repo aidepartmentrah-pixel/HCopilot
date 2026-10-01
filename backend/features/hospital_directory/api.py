@@ -9,6 +9,8 @@
 #                                            settings; persists the last-test result
 #   GET  /config/middle-name-candidates   — the admin-editable guess-loop candidate list
 #   POST /config/middle-name-candidates   — replace the candidate list
+#   POST /config/er-roster/test           — force one /er/current-visits call, ignoring the switch
+#   POST /config/er-roster/enable         — flip the "Live ER roster" switch (enable needs a passing test)
 #   GET  /patients/search                 — proxy a structured patient search
 #   GET  /patients/find-possible-matches  — the "Find possible matches" guess loop
 #
@@ -51,6 +53,7 @@ async def get_config():
             "api_key_error":      key_err,  # "key_missing" | "key_error" | None
             "timeout_seconds":    row["timeout_seconds"],
             "verify_tls":         row["verify_tls"],
+            "er_roster_enabled":  row["er_roster_enabled"],
             "last_test_status":   row["last_test_status"],
             "last_test_message":  row["last_test_message"],
             "last_test_at":       row["last_test_at"],
@@ -105,6 +108,54 @@ async def test_connection():
             "status":  result["status"],
             "message": result.get("message", ""),
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+def _check_er_roster() -> dict:
+    """One forced roster call (ignores the switch) plus a shape check. Never raises."""
+    result = client.get_er_current_visits(force=True)
+    if result["status"] != "ok":
+        return {"success": False, "status": result["status"],
+                "message": result.get("message") or "The ER roster endpoint did not respond as expected."}
+    items = result["items"]
+    if not isinstance(items, list) or any(not isinstance(i, dict) or i.get("er_visit_id") is None for i in items):
+        return {"success": False, "status": "invalid_response",
+                "message": "The ER roster responded, but entries are missing er_visit_id."}
+    return {"success": True, "status": "ok", "message": f"ER roster reachable — {len(items)} patient(s) currently listed."}
+
+
+@router.post("/config/er-roster/test")
+async def test_er_roster():
+    """Check that the directory API serves /er/current-visits. Does not change the switch."""
+    try:
+        return _check_er_roster()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ErRosterEnable(BaseModel):
+    enabled: bool
+
+
+@router.post("/config/er-roster/enable")
+async def set_er_roster_enabled(body: ErRosterEnable):
+    """
+    Turn the Live ER roster on or off. Turning it OFF always succeeds.
+    Turning it ON re-runs the roster check server-side and refuses (leaving
+    the switch off) unless it passes — a UI can't skip the test.
+    """
+    try:
+        if body.enabled:
+            check = _check_er_roster()
+            if not check["success"]:
+                return {**check, "er_roster_enabled": False}
+        if not settings_db.set_er_roster_enabled(body.enabled):
+            return {"success": False, "status": "disabled",
+                     "message": "Save the Hospital Directory connection settings first.",
+                     "er_roster_enabled": False}
+        return {"success": True, "status": "ok", "er_roster_enabled": body.enabled,
+                 "message": "Live ER roster enabled." if body.enabled else "Live ER roster disabled."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

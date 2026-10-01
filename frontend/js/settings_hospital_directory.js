@@ -49,6 +49,7 @@ async function loadHospitalDirectorySettings() {
         }
 
         _hdRenderLastTest(data.last_test_status, data.last_test_message, data.last_test_at);
+        _hdRenderRosterSwitch(!!data.er_roster_enabled);
     } catch (error) {
         _hdSetError('Error loading settings: ' + error.message);
     }
@@ -115,6 +116,62 @@ async function testHospitalDirectoryConnection() {
         resultEl.innerHTML = `<div class="hd-test-result-title">❌ Failed</div>Network error: ${error.message}`;
     } finally {
         btn.disabled = false; btn.textContent = '▶ Test Connection';
+    }
+}
+
+// ── Live ER roster switch ───────────────────────────────────────────────────
+// Default OFF. The backend refuses to turn it on unless a forced test call
+// to /er/current-visits passes (see api.py), so this UI can't skip the test.
+
+function _hdRenderRosterSwitch(enabled) {
+    document.getElementById('hd-roster-enabled').checked = enabled;
+    document.getElementById('hd-roster-state').textContent = enabled ? 'On' : 'Off';
+}
+
+function _hdShowRosterResult(ok, message) {
+    const el = document.getElementById('hd-roster-test-result');
+    el.hidden = false;
+    el.className = 'hd-test-result ' + (ok ? 'hd-result-ok' : 'hd-result-fail');
+    el.innerHTML = `<div class="hd-test-result-title">${ok ? '✅ Success' : '❌ Not available'}</div>${_escapeHtml(message || '')}`;
+}
+
+async function testErRoster() {
+    const btn = document.getElementById('hd-roster-test-btn');
+    btn.disabled = true; btn.textContent = 'Testing…';
+    try {
+        const res  = await fetch('/api/hospital-directory/config/er-roster/test', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+        _hdShowRosterResult(data.success, data.message);
+    } catch (error) {
+        _hdShowRosterResult(false, 'Network error: ' + error.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '▶ Test ER roster';
+    }
+}
+
+async function toggleErRosterSwitch(wantEnabled) {
+    const box = document.getElementById('hd-roster-enabled');
+    box.disabled = true;
+    try {
+        const res  = await fetch('/api/hospital-directory/config/er-roster/enable', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: wantEnabled })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+        _hdRenderRosterSwitch(!!data.er_roster_enabled);
+        if (wantEnabled && !data.success) {
+            _hdShowRosterResult(false, (data.message || 'The ER roster test failed.') + ' The switch stays off.');
+        } else {
+            _hdShowRosterResult(true, data.message);
+        }
+    } catch (error) {
+        _hdRenderRosterSwitch(!wantEnabled);
+        _hdShowRosterResult(false, 'Network error: ' + error.message);
+    } finally {
+        box.disabled = false;
     }
 }
 

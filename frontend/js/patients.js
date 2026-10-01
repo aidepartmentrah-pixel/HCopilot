@@ -230,7 +230,7 @@ function patDirectoryGiveUpAndEnterManually() {
 
 function _patDirectoryStatusMessage(status, message) {
     if (status === 'disabled') return 'Hospital Directory API is not configured (see Settings → Hospital Directory API).';
-    return message || 'Hospital Directory search is currently unavailable.';
+    return (message || 'Hospital Directory search is currently unavailable.') + ' You can add the patient manually instead.';
 }
 
 function selectPatDirectoryResult(item) {
@@ -321,6 +321,29 @@ function _escapeHtml(s) {
 
 let _patErRosterItems = [];
 
+// While the admin "Live ER roster" switch is off (see Settings → Hospital
+// Directory API) hide the roster UI, show one neutral line, and lead with
+// the search / manual-entry fallback. Never a warning — this is the normal
+// state until the directory API serves /er/current-visits.
+function _setPatErRosterOff(off) {
+    const header = document.getElementById('pat-a-roster-header');
+    const note   = document.getElementById('pat-er-roster-off-note');
+    if (header) header.hidden = off;
+    if (note)   note.hidden = !off;
+    const desc  = document.getElementById('pat-a-page-description');
+    const title = document.getElementById('pat-a-empty-title');
+    if (desc)  desc.textContent  = off ? 'Search the Hospital Directory or enter a patient manually to start ISBAR documentation in place — no modal, no re-typing identity'
+                                       : 'Pick a patient from the Live ER Roster to start ISBAR documentation in place — no modal, no re-typing identity';
+    if (title) title.textContent = off ? 'Search or enter a patient to begin ISBAR entry'
+                                       : 'Select a patient from the Live ER Roster to begin ISBAR entry';
+    const body = document.getElementById('pat-a-fallback-body');
+    if (off && body && body.hidden && !_patRosterOffOpenedFallback) {
+        _patRosterOffOpenedFallback = true;   // open once; don't fight the user's own toggle
+        togglePatFallback();
+    }
+}
+let _patRosterOffOpenedFallback = false;
+
 async function loadPatErRoster() {
     const statusEl  = document.getElementById('pat-er-roster-status');
     const resultsEl = document.getElementById('pat-er-roster-results');
@@ -329,8 +352,15 @@ async function loadPatErRoster() {
     try {
         const res  = await fetch('/api/hospital-directory/er/current-visits');
         const data = await res.json();
+        _setPatErRosterOff(data.status === 'roster_off');
         if (!data.success) {
             _patErRosterItems = [];
+            if (data.status === 'roster_off') {
+                if (statusEl) statusEl.textContent = '';
+                resultsEl.innerHTML = '';
+                resultsEl.hidden = true;
+                return;
+            }
             if (statusEl) statusEl.textContent = _patDirectoryStatusMessage(data.status, data.message);
             resultsEl.innerHTML = '';
             resultsEl.hidden = true;

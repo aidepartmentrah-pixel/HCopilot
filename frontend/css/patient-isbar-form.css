@@ -948,6 +948,9 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     gap: var(--space-2);
     margin-bottom: var(--space-2);
 }
+.pat-a-roster-header[hidden] { display: none; }   /* roster switch OFF — see patients.js _setPatErRosterOff */
+.pat-a-roster-off-note { margin: 0 0 12px; }
+
 .pat-a-roster-header h3 {
     display: flex;
     align-items: center;

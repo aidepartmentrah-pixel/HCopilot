@@ -1021,7 +1021,7 @@
         <section id="patients" class="section">
             <div class="section-header">
                 <h2>🧑‍⚕️ New Patient / ISBAR</h2>
-                <p class="section-description">Pick a patient from the Live ER Roster to start ISBAR documentation in place — no modal, no re-typing identity</p>
+                <p class="section-description" id="pat-a-page-description">Pick a patient from the Live ER Roster to start ISBAR documentation in place — no modal, no re-typing identity</p>
             </div>
             <div class="pat-section-layout">
 
@@ -1032,8 +1032,9 @@
                      activated in place (no modal) once one is — see
                      selectPatStay()/setPatFormMode() in patients.js. -->
                 <div class="pat-a-layout">
-                    <div class="pat-a-roster-panel">
-                        <div class="pat-a-roster-header">
+                    <div class="pat-a-roster-panel" id="pat-a-roster-panel">
+                        <p class="pat-hint pat-a-roster-off-note" id="pat-er-roster-off-note" hidden>Live ER roster is not enabled. Search the Hospital Directory or add the patient manually below.</p>
+                        <div class="pat-a-roster-header" id="pat-a-roster-header">
                             <h3><span class="pat-a-live-dot" aria-hidden="true"></span> Live ER Roster</h3>
                             <button type="button" class="s-btn s-btn-outline" id="pat-er-roster-refresh-btn" onclick="loadPatErRoster()">🔄 Refresh</button>
                         </div>
@@ -1110,7 +1111,7 @@
                              not hidden, per the redesign's confirmed decision #1. -->
                         <div class="pat-a-placeholder" id="pat-a-placeholder">
                             <div class="pat-a-placeholder-icon" aria-hidden="true">🧑‍⚕️</div>
-                            <h3>Select a patient from the Live ER Roster to begin ISBAR entry</h3>
+                            <h3 id="pat-a-empty-title">Select a patient from the Live ER Roster to begin ISBAR entry</h3>
                             <p>The patient's information will load automatically, and you can then complete the ISBAR sections.</p>
                         </div>
 
@@ -2860,6 +2861,25 @@
 
                         <div id="hd-test-result" class="hd-test-result" hidden></div>
                         <div id="hd-last-test" class="hd-last-test"></div>
+
+                        <div class="hd-divider"></div>
+
+                        <div class="hd-candidates-header">
+                            <h4>Live ER roster</h4>
+                            <p>Uses the directory API's <code>/er/current-visits</code> endpoint. Leave this off until the vendor has deployed it &mdash; while off, HCopilot never calls it and manual add / directory search work as usual. It can only be switched on after a successful test.</p>
+                        </div>
+                        <div id="hd-roster-error" class="form-error-box"></div>
+                        <div class="hd-verify-row">
+                            <label class="feat-toggle-label">
+                                <input type="checkbox" id="hd-roster-enabled" onchange="toggleErRosterSwitch(this.checked)">
+                                <span class="feat-slider"></span>
+                            </label>
+                            <span id="hd-roster-state">Off</span>
+                        </div>
+                        <div class="hd-actions">
+                            <button class="s-btn s-btn-outline" id="hd-roster-test-btn" onclick="testErRoster()">▶ Test ER roster</button>
+                        </div>
+                        <div id="hd-roster-test-result" class="hd-test-result" hidden></div>
 
                         <div class="hd-divider"></div>
 

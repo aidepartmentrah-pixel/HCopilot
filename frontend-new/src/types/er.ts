@@ -19,7 +19,8 @@ export interface ErRosterItem {
 
 export interface ErRosterResponse {
   success: boolean
-  status: 'ok' | string
+  /** 'roster_off' = the admin's "Live ER roster" switch is off (not an error). */
+  status: 'ok' | 'roster_off' | string
   message?: string
   items: ErRosterItem[]
   total?: number

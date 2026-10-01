@@ -30,7 +30,7 @@
 
 from sqlalchemy import (
     Column, Integer, BigInteger, String, Unicode, ForeignKey, ForeignKeyConstraint,
-    CheckConstraint, UniqueConstraint, Float, DateTime, Boolean,
+    CheckConstraint, UniqueConstraint, Float, DateTime, Boolean, text,
 )
 
 from db.session import Base
@@ -613,6 +613,9 @@ class ExternalApiSettings(Base):
     api_key_encrypted  = Column(String(500), nullable=True)
     timeout_seconds    = Column(Integer, nullable=False, default=10)
     verify_tls         = Column(Boolean, nullable=False, default=True)
+    # Admin switch (default OFF): while false, nothing calls the v1.2-only
+    # /er/current-visits endpoint. See hospital_directory/client.py.
+    er_roster_enabled  = Column(Boolean, nullable=False, default=False, server_default=text("0"))
     last_test_status   = Column(String(20), nullable=True)   # "success" | "failure"
     last_test_message  = Column(String(1000), nullable=True)
     last_test_at       = Column(DateTime, nullable=True)

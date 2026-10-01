@@ -32,6 +32,8 @@
 #   ssl_error         — TLS verification failed
 #   http_error        — any other non-2xx
 #   invalid_response  — 2xx but the body wasn't parseable/expected shape
+#   roster_off        — the admin "Live ER roster" switch is OFF; returned
+#                        BEFORE any HTTP call (ER roster only). Not an error.
 # =============================================================================
 
 import logging
@@ -218,7 +220,7 @@ def get_patient(patient_id: str) -> dict:
     return {"status": "ok", "patient": result["data"]}
 
 
-def get_er_current_visits() -> dict:
+def get_er_current_visits(force: bool = False) -> dict:
     """
     GET /er/current-visits — ER Live-Roster Redesign (see docs/development/
     ER Live Roster Redesign/). A separate system from the his-general
@@ -236,7 +238,16 @@ def get_er_current_visits() -> dict:
     call site (see the sex-field precedent in this module's own docstring:
     vendor-documented shapes have already been wrong once for this
     contract). `er_visit_id` is the only field callers should key on.
+
+    Gated by the admin "Live ER roster" switch (settings_db
+    er_roster_enabled, default OFF): while off this returns "roster_off"
+    without touching the network, because the deployed directory API may
+    predate this endpoint. `force=True` bypasses the switch and is used
+    only by the "Test ER roster" check (see api.py) — never by pollers.
+    No API-version or endpoint-reaction detection is done on purpose.
     """
+    if not force and not settings_db.get_settings_row()["er_roster_enabled"]:
+        return {"status": "roster_off", "message": "Live ER roster is not enabled."}
     cfg = _load_config()
     if cfg["status"] != "ok":
         return cfg
