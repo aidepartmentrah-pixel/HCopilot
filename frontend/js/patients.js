@@ -42,6 +42,10 @@ let patActiveView    = 'daily'; // 'daily' | 'log'
 // roster-pick-into-Edit-modal pattern (ER9) with in-place activation.
 let patActiveStayId         = null;
 let patActiveIsRosterOrigin = false;
+// A roster name that has been picked into the form but NOT yet added (2026-10-01:
+// create on Add, not on pick). Holds the roster item until createPatientFromForm()
+// saves it, then it is cleared and the person drops out of the roster list.
+let patDraftRosterItem = null;
 let patActiveErVisitId      = null; // the real er_visit_id, resent on every save so the
                                      // server's check_required_by_origin validator keeps
                                      // recognizing this as roster-origin (see saveActivePatientForm)
@@ -223,6 +227,7 @@ function _patFocusManualName(typedName) {
 }
 
 function patDirectoryGiveUpAndEnterManually() {
+    patDraftRosterItem = null;
     const typedName = _patTypedDirectoryName();
     ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
         .forEach(id => { document.getElementById(id).value = ''; });
@@ -237,6 +242,7 @@ function _patDirectoryStatusMessage(status, message) {
 }
 
 function selectPatDirectoryResult(item) {
+    patDraftRosterItem = null;
     document.getElementById('pat-name').value = item.full_name || '';
     if (item.age != null) _setPatAgeField(item.age);
 
@@ -360,10 +366,13 @@ function _renderPatErRosterItems() {
     // db/models.py).
     const byVisitId = {};
     (allPatientsData || []).forEach(p => { if (p.er_visit_id) byVisitId[String(p.er_visit_id)] = p; });
-    const items = _patErRosterItems;
-    const newCount = items.filter(i => !byVisitId[String(i.er_visit_id)]).length;
+    // 2026-10-01 (user decision: create on Add, not on pick) - anyone who has
+    // already been added (an active stay carries their er_visit_id) is removed
+    // from this list; they live in the Live ER waiting list / Active Patients
+    // table from then on. Only not-yet-added people are shown.
+    const items = _patErRosterItems.filter(i => !byVisitId[String(i.er_visit_id)]);
 
-    if (statusEl) statusEl.textContent = `${newCount} of ${items.length} not yet added`;
+    if (statusEl) statusEl.textContent = items.length === 1 ? '1 not yet added' : `${items.length} not yet added`;
 
     if (!items.length) {
         resultsEl.hidden = true;
@@ -373,14 +382,13 @@ function _renderPatErRosterItems() {
 
     resultsEl.hidden = false;
     resultsEl.innerHTML = '<div class="pat-directory-result-list">' + items.map((item, i) => {
-        const existing = byVisitId[String(item.er_visit_id)];
-        const isActive = !!existing && existing.stay_id === patActiveStayId;
+        const isActive = !!patDraftRosterItem && String(patDraftRosterItem.er_visit_id) === String(item.er_visit_id);
         const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ');
         const meta = [item.arrival_time ? _formatDatetime(item.arrival_time) : null, item.chief_complaint || null]
             .filter(Boolean).join(' · ');
         const rowCls = 'pat-directory-result-row pat-a-roster-row' +
-            (existing ? ' pat-a-roster-row-added' : '') + (isActive ? ' pat-a-roster-row-active' : '');
-        const chip = existing ? '<span class="pat-a-roster-chip">' + (isActive ? 'Selected' : 'In Progress') + '</span>' : '';
+            (isActive ? ' pat-a-roster-row-active' : '');
+        const chip = isActive ? '<span class="pat-a-roster-chip">Selected</span>' : '';
         return '<button type="button" class="' + rowCls + '" data-idx="' + i + '" data-er-visit-id="' + _escapeHtml(String(item.er_visit_id)) + '">' +
                    '<span class="pat-directory-result-radio"></span>' +
                    '<span class="pat-directory-result-avatar">🚑</span>' +
@@ -396,57 +404,41 @@ function _renderPatErRosterItems() {
     });
 }
 
+// Picking a roster name only FILLS the form (create on Add, 2026-10-01). Nothing
+// is saved until the user clicks Add Patient (createPatientFromForm), which
+// then creates the stay as roster-origin, drops the person from this list and
+// puts them on the Live ER waiting list for bed assignment.
 async function pickPatErRosterItem(item) {
     const statusEl = document.getElementById('pat-er-roster-status');
     const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ');
 
-    // Already created for this roster entry — re-select rather than re-create.
+    // Defensive: a stay for this visit already exists (e.g. added in another
+    // tab) - re-select it rather than risk a duplicate.
     const existing = (allPatientsData || []).find(p => String(p.er_visit_id) === String(item.er_visit_id));
     if (existing) {
         try {
             const detailsRes = await fetch('/api/patients/' + existing.stay_id + '/details');
             if (detailsRes.ok) { selectPatStay(await detailsRes.json()); return; }
-        } catch (_) { /* fall through to re-fetch/create below only if this truly fails */ }
+        } catch (_) { /* fall through to a fresh draft */ }
     }
 
     try {
-        const idsRes = await fetch('/api/patients/next-ids');
-        const ids    = await idsRes.json();
-
-        const payload = {
-            patient_id:    ids.next_patient_id,
-            stay_id:       ids.next_stay_id,
-            name,
-            arrival_time:  _toDatetimeLocal(item.arrival_time) || _currentDatetimeLocal(),
-            er_visit_id:   String(item.er_visit_id),
-            record_source: 'external',
-        };
+        patActiveStayId = null; patActiveIsRosterOrigin = false; patActiveErVisitId = null;
+        clearPatientForm();
+        patDraftRosterItem = item;
+        document.getElementById('pat-name').value = name;
+        setDateTimeValue('pat-arrival-time', _toDatetimeLocal(item.arrival_time) || _currentDatetimeLocal());
         const mappedGender = _mapDirectorySexToGender(item.gender);
-        if (mappedGender) payload.gender = mappedGender;
-        if (item.age != null) payload.age = item.age;
-        if (item.chief_complaint) payload.chiefcomplaint = item.chief_complaint;
-
-        const res = await fetch('/api/patients/add', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        const result = await res.json();
-        if (!res.ok) {
-            if (statusEl) statusEl.textContent = parseApiError(result.detail) || 'Failed to add patient.';
-            return;
-        }
-
-        showMessage(name + ' added from the ER roster — continue with ISBAR below.', 'success');
-        notifyDataChange('patient', 'Patient #' + payload.patient_id + ' added from the ER roster');
-        await loadPatients();
-
-        // ER UI Architecture Redesign — activate the ISBAR panel in place
-        // instead of opening the Edit modal (the old ER9 pattern).
-        const detailsRes = await fetch('/api/patients/' + payload.stay_id + '/details');
-        const row = await detailsRes.json();
-        selectPatStay(row);
+        if (mappedGender) document.getElementById('pat-gender').value = mappedGender;
+        if (item.age != null) _setPatAgeField(item.age);
+        if (item.chief_complaint) document.getElementById('pat-chiefcomplaint').value = item.chief_complaint;
+        setPatFormMode('draft');
+        refreshPatientCoreSectionStatus();
+        _renderPatErRosterItems(); // show the "Selected" chip
+        document.getElementById('isbar-details-patient-arrival-add').open = true;
+        document.getElementById('pat-name').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (error) {
-        if (statusEl) statusEl.textContent = 'Network error: ' + error.message;
+        if (statusEl) statusEl.textContent = 'Could not open this patient: ' + error.message;
     }
 }
 
@@ -849,6 +841,7 @@ function togglePatDatasetCollapse(forceExpanded) {
 // form for a brand-new manual entry (mode 'draft') without creating a stay
 // yet; creation still happens on submit, same as directory-search entries.
 function enterManualPatientEntry() {
+    patDraftRosterItem = null;
     _patFocusManualName(_patTypedDirectoryName());
 }
 
@@ -1429,6 +1422,7 @@ function clearPatientForm() {
     _setPatAgeField(null); // also resets the unit picker back to Years
     setDateTimeValue('pat-triage-time', ''); // dt-picker-time — needs the picker's own clear, not a raw .value reset
     patActiveBedOccupationTime = null;
+    patDraftRosterItem = null;
     resetVitalsAdditions('add');
     resetIsbarState('add');
     setPatAddError('');
@@ -1441,6 +1435,7 @@ function clearPatientForm() {
     clearPatDirectoryLink();
     initPatientForm();
     refreshPatientCoreSectionStatus();
+    if (typeof _renderPatErRosterItems === 'function') _renderPatErRosterItems(); // drop a stale "Selected" chip
 }
 
 // Dispatches to the create path (fresh manual/directory draft) or the save
@@ -1476,11 +1471,16 @@ async function createPatientFromForm() {
     if (!patientId || patientId < 1) { failPatAddValidation('Patient ID must be a positive integer.', 'pat-patient-id'); return; }
     if (!stayId    || stayId    < 1) { failPatAddValidation('Stay ID must be a positive integer.', 'pat-stay-id'); return; }
     if (!name)                { failPatAddValidation('Name is required.', 'pat-name'); return; }
-    if (!gender)               { failPatAddValidation('Gender is required.', 'pat-gender'); return; }
-    if (age    === null || age    < 0)                      { failPatAddValidation('Age is required and must be a positive number.', 'pat-age'); return; }
     if (!arrival)              { failPatAddValidation('Arrival time is required.', 'pat-arrival-time'); return; }
-    if (acuity === null || acuity < 1   || acuity > 5)   { failPatAddValidation('Acuity is required and must be between 1 and 5.', 'pat-acuity'); return; }
-    if (!chiefcomplaint)       { failPatAddValidation('Chief complaint is required.', 'pat-chiefcomplaint'); return; }
+    // A roster pick is added with just name + arrival (the nurse completes
+    // gender/age/acuity/chief complaint afterwards in the same panel - same
+    // relaxed rule the server applies via check_required_by_origin).
+    if (!patDraftRosterItem) {
+        if (!gender)               { failPatAddValidation('Gender is required.', 'pat-gender'); return; }
+        if (age    === null || age    < 0)                      { failPatAddValidation('Age is required and must be a positive number.', 'pat-age'); return; }
+        if (acuity === null || acuity < 1   || acuity > 5)   { failPatAddValidation('Acuity is required and must be between 1 and 5.', 'pat-acuity'); return; }
+        if (!chiefcomplaint)       { failPatAddValidation('Chief complaint is required.', 'pat-chiefcomplaint'); return; }
+    }
 
     // Initial Vital Signs and the 4 ISBAR sections are fully optional —
     // only range-validate whichever vitals were actually entered.
@@ -1510,6 +1510,10 @@ async function createPatientFromForm() {
         external_visit_id:   null, // no visit concept in this Hospital Directory API version
         record_source:       patDirectoryLinked ? 'external' : 'local',
     };
+    if (patDraftRosterItem) {
+        payload.record_source = 'external';
+        payload.er_visit_id   = String(patDraftRosterItem.er_visit_id);
+    }
     const isbarPayload = buildIsbarPayload('add', collectVitalsAdditions('add'));
     if (isbarPayload) payload.isbar = isbarPayload;
 
@@ -1549,7 +1553,10 @@ async function createPatientFromForm() {
         setPatAddErrorSummary('');
         showMessage(result.message, 'success');
         notifyDataChange('patient', `Patient #${patientId} added to daily patients`);
-        await loadPatients();
+        const wasRosterDraft = !!patDraftRosterItem;
+        patDraftRosterItem = null;
+        await loadPatients(); // re-renders the roster without this person (now an active stay)
+        if (wasRosterDraft) showMessage(name + ' added - now on the Live ER waiting list. Assign a bed in Live ER.', 'success');
         // Activate the just-created stay in place instead of collapsing the
         // form — continuing ISBAR entry is the very next thing to do.
         try {
