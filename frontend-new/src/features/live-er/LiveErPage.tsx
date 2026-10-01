@@ -16,6 +16,8 @@ import { cardFromBed, cardFromBedless, type PlacementCardData } from './utils'
 import styles from './LiveErPage.module.css'
 
 const UNASSIGNED_WARD_LABEL = 'Unassigned'
+/** The waiting lane can hold hundreds of patients; show this many rows until "Show all" is clicked. */
+const WAITING_COLLAPSED_ROWS = 3
 
 function groupBedsByWard(beds: Bed[]): { wardName: string; beds: Bed[] }[] {
   const groups = new Map<string, Bed[]>()
@@ -152,6 +154,7 @@ export function LiveErPage() {
               <WardLane
                 title="Waiting / No Bed"
                 kind="waiting"
+                collapsedRows={WAITING_COLLAPSED_ROWS}
                 cards={waitingCards}
                 onCardClick={handleCardClick}
                 selectedCardId={selectedWaitingCard?.id}

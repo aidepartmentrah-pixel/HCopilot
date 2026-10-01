@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { PlacementCardData } from '../utils'
 import { WardLane } from './WardLane'
@@ -44,6 +45,43 @@ describe('WardLane', () => {
     render(<WardLane title="Section A" kind="bed" cards={cards} onCardClick={() => {}} />)
     expect(screen.getAllByTestId('placement-card')).toHaveLength(12)
     expect(screen.queryByRole('button', { name: /Scroll/ })).not.toBeInTheDocument()
+  })
+
+  describe('collapsible waiting lane', () => {
+    // jsdom has no ResizeObserver, so the lane falls back to 4 cards per row: 3 rows = 12 cards.
+    const waiting = (n: number) =>
+      Array.from({ length: n }, (_, i) => bedCard({ id: `waiting-${i}`, kind: 'waiting', statusLabel: 'Waiting', primary: `P${i}` }))
+
+    it('shows only the first rows with a "Show all N" toggle, and expands/collapses on click', async () => {
+      const user = userEvent.setup()
+      render(<WardLane title="Waiting / No Bed" kind="waiting" collapsedRows={3} cards={waiting(20)} onCardClick={() => {}} />)
+      expect(screen.getAllByTestId('placement-card')).toHaveLength(12)
+
+      await user.click(screen.getByRole('button', { name: 'Show all 20' }))
+      expect(screen.getAllByTestId('placement-card')).toHaveLength(20)
+
+      await user.click(screen.getByRole('button', { name: 'Show less' }))
+      expect(screen.getAllByTestId('placement-card')).toHaveLength(12)
+    })
+
+    it('shows no toggle when everything already fits', () => {
+      render(<WardLane title="Waiting / No Bed" kind="waiting" collapsedRows={3} cards={waiting(5)} onCardClick={() => {}} />)
+      expect(screen.queryByRole('button', { name: /Show/ })).not.toBeInTheDocument()
+    })
+
+    it('never collapses a lane that has no collapsedRows (ward lanes show every bed)', () => {
+      render(<WardLane title="Section A" kind="bed" cards={waiting(20)} onCardClick={() => {}} />)
+      expect(screen.getAllByTestId('placement-card')).toHaveLength(20)
+      expect(screen.queryByRole('button', { name: /Show/ })).not.toBeInTheDocument()
+    })
+
+    it('auto-expands so a selected card is never hidden behind the fold', () => {
+      render(
+        <WardLane title="Waiting / No Bed" kind="waiting" collapsedRows={3} cards={waiting(20)} selectedCardId="waiting-17" onCardClick={() => {}} />,
+      )
+      expect(screen.getAllByTestId('placement-card')).toHaveLength(20)
+      expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument()
+    })
   })
 
   it('calls onCardClick with the clicked card', async () => {

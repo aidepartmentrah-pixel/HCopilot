@@ -1,6 +1,13 @@
+import { useEffect, useRef, useState } from 'react'
 import type { PlacementCardData } from '../utils'
 import { PlacementCard } from './PlacementCard'
 import styles from './WardLane.module.css'
+
+/** Matches PlacementCard's width and the track's gap. */
+const CARD_WIDTH = 168
+const CARD_GAP = 12
+/** Cards per row assumed where the lane can't be measured (no ResizeObserver). */
+const FALLBACK_CARDS_PER_ROW = 4
 
 interface WardLaneProps {
   title: string
@@ -10,10 +17,38 @@ interface WardLaneProps {
   onCardClick: (card: PlacementCardData) => void
   selectedCardId?: string | null
   assignableBedIds?: Set<string>
+  /** Collapse the lane to this many rows with a "Show all" toggle. Omit to always show every card (ward lanes — every bed must be visible). */
+  collapsedRows?: number
 }
 
 /** One ward = one framed panel whose cards wrap onto as many rows as needed, so every bed is visible without scrolling. */
-export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assignableBedIds }: WardLaneProps) {
+export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assignableBedIds, collapsedRows }: WardLaneProps) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [cardsPerRow, setCardsPerRow] = useState(FALLBACK_CARDS_PER_ROW)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    const el = trackRef.current
+    if (!el || collapsedRows == null || typeof ResizeObserver === 'undefined') return
+    const measure = () => setCardsPerRow(Math.max(1, Math.floor((el.clientWidth + CARD_GAP) / (CARD_WIDTH + CARD_GAP))))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [collapsedRows, cards.length])
+
+  const limit = collapsedRows != null ? cardsPerRow * collapsedRows : Infinity
+  const isCollapsible = cards.length > limit
+
+  // A selected card must never be hidden behind the collapsed fold.
+  const selectedIndex = selectedCardId ? cards.findIndex((c) => c.id === selectedCardId) : -1
+  const selectionHidden = selectedIndex >= limit
+  useEffect(() => {
+    if (selectionHidden) setExpanded(true)
+  }, [selectionHidden])
+
+  const visibleCards = isCollapsible && !expanded ? cards.slice(0, limit) : cards
+
   const occupiedCount = cards.filter((c) => c.statusLabel === 'Occupied').length
   const availableCount = cards.filter((c) => c.statusLabel === 'Available').length
 
@@ -34,8 +69,8 @@ export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assi
           {kind === 'bed' ? 'No beds configured for this area.' : 'No patients currently waiting without a bed.'}
         </p>
       ) : (
-        <div className={styles.track}>
-          {cards.map((card) => (
+        <div ref={trackRef} className={styles.track}>
+          {visibleCards.map((card) => (
             <PlacementCard
               key={card.id}
               card={card}
@@ -45,6 +80,11 @@ export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assi
             />
           ))}
         </div>
+      )}
+      {isCollapsible && (
+        <button type="button" className={styles.toggle} aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Show less' : `Show all ${cards.length}`}
+        </button>
       )}
     </section>
   )

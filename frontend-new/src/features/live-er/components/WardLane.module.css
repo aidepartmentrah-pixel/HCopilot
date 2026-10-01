@@ -50,3 +50,23 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+.toggle {
+  display: block;
+  margin: var(--space-3) auto 0;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--brand-700);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+.toggle:hover {
+  background: var(--brand-50);
+}
+.toggle:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
