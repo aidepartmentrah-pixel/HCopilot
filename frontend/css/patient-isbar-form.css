@@ -776,10 +776,11 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
    reading order). */
 .pat-directory-name-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(140px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
 }
-.pat-directory-name-field { display: flex; flex-direction: column; gap: 4px; }
+.pat-directory-name-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pat-directory-name-field input { width: 100%; min-width: 0; }
 .pat-directory-name-field label {
     font-size: 12px;
     font-weight: 600;
@@ -1001,12 +1002,12 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
 }
 .pat-a-fallback-toggle {
     width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: block;
+    position: relative;
     background: none;
     border: none;
-    padding: 4px 0;
+    padding: 4px 22px 4px 0;
+    line-height: 1.5;
     font-size: 12.5px;
     color: var(--color-text-muted);
     cursor: pointer;
@@ -1014,8 +1015,8 @@ textarea.isbar-input { resize: vertical; min-height: 64px; }
     text-align: left;
 }
 .pat-a-fallback-link { color: var(--color-primary); font-weight: 600; }
-.pat-a-fallback-chevron { margin-left: auto; }
-.pat-a-fallback-toggle.open .pat-a-fallback-chevron { transform: rotate(180deg); }
+.pat-a-fallback-chevron { position: absolute; right: 4px; top: 11px; }
+.pat-a-fallback-toggle.open .pat-a-fallback-chevron { transform: rotate(-135deg); top: 14px; }
 .pat-a-fallback-body { margin-top: var(--space-3); }
 .pat-a-fallback-body[hidden] { display: none; }
 .pat-a-manual-btn { margin-top: var(--space-3); width: 100%; }

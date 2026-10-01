@@ -91,28 +91,15 @@ window.addEventListener('click', function(e) {
 // searching keeps working exactly as before (record_source defaults to
 // "local" server-side).
 
+// Search by Patient ID was removed (2026-10-01) — name search is the only mode.
 function switchPatDirectoryTab(mode) {
-    patDirectorySearchMode = mode;
-    document.getElementById('pat-directory-tab-name').classList.toggle('active', mode === 'name');
-    document.getElementById('pat-directory-tab-id').classList.toggle('active', mode === 'id');
-    document.getElementById('pat-directory-panel-name').hidden = mode !== 'name';
-    document.getElementById('pat-directory-panel-id').hidden   = mode !== 'id';
-
-    // Clear whichever panel just became inactive so a stale value there
-    // can't silently combine with a new search in the other panel.
-    if (mode === 'name') {
-        document.getElementById('pat-directory-patient-id').value = '';
-    } else {
-        ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
-            .forEach(id => { document.getElementById(id).value = ''; });
-        document.getElementById('pat-directory-guess-row').hidden = true;
-    }
+    patDirectorySearchMode = 'name';
     document.getElementById('pat-directory-results').hidden = true;
 }
 
 function onPatDirectorySearchInput() {
     clearTimeout(patDirectorySearchTimer);
-    const patientId  = document.getElementById('pat-directory-patient-id').value.trim();
+    const patientId  = '';
     const firstName  = document.getElementById('pat-directory-first-name').value.trim();
     const fatherName = document.getElementById('pat-directory-father-name').value.trim();
     const lastName   = document.getElementById('pat-directory-last-name').value.trim();
@@ -125,8 +112,7 @@ function onPatDirectorySearchInput() {
     const guessRow = document.getElementById('pat-directory-guess-row');
     guessRow.hidden = !(patDirectorySearchMode === 'name' && firstName && lastName && !fatherName);
 
-    const ready = (patDirectorySearchMode === 'id' && patientId.length >= 1) ||
-                  (patDirectorySearchMode === 'name' && firstName && fatherName && lastName);
+    const ready = (patDirectorySearchMode === 'name' && firstName && fatherName && lastName);
     if (!ready) {
         resultsEl.hidden = true;
         resultsEl.innerHTML = '';
@@ -217,15 +203,32 @@ function _renderPatDirectoryResultItems(items) {
     });
 }
 
-function patDirectoryGiveUpAndEnterManually() {
-    ['pat-directory-patient-id', 'pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
-        .forEach(id => { document.getElementById(id).value = ''; });
-    document.getElementById('pat-directory-results').hidden = true;
-    document.getElementById('pat-directory-guess-row').hidden = true;
+// Joins whatever was typed in the 3 directory name boxes (first father last)
+// so a "not found" name isn't lost when the user switches to manual entry.
+function _patTypedDirectoryName() {
+    return ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
+        .map(id => document.getElementById(id).value.trim()).filter(Boolean).join(' ');
+}
+
+function _patFocusManualName(typedName) {
     const panel = document.getElementById('pat-a-isbar-panel');
     if (panel && panel.dataset.mode === 'disabled') setPatFormMode('draft');
     const nameField = document.getElementById('pat-name');
-    if (nameField) nameField.focus();
+    if (nameField) {
+        if (typedName) nameField.value = typedName;
+        nameField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        nameField.focus();
+    }
+    refreshPatientCoreSectionStatus();
+}
+
+function patDirectoryGiveUpAndEnterManually() {
+    const typedName = _patTypedDirectoryName();
+    ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('pat-directory-results').hidden = true;
+    document.getElementById('pat-directory-guess-row').hidden = true;
+    _patFocusManualName(typedName);
 }
 
 function _patDirectoryStatusMessage(status, message) {
@@ -247,7 +250,7 @@ function selectPatDirectoryResult(item) {
 
     document.getElementById('pat-directory-results').hidden = true;
     document.getElementById('pat-directory-guess-row').hidden = true;
-    ['pat-directory-patient-id', 'pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
+    ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
         .forEach(id => { document.getElementById(id).value = ''; });
     _renderPatDirectoryLinked();
     // Unlock the (still-empty, not-yet-created) form so the prefilled name
@@ -846,9 +849,7 @@ function togglePatDatasetCollapse(forceExpanded) {
 // form for a brand-new manual entry (mode 'draft') without creating a stay
 // yet; creation still happens on submit, same as directory-search entries.
 function enterManualPatientEntry() {
-    setPatFormMode('draft');
-    const nameField = document.getElementById('pat-name');
-    if (nameField) nameField.focus();
+    _patFocusManualName(_patTypedDirectoryName());
 }
 
 // Loads a full stay record (from a roster pick, an active-patients table
@@ -1432,7 +1433,7 @@ function clearPatientForm() {
     resetIsbarState('add');
     setPatAddError('');
     setPatAddErrorSummary('');
-    ['pat-directory-patient-id', 'pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
+    ['pat-directory-first-name', 'pat-directory-father-name', 'pat-directory-last-name']
         .forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('pat-directory-results').hidden = true;
     document.getElementById('pat-directory-guess-row').hidden = true;
