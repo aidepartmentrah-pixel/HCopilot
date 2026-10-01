@@ -36,6 +36,35 @@ describe('PlacementCard', () => {
     expect(screen.getByText('#10000095')).toBeInTheDocument()
   })
 
+  it('shows ward and bed type under the bed number', () => {
+    render(<PlacementCard card={{ ...occupiedCard, wardName: 'Section A' }} onClick={() => {}} />)
+    expect(screen.getByText('Section A · normal')).toBeInTheDocument()
+  })
+
+  it('leads a waiting card with its acuity and shows the name, complaint and ID below', () => {
+    render(<PlacementCard card={{ ...waitingCard, avatar: 'woman' }} onClick={() => {}} />)
+    expect(screen.getByTestId('placement-card-primary')).toHaveTextContent('Acuity 2')
+    expect(screen.getByTestId('placement-card-name')).toHaveTextContent('Wilson, Emily')
+    expect(screen.getByText('Chest pain')).toBeInTheDocument()
+    expect(screen.getByText('#10000105')).toBeInTheDocument()
+  })
+
+  it('shows a dash instead of "null" when a waiting patient has no acuity yet', () => {
+    render(<PlacementCard card={{ ...waitingCard, acuity: null }} onClick={() => {}} />)
+    expect(screen.getByTestId('placement-card-primary')).toHaveTextContent('Acuity —')
+  })
+
+  it('gives a long waiting-patient name a tooltip with the full text', () => {
+    const longName = 'PAGINATION TEST Nora Saeed Al-Mansoori Extra Long Name'
+    render(<PlacementCard card={{ ...waitingCard, primary: longName }} onClick={() => {}} />)
+    expect(screen.getByTestId('placement-card-name')).toHaveAttribute('title', longName)
+  })
+
+  it('renders the avatar matching the patient (no emoji)', () => {
+    const { container } = render(<PlacementCard card={{ ...waitingCard, avatar: 'girl' }} onClick={() => {}} />)
+    expect(container.querySelector('[data-avatar="girl"]')).not.toBeNull()
+  })
+
   it('shows a correctly-formatted waiting duration, not a raw minute count', () => {
     render(<PlacementCard card={waitingCard} onClick={() => {}} />)
     expect(screen.getByText('Waiting 08 min')).toBeInTheDocument()

@@ -1,37 +1,83 @@
 .card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--space-1);
-  flex: 0 0 200px;
+  flex: 0 0 168px;
   min-width: 0; /* flexbox min-width default beats flex-basis on long unbroken text otherwise (found in the old UI redesign — see NF4 log) */
-  width: 200px;
-  height: 144px;
+  width: 168px;
+  min-height: 188px;
   padding: var(--space-3);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-default);
+  border-radius: var(--radius-lg);
   background: var(--surface);
+  color: var(--text-primary);
   cursor: pointer;
-  text-align: left;
-  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 .card:hover {
-  box-shadow: var(--shadow-sm);
-  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 .card:focus-visible {
   outline: 2px solid var(--brand-600);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
+/* Whole-card tint by semantic status — the illustration inherits `color`. */
+.card-occupied {
+  border-color: var(--occupied);
+  background: var(--occupied-bg);
+  --card-accent: var(--occupied);
+}
+.card-success {
+  border-color: var(--success);
+  background: var(--success-bg);
+  --card-accent: var(--success);
+}
+.card-warning {
+  border-color: var(--warning);
+  background: var(--warning-bg);
+  --card-accent: var(--warning);
+}
+.card-waiting {
+  border-color: var(--waiting);
+  background: var(--waiting-bg);
+  --card-accent: var(--waiting);
+}
+.card-neutral {
+  --card-accent: var(--text-secondary);
+}
+
+/* Waiting past the threshold: stronger amber outline + a gentle pulse, so it reads as needing attention without alarm-red. */
 .attention {
   border-color: var(--warning);
-  box-shadow: 0 0 0 1px var(--warning);
+  border-width: 2px;
+  box-shadow: 0 0 0 3px rgb(174 95 5 / 0.14);
+  animation: attention-pulse 2.2s ease-in-out infinite;
+}
+@keyframes attention-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px rgb(174 95 5 / 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgb(174 95 5 / 0.26);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .attention {
+    animation: none;
+  }
 }
 
 /* Selected is an independent dimension from the card's own semantic state (§25). */
 .selected {
   border-color: var(--brand-600);
-  box-shadow: 0 0 0 2px var(--brand-600);
+  box-shadow: 0 0 0 3px var(--brand-600);
+  animation: none;
 }
 
 /* An available bed while a waiting patient is selected — visually offered as the assignment target (§26). */
@@ -41,43 +87,42 @@
   background: var(--brand-50);
 }
 
-.illustrationRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 .illustration {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-md);
-  flex-shrink: 0;
-}
-.tone-success {
-  background: var(--success-bg);
-  color: var(--success);
-}
-.tone-occupied {
-  background: var(--occupied-bg);
-  color: var(--occupied);
-}
-.tone-warning {
-  background: var(--warning-bg);
-  color: var(--warning);
-}
-.tone-waiting {
-  background: var(--waiting-bg);
-  color: var(--waiting);
-}
-.tone-neutral {
-  background: var(--slate-100);
-  color: var(--text-secondary);
+  height: 56px;
+  margin-bottom: var(--space-1);
+  color: var(--card-accent, var(--text-secondary));
 }
 
 .primary {
+  max-width: 100%;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub,
+.meta,
+.complaint {
+  max-width: 100%;
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  font-weight: var(--font-weight-semibold);
+  color: var(--card-accent, var(--text-secondary));
+}
+
+.name {
+  max-width: 100%;
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
@@ -86,43 +131,20 @@
   white-space: nowrap;
 }
 
-.sub {
-  font-size: var(--font-size-metadata);
-  color: var(--text-secondary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.meta {
-  font-size: var(--font-size-metadata);
-  color: var(--text-secondary);
-}
-
-.footer {
-  margin-top: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-}
-
-.bedType {
-  font-size: 10px;
-  font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  padding: 1px 5px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-}
-
 .waitingFlag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--slate-100);
   font-size: var(--font-size-metadata);
   font-weight: var(--font-weight-medium);
   color: var(--text-secondary);
 }
 .waitingFlagAttention {
+  background: var(--warning-bg);
   color: var(--warning);
   font-weight: var(--font-weight-semibold);
 }

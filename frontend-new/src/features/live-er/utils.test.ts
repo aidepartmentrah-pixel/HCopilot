@@ -1,6 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { cardFromBed, cardFromBedless, isOverAttentionThreshold } from './utils'
+import { avatarKind, cardFromBed, cardFromBedless, isOverAttentionThreshold } from './utils'
 import type { Bed, BedlessPatient } from '@/types/bed'
+
+describe('avatarKind', () => {
+  it('picks man/woman for adults, boy/girl under 18', () => {
+    expect(avatarKind('Male', 40)).toBe('man')
+    expect(avatarKind('Female', 40)).toBe('woman')
+    expect(avatarKind('Male', 9)).toBe('boy')
+    expect(avatarKind('Female', 17)).toBe('girl')
+  })
+  it('treats exactly 18 as an adult', () => {
+    expect(avatarKind('Male', 18)).toBe('man')
+  })
+  it('matches gender case-insensitively and ignores surrounding whitespace', () => {
+    expect(avatarKind(' MALE ', 30)).toBe('man')
+    expect(avatarKind('female', 30)).toBe('woman')
+  })
+  it('falls back to a neutral avatar when gender is unknown, still honoring age', () => {
+    expect(avatarKind(null, null)).toBe('neutral')
+    expect(avatarKind('Other', 30)).toBe('neutral')
+    expect(avatarKind(null, 5)).toBe('neutral-child')
+  })
+  it('treats an unknown age as an adult', () => {
+    expect(avatarKind('Female', null)).toBe('woman')
+  })
+})
 
 describe('isOverAttentionThreshold', () => {
   it('is false under 5 minutes', () => {
@@ -84,6 +108,7 @@ describe('cardFromBed / cardFromBedless', () => {
     expect(card.kind).toBe('waiting')
     expect(card.statusTone).toBe('waiting')
     expect(card.waitingMinutes).toBeCloseTo(10, 5)
+    expect(card.avatar).toBe('woman')
     expect(card.isWaitingOverThreshold).toBe(true)
   })
 

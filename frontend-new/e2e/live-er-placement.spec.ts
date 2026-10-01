@@ -8,7 +8,8 @@ test.describe('Live ER — placement/assignment flow (V2.3)', () => {
     const waitingCard = page.getByTestId('placement-card').filter({ hasText: 'Waiting' }).first()
     test.skip((await waitingCard.count()) === 0, 'no bedless patients available in this environment to assign')
 
-    const patientName = (await waitingCard.getByTestId('placement-card-primary').textContent())?.trim() ?? ''
+    // A waiting card's headline is its acuity; the patient name has its own test id.
+    const patientName = (await waitingCard.getByTestId('placement-card-name').getAttribute('title'))?.trim() ?? ''
     await waitingCard.click()
     await expect(page.getByText(/selected — click an available bed to assign it/)).toBeVisible()
 

@@ -1,9 +1,9 @@
+import { Timer } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { ACUITY_TONE } from '@/features/isbar/constants'
 import type { PlacementCardData } from '../utils'
 import { formatWaitingDuration } from '../utils'
 import { BedIllustration } from './BedIllustration'
-import { SeatedPatientIllustration } from './SeatedPatientIllustration'
+import { PatientAvatar } from './PatientAvatar'
 import styles from './PlacementCard.module.css'
 
 interface PlacementCardProps {
@@ -17,10 +17,15 @@ interface PlacementCardProps {
 
 /**
  * One card renderer for beds and waiting patients (§9/§18/§21) — same
- * width, radius, padding, typography hierarchy, and status placement.
- * Only the illustration and semantic color differ between kinds.
+ * width, radius, padding, and centered stack. A bed leads with its number;
+ * a waiting patient leads with its acuity (the thing staff triage by) and
+ * shows the name below. Only the illustration and semantic tint differ.
  */
 export function PlacementCard({ card, onClick, selected, assignable }: PlacementCardProps) {
+  const isWaiting = card.kind === 'waiting'
+  const headline = isWaiting ? `Acuity ${card.acuity ?? '—'}` : card.primary
+  const bedMeta = [card.wardName, card.bedType].filter(Boolean).join(' · ')
+
   return (
     <button
       type="button"
@@ -28,6 +33,7 @@ export function PlacementCard({ card, onClick, selected, assignable }: Placement
       aria-pressed={selected || undefined}
       className={[
         styles.card,
+        styles[`card-${card.statusTone}`],
         card.isWaitingOverThreshold ? styles.attention : '',
         selected ? styles.selected : '',
         assignable ? styles.assignable : '',
@@ -36,33 +42,35 @@ export function PlacementCard({ card, onClick, selected, assignable }: Placement
         .join(' ')}
       onClick={onClick}
     >
-      <div className={styles.illustrationRow}>
-        <span className={[styles.illustration, styles[`tone-${card.statusTone}`]].join(' ')}>
-          {card.kind === 'bed' ? <BedIllustration size={32} /> : <SeatedPatientIllustration size={32} />}
-        </span>
-        <StatusBadge label={card.statusLabel} tone={card.statusTone} />
-      </div>
+      <span className={styles.illustration}>
+        {isWaiting ? <PatientAvatar kind={card.avatar ?? 'neutral'} size={52} /> : <BedIllustration width={68} />}
+      </span>
 
       <div className={styles.primary} data-testid="placement-card-primary">
-        {card.primary}
+        {headline}
       </div>
+      <StatusBadge label={card.statusLabel} tone={card.statusTone} />
 
+      {!isWaiting && bedMeta && <div className={styles.sub}>{bedMeta}</div>}
+      {card.patientId != null && <div className={styles.meta}>#{card.patientId}</div>}
+
+      {isWaiting && (
+        <div className={styles.name} data-testid="placement-card-name" dir="auto" title={card.primary}>
+          {card.primary}
+        </div>
+      )}
       {card.sub && (
-        <div className={styles.sub} dir="auto">
+        <div className={isWaiting ? styles.complaint : styles.name} dir="auto" title={card.sub}>
           {card.sub}
         </div>
       )}
-      {card.patientId != null && <div className={styles.meta}>#{card.patientId}</div>}
 
-      <div className={styles.footer}>
-        {card.bedType && <span className={styles.bedType}>{card.bedType}</span>}
-        {card.acuity != null && <StatusBadge label={`ESI ${card.acuity}`} tone={ACUITY_TONE[card.acuity] ?? 'neutral'} />}
-        {card.kind === 'waiting' && (
-          <span className={[styles.waitingFlag, card.isWaitingOverThreshold ? styles.waitingFlagAttention : ''].join(' ')}>
-            Waiting {formatWaitingDuration(card.waitingMinutes ?? null)}
-          </span>
-        )}
-      </div>
+      {isWaiting && (
+        <span className={[styles.waitingFlag, card.isWaitingOverThreshold ? styles.waitingFlagAttention : ''].join(' ')}>
+          <Timer size={12} aria-hidden="true" />
+          Waiting {formatWaitingDuration(card.waitingMinutes ?? null)}
+        </span>
+      )}
     </button>
   )
 }

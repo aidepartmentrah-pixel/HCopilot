@@ -14,12 +14,30 @@ export interface PlacementCardData {
   bedType?: string | null
   acuity?: number | null
   waitingMinutes?: number | null
+  /** Ward of a bed card, shown under the bed number. */
+  wardName?: string | null
+  /** Which avatar a waiting card shows. */
+  avatar?: AvatarKind
   isWaitingOverThreshold: boolean
   bed?: Bed
   patient?: BedlessPatient
 }
 
 const WAITING_THRESHOLD_MINUTES = 5
+
+/** 18 is the standard adult/pediatric ED cutoff (same as the legacy board). */
+const ADULT_AGE = 18
+
+export type AvatarKind = 'man' | 'woman' | 'boy' | 'girl' | 'neutral' | 'neutral-child'
+
+/** Which avatar a waiting patient gets; neutral when gender is unknown, child when age is known and under 18. */
+export function avatarKind(gender: string | null | undefined, age: number | null | undefined): AvatarKind {
+  const isChild = age != null && age < ADULT_AGE
+  const g = (gender ?? '').trim().toLowerCase()
+  if (g === 'male') return isChild ? 'boy' : 'man'
+  if (g === 'female') return isChild ? 'girl' : 'woman'
+  return isChild ? 'neutral-child' : 'neutral'
+}
 
 /**
  * §5 fix: the old label conflated "not yet triaged" with "waiting for a
@@ -50,6 +68,7 @@ export function cardFromBed(bed: Bed): PlacementCardData {
       : '',
     patientId: bed.patient_id,
     bedType: bed.bed_type,
+    wardName: bed.ward_name,
     isWaitingOverThreshold: false,
     bed,
   }
@@ -67,6 +86,7 @@ export function cardFromBedless(patient: BedlessPatient, now: Date = new Date())
     patientId: patient.subject_id,
     acuity: patient.acuity,
     waitingMinutes: minutes,
+    avatar: avatarKind(patient.gender, patient.age),
     isWaitingOverThreshold: isOverAttentionThreshold(minutes),
     patient,
   }
