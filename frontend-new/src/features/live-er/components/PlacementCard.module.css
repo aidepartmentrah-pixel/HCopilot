@@ -3,9 +3,7 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
-  flex: 0 0 168px;
-  min-width: 0; /* flexbox min-width default beats flex-basis on long unbroken text otherwise (found in the old UI redesign — see NF4 log) */
-  width: 168px;
+  min-width: 0; /* a grid item's automatic minimum width also beats long unbroken text otherwise (found in the old UI redesign — see NF4 log) */
   min-height: 188px;
   padding: var(--space-3);
   border: 1.5px solid var(--border-default);
@@ -136,6 +134,7 @@
   align-items: center;
   gap: 4px;
   margin-top: auto;
+  white-space: nowrap;
   padding: 2px var(--space-2);
   border-radius: var(--radius-full);
   background: var(--slate-100);

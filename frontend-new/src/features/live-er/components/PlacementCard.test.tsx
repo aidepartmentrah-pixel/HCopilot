@@ -36,9 +36,9 @@ describe('PlacementCard', () => {
     expect(screen.getByText('#10000095')).toBeInTheDocument()
   })
 
-  it('shows ward and bed type under the bed number', () => {
-    render(<PlacementCard card={{ ...occupiedCard, wardName: 'Section A' }} onClick={() => {}} />)
-    expect(screen.getByText('Section A · normal')).toBeInTheDocument()
+  it('shows the bed type under the bed number', () => {
+    render(<PlacementCard card={occupiedCard} onClick={() => {}} />)
+    expect(screen.getByText('normal')).toBeInTheDocument()
   })
 
   it('leads a waiting card with its acuity and shows the name, complaint and ID below', () => {

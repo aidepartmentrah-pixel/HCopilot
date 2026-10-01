@@ -3,9 +3,6 @@ import type { PlacementCardData } from '../utils'
 import { PlacementCard } from './PlacementCard'
 import styles from './WardLane.module.css'
 
-/** Matches PlacementCard's width and the track's gap. */
-const CARD_WIDTH = 168
-const CARD_GAP = 12
 /** Cards per row assumed where the lane can't be measured (no ResizeObserver). */
 const FALLBACK_CARDS_PER_ROW = 4
 
@@ -30,7 +27,8 @@ export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assi
   useEffect(() => {
     const el = trackRef.current
     if (!el || collapsedRows == null || typeof ResizeObserver === 'undefined') return
-    const measure = () => setCardsPerRow(Math.max(1, Math.floor((el.clientWidth + CARD_GAP) / (CARD_WIDTH + CARD_GAP))))
+    // The grid decides its own column count (auto-fill); read it back instead of duplicating that math.
+    const measure = () => setCardsPerRow(Math.max(1, getComputedStyle(el).gridTemplateColumns.split(' ').length))
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(el)

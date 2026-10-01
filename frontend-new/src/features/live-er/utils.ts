@@ -14,8 +14,6 @@ export interface PlacementCardData {
   bedType?: string | null
   acuity?: number | null
   waitingMinutes?: number | null
-  /** Ward of a bed card, shown under the bed number. */
-  wardName?: string | null
   /** Which avatar a waiting card shows. */
   avatar?: AvatarKind
   isWaitingOverThreshold: boolean
@@ -68,7 +66,6 @@ export function cardFromBed(bed: Bed): PlacementCardData {
       : '',
     patientId: bed.patient_id,
     bedType: bed.bed_type,
-    wardName: bed.ward_name,
     isWaitingOverThreshold: false,
     bed,
   }

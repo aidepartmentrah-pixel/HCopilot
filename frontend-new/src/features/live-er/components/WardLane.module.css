@@ -46,8 +46,8 @@
 
 /* Cards wrap onto as many rows as needed — no horizontal scrolling. */
 .track {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: var(--space-3);
 }
 
@@ -69,4 +69,11 @@
 .toggle:focus-visible {
   outline: 2px solid var(--brand-600);
   outline-offset: 2px;
+}
+
+/* Phones: two narrower cards per row instead of one full-width card. */
+@media (max-width: 480px) {
+  .track {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
 }

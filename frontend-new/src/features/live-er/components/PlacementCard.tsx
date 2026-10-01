@@ -24,7 +24,6 @@ interface PlacementCardProps {
 export function PlacementCard({ card, onClick, selected, assignable }: PlacementCardProps) {
   const isWaiting = card.kind === 'waiting'
   const headline = isWaiting ? `Acuity ${card.acuity ?? '—'}` : card.primary
-  const bedMeta = [card.wardName, card.bedType].filter(Boolean).join(' · ')
 
   return (
     <button
@@ -51,7 +50,7 @@ export function PlacementCard({ card, onClick, selected, assignable }: Placement
       </div>
       <StatusBadge label={card.statusLabel} tone={card.statusTone} />
 
-      {!isWaiting && bedMeta && <div className={styles.sub}>{bedMeta}</div>}
+      {!isWaiting && card.bedType && <div className={styles.sub}>{card.bedType}</div>}
       {card.patientId != null && <div className={styles.meta}>#{card.patientId}</div>}
 
       {isWaiting && (
