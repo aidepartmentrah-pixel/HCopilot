@@ -151,34 +151,39 @@
                     <h3>Quick Actions</h3>
                     <p>Common tasks, one click away.</p>
                 </div>
-                <div class="feature-cards hd-quick-actions">
-                    <div class="feature-card feature-card-primary" onclick="showSection('patients')">
-                        <div class="feature-icon">📝</div>
-                        <h3>New ISBAR Entry</h3>
-                        <p>Create a new ER handover</p>
-                        <button class="feature-btn">Start Entry →</button>
-                    </div>
-
-                    <div class="feature-card" onclick="showSection('beds-display')">
-                        <div class="feature-icon">🛏️</div>
-                        <h3>Open Live ER</h3>
-                        <p>View current patient placement</p>
-                        <button class="feature-btn">View Beds →</button>
-                    </div>
-
-                    <div class="feature-card" onclick="showSection('patient-history')">
-                        <div class="feature-icon">📜</div>
-                        <h3>View History</h3>
-                        <p>Search previous ER encounters</p>
-                        <button class="feature-btn">View History →</button>
-                    </div>
-
-                    <div class="feature-card" onclick="showSection('statistics')">
-                        <div class="feature-icon">📊</div>
-                        <h3>Review Statistics</h3>
-                        <p>Explore ER trends and analytics</p>
-                        <button class="feature-btn">View Statistics →</button>
-                    </div>
+                <div class="hd-quick-actions">
+                    <button type="button" class="hd-action hd-action-primary" onclick="showSection('patients')">
+                        <span class="hd-action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M12 10v6"/><path d="M9 13h6"/></svg></span>
+                        <span class="hd-action-text">
+                            <span class="hd-action-title">New ISBAR Entry</span>
+                            <span class="hd-action-desc">Create a new ER handover</span>
+                        </span>
+                        <span class="hd-action-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </button>
+                    <button type="button" class="hd-action" onclick="showSection('beds-display')">
+                        <span class="hd-action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span>
+                        <span class="hd-action-text">
+                            <span class="hd-action-title">Open Live ER</span>
+                            <span class="hd-action-desc">View current patient placement</span>
+                        </span>
+                        <span class="hd-action-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </button>
+                    <button type="button" class="hd-action" onclick="showSection('patient-history')">
+                        <span class="hd-action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10a8 8 0 1 1 2 6.5"/><path d="M4 5.5V10h4.5"/><path d="M12 8v4.5l3 2"/></svg></span>
+                        <span class="hd-action-text">
+                            <span class="hd-action-title">View History</span>
+                            <span class="hd-action-desc">Search previous ER encounters</span>
+                        </span>
+                        <span class="hd-action-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </button>
+                    <button type="button" class="hd-action" onclick="showSection('statistics')">
+                        <span class="hd-action-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 20V11"/><path d="M12 20V5"/><path d="M19.5 20v-7"/><path d="M3 20h18"/></svg></span>
+                        <span class="hd-action-text">
+                            <span class="hd-action-title">Review Statistics</span>
+                            <span class="hd-action-desc">Explore ER trends and analytics</span>
+                        </span>
+                        <span class="hd-action-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></span>
+                    </button>
                 </div>
 
                 <!-- Operational Alerts (UI-D7, partial) -->

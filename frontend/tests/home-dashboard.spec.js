@@ -18,8 +18,8 @@ test.describe('Home dashboard', () => {
             await expect(v).not.toHaveText('–', { timeout: 10000 });
         }
 
-        await expect(page.locator('.hd-quick-actions .feature-card')).toHaveCount(4);
-        await expect(page.locator('.feature-card-primary h3')).toHaveText('New ISBAR Entry');
+        await expect(page.locator('.hd-quick-actions .hd-action')).toHaveCount(4);
+        await expect(page.locator('.hd-action-primary .hd-action-title')).toHaveText('New ISBAR Entry');
 
         // Alerts panel settles out of its loading state one way or another.
         await expect(page.locator('#hd-alerts-body .loading')).toHaveCount(0, { timeout: 10000 });
@@ -27,7 +27,7 @@ test.describe('Home dashboard', () => {
 
     test('quick action navigates to the right section', async ({ page }) => {
         await login(page);
-        await page.click('.hd-quick-actions .feature-card:has-text("Open Live ER")');
+        await page.click('.hd-quick-actions .hd-action:has-text("Open Live ER")');
         await expect(page.locator('#beds-display.section.active')).toBeVisible();
     });
 });

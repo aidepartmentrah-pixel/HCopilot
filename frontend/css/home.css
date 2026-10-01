@@ -198,76 +198,74 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     margin-top: 1px;
 }
 
-/* ── Quick Actions cards (UI-D5) ─────────────────────────────────────── */
+/* ── Quick Actions (UI-D5; compact layout per Home Dashboard Layout Plan, HD-4) ──
+   Whole-card clickable <button>s: line icon tile + title + description +
+   arrow. Mirrors frontend-new's QuickActions (1.4fr primary + 3 secondary). */
 .hd-quick-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
     gap: 16px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
 }
 
-.feature-card {
+.hd-action {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 16px 18px;
+    min-height: 76px;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md, 10px);
-    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+    font-family: inherit;
     text-align: left;
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    transition: transform .2s, box-shadow .2s;
+    transition: border-color .15s, background-color .15s, box-shadow .15s;
 }
+.hd-action:hover { border-color: var(--brand-600); box-shadow: 0 4px 14px rgba(15,23,42,.1); }
+.hd-action:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
 
-.feature-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(15,23,42,.1);
-}
-
-.feature-icon {
-    font-size: 30px;
-    margin-bottom: 10px;
-}
-
-.feature-card h3 {
-    color: var(--text-primary);
-    font-size: 16px;
-    margin-bottom: 4px;
-}
-
-.feature-card p {
-    color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 14px;
-}
-
-.feature-btn {
-    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 8px;
-    font-size: 13.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.feature-btn:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.feature-card-primary {
-    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-700) 100%);
-    color: #fff;
-}
-.feature-card-primary h3 { color: #fff; }
-.feature-card-primary p  { color: rgba(255,255,255,.85); }
-.feature-card-primary .feature-btn {
-    background: #fff;
+.hd-action-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md, 10px);
+    background: var(--brand-soft);
     color: var(--brand-700);
 }
-.feature-card-primary .feature-btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.hd-action-icon svg { width: 21px; height: 21px; }
+
+.hd-action-text { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+.hd-action-title { font-size: 15px; font-weight: 700; }
+.hd-action-desc  { font-size: 12.5px; color: var(--text-secondary); }
+
+.hd-action-arrow { flex-shrink: 0; display: inline-flex; color: var(--text-secondary); transition: transform .15s; }
+.hd-action-arrow svg { width: 18px; height: 18px; }
+.hd-action:hover .hd-action-arrow { transform: translateX(3px); color: var(--brand-700); }
+
+.hd-action-primary {
+    background: var(--brand-600);
+    border-color: var(--brand-600);
+    color: #fff;
+}
+.hd-action-primary:hover { background: var(--brand-700); border-color: var(--brand-700); }
+.hd-action-primary .hd-action-icon { background: rgba(255,255,255,.18); color: #fff; }
+.hd-action-primary .hd-action-desc { color: rgba(255,255,255,.85); }
+.hd-action-primary .hd-action-arrow,
+.hd-action-primary:hover .hd-action-arrow { color: #fff; }
+
+@media (max-width: 1100px) {
+    .hd-quick-actions { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+    .hd-quick-actions { grid-template-columns: 1fr; }
+}
 
 /* ── Lower dashboard panels (UI-D7) ──────────────────────────────────── */
 .hd-panels {
