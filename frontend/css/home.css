@@ -84,9 +84,9 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     background-repeat: no-repeat;
     border-radius: var(--radius-lg, 14px);
     border: 1px solid rgba(255,255,255,.12);
-    padding: 32px 38px;
-    margin-bottom: 22px;
-    height: clamp(230px, 16vw, 270px);
+    padding: 32px 44px;
+    margin-bottom: 24px;
+    height: clamp(260px, 18vw, 300px);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -104,7 +104,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
 }
 
 .hd-username {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 800;
     color: #fff;
     letter-spacing: -.3px;
@@ -113,7 +113,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
 .hd-welcome-msg {
     font-size: 14px;
     color: rgba(255,255,255,.85);
-    max-width: 620px;
+    max-width: 560px;
     line-height: 1.5;
 }
 
