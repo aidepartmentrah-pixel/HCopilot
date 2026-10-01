@@ -22,7 +22,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
 }
 
@@ -59,61 +59,58 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     letter-spacing: -.3px;
 }
 
-/* ── Welcome panel (UI-D2) — medium-height branded hero, ~230-270px ────
-   Locally-bundled hero photo (Dashboard Edit.md §4/§22). Revised
-   2026-09-24 per direct user feedback comparing this against the new
-   React frontend's WelcomePanel: the original multiply-darkened version
-   read as "too dark" / "pasted on". This is a directional tint instead —
-   a semi-transparent brand gradient laid straight over the photo (no
-   blend-mode), so the left stays dark enough for text while the right
-   stays genuinely photographic. Built from --brand-500/600/700/800 via
-   color-mix() so it re-colors correctly under all 3 themes without a
-   separate overlay image per theme. */
+/* ── Welcome panel (UI-D2) — now the New frontend's hero, 2026-10-01 ────
+   Same image and styling as frontend-new's WelcomePanel: the photo has the
+   brand-indigo fade composited into its left edge, so it is used directly
+   as the background (solid navy fallback while loading) with a thin CSS
+   gradient as a responsive safety net for text legibility. Fixed navy shell
+   colors, not theme tints — matches the top bar. Height trimmed ~10% vs the
+   New app's 300px per the refinement pass. */
 .hd-welcome {
-    background-image:
-        linear-gradient(90deg,
-            color-mix(in srgb, var(--brand-800) 92%, transparent) 0%,
-            color-mix(in srgb, var(--brand-700) 78%, transparent) 28%,
-            color-mix(in srgb, var(--brand-600) 50%, transparent) 52%,
-            color-mix(in srgb, var(--brand-500) 20%, transparent) 75%,
-            color-mix(in srgb, var(--brand-500) 8%, transparent) 100%
-        ),
-        url('../assets/welcome-hero.jpg');
+    position: relative;
+    background-color: var(--shell-bg);
+    background-image: url('../assets/welcome-hero.jpg');
     background-size: cover;
-    background-position: center 38%;
+    background-position: center;
     background-repeat: no-repeat;
     border-radius: var(--radius-lg, 14px);
-    border: 1px solid rgba(255,255,255,.12);
-    padding: 32px 44px;
+    padding: 24px 32px;
     margin-bottom: 24px;
-    height: clamp(260px, 18vw, 300px);
+    height: clamp(236px, 16.5vw, 272px);
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 6px;
     box-shadow: var(--shadow-sm);
-    position: relative;
     overflow: hidden;
 }
+.hd-welcome::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, var(--shell-bg) 0%, rgba(30, 27, 75, 0.35) 30%, rgba(30, 27, 75, 0) 55%);
+    pointer-events: none;
+}
+.hd-welcome > * { position: relative; z-index: 1; }
 
 .hd-greeting {
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 1.2px;
-    color: rgba(255,255,255,.7);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: var(--shell-text-muted);
+    margin-bottom: 4px;
 }
 
 .hd-username {
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 21px;
+    font-weight: 700;
     color: #fff;
-    letter-spacing: -.3px;
+    margin-bottom: 8px;
 }
 
 .hd-welcome-msg {
     font-size: 14px;
-    color: rgba(255,255,255,.85);
-    max-width: 560px;
+    color: var(--shell-text-muted);
+    max-width: 480px;
     line-height: 1.5;
 }
 
@@ -178,6 +175,8 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
 }
 
 .hd-kpi-meta {
+    display: block;
+    min-height: 14px;   /* reserve the line so all 4 KPI numbers share a baseline */
     font-size: 11px;
     color: var(--text-secondary);
     font-weight: 600;
@@ -185,7 +184,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
 
 /* ── Section label (Quick Actions header) ───────────────────────────── */
 .hd-section-label {
-    margin-bottom: 10px;
+    margin-bottom: 6px;
 }
 .hd-section-label h3 {
     font-size: 16px;
@@ -203,7 +202,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
    arrow. Mirrors frontend-new's QuickActions (1.4fr primary + 3 secondary). */
 .hd-quick-actions {
     display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     margin-bottom: 24px;
 }
