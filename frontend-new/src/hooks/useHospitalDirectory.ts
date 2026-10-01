@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { hospitalDirectoryApi } from '@/api/settings'
+import { erRosterKeys } from '@/hooks/useErRoster'
 import type { HospitalDirectoryConfigInput } from '@/types/settings'
 
 export const hospitalDirectoryKeys = {
@@ -25,6 +26,23 @@ export function useTestHospitalDirectoryConnection() {
   return useMutation({
     mutationFn: () => hospitalDirectoryApi.testConnection(),
     onSuccess: () => qc.invalidateQueries({ queryKey: hospitalDirectoryKeys.config }),
+  })
+}
+
+/** Checks the directory API serves /er/current-visits, ignoring the switch. Changes nothing. */
+export function useTestErRoster() {
+  return useMutation({ mutationFn: () => hospitalDirectoryApi.testErRoster() })
+}
+
+/** Flips the Live ER roster switch; refreshes both the config and the roster so every roster-dependent screen follows immediately. */
+export function useSetErRosterEnabled() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => hospitalDirectoryApi.setErRosterEnabled(enabled),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: hospitalDirectoryKeys.config })
+      qc.invalidateQueries({ queryKey: erRosterKeys.current })
+    },
   })
 }
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { RefreshCw, Siren } from 'lucide-react'
 import { IconButton } from '@/components/ui/IconButton'
 import { Badge } from '@/components/ui/Badge'
@@ -19,7 +20,37 @@ interface LiveErRosterProps {
 export function LiveErRoster({ activePatients, activeStayId, onSelect, onOpenFallback }: LiveErRosterProps) {
   const { data, isLoading, error, refetch, isFetching } = useErRoster()
 
+  const rosterOff = data?.status === 'roster_off'
+
+  // Roster switch OFF (Settings → Integrations): not an error — lead with the
+  // search / manual-entry fallback once, without fighting the user's own toggle.
+  const openedFallback = useRef(false)
+  useEffect(() => {
+    if (rosterOff && !openedFallback.current) {
+      openedFallback.current = true
+      onOpenFallback()
+    }
+  }, [rosterOff, onOpenFallback])
+
   const byVisitId = new Map(activePatients.filter((p) => p.er_visit_id).map((p) => [String(p.er_visit_id), p]))
+
+  if (rosterOff) {
+    return (
+      <div className={styles.panel}>
+        <div className={styles.header}>
+          <div>
+            <h2 className={styles.title}>Patient Entry</h2>
+            <p className={styles.subtitle} data-testid="er-roster-off-note">
+              Live ER roster is not enabled. Search the Hospital Directory or add the patient manually.
+            </p>
+          </div>
+        </div>
+        <button type="button" className={styles.fallback} onClick={onOpenFallback} aria-label="Open directory search or manual entry">
+          <span className={styles.fallbackLink}>Search Directory · Enter Manually</span>
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className={styles.panel}>
@@ -38,7 +69,7 @@ export function LiveErRoster({ activePatients, activeStayId, onSelect, onOpenFal
       <div className={styles.list}>
         {isLoading && <LoadingState label="Loading roster…" />}
         {error && <ErrorState description="Couldn't load the live ER roster." onRetry={() => refetch()} />}
-        {data && data.status !== 'ok' && (
+        {data && data.status !== 'ok' && data.status !== 'roster_off' && (
           <ErrorState
             title="Hospital Directory unavailable"
             description={data.message || 'The live ER roster is temporarily unreachable. Use manual entry below.'}

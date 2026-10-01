@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useErRoster } from '@/hooks/useErRoster'
 import { usePatients } from '@/hooks/usePatients'
 import { useBedStats } from '@/hooks/useBeds'
-import { classifyOccupancy, findPatientsAwaitingIsbar, isRosterStale } from './alertRules'
+import { classifyOccupancy, findPatientsAwaitingIsbar, rosterFeedAlert } from './alertRules'
 import type { OperationalAlert } from './alertRules'
 
 /**
@@ -42,17 +42,8 @@ export function useOperationalAlerts(): { alerts: OperationalAlert[]; isLoading:
       }
     }
 
-    if (roster.isError) {
-      result.push({ id: 'roster-unavailable', severity: 'critical', message: 'ER roster connection unavailable.' })
-    } else if (roster.data && roster.data.status !== 'ok') {
-      result.push({
-        id: 'roster-unavailable',
-        severity: 'warning',
-        message: roster.data.message || 'Hospital Directory is temporarily unreachable.',
-      })
-    } else if (isRosterStale(roster.dataUpdatedAt, now)) {
-      result.push({ id: 'roster-stale', severity: 'warning', message: 'ER roster has not updated in over 8 minutes.' })
-    }
+    const feedAlert = rosterFeedAlert(roster.data, roster.isError, roster.dataUpdatedAt, now)
+    if (feedAlert) result.push(feedAlert)
 
     return result
   }, [roster.data, roster.isError, roster.dataUpdatedAt, patients.data, bedStats.data])

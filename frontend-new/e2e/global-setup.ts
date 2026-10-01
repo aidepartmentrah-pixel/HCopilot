@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BACKEND_URL = process.env.VITE_DEV_PROXY_TARGET ?? 'http://localhost:8090'
 const FRONTEND_ORIGIN = 'http://localhost:8083'
 export const STORAGE_STATE_PATH = path.join(__dirname, '.auth', 'admin.json')
+export const ROSTER_PRIOR_STATE_PATH = path.join(__dirname, '.auth', 'roster-prior-state.json')
 
 export default async function globalSetup() {
   const requestContext = await playwrightRequest.newContext({ baseURL: BACKEND_URL })
@@ -25,6 +26,24 @@ export default async function globalSetup() {
     throw new Error(`e2e global setup: /api/auth/login failed (${response.status()}): ${await response.text()}`)
   }
   const { user } = (await response.json()) as { user: unknown }
+
+  // Specs that exercise the live ER roster need the admin "Live ER roster" switch ON (it ships OFF
+  // so HCopilot can run against a directory API that predates /er/current-visits). Remember the
+  // prior state so global-teardown can restore it — the dev switch isn't left changed by a test run.
+  const config = (await (await requestContext.get('/api/hospital-directory/config')).json()) as { er_roster_enabled?: boolean }
+  fs.mkdirSync(path.dirname(ROSTER_PRIOR_STATE_PATH), { recursive: true })
+  fs.writeFileSync(ROSTER_PRIOR_STATE_PATH, JSON.stringify({ er_roster_enabled: !!config.er_roster_enabled }))
+  if (!config.er_roster_enabled) {
+    const enable = (await (await requestContext.post('/api/hospital-directory/config/er-roster/enable', { data: { enabled: true } })).json()) as {
+      success: boolean
+      message: string
+    }
+    if (!enable.success) {
+      // Directory API has no usable roster endpoint (e.g. pointed at v1.1) — roster-dependent specs will fail; say why.
+      console.warn(`e2e global setup: could not enable the Live ER roster (${enable.message}) — roster specs need a v1.2 directory API.`)
+    }
+  }
+
   await requestContext.dispose()
 
   fs.mkdirSync(path.dirname(STORAGE_STATE_PATH), { recursive: true })

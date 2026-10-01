@@ -3,6 +3,7 @@ import type { Ward, WardCreateInput, WardListResponse } from '@/types/ward'
 import type { Doctor, DoctorInput, Nurse, NurseInput } from '@/types/staff'
 import type {
   HospitalDirectoryConfig,
+  ErRosterSwitchResult,
   HospitalDirectoryConfigInput,
   MiddleNameCandidatesResponse,
   ModelFile,
@@ -70,6 +71,10 @@ export const hospitalDirectoryApi = {
   saveConfig: (body: HospitalDirectoryConfigInput) =>
     apiClient.post<{ success: boolean; message: string }>('/api/hospital-directory/config/save', body),
   testConnection: () => apiClient.post<TestConnectionResult>('/api/hospital-directory/config/test-connection'),
+  // Live ER roster switch — enabling re-runs the roster test server-side and is refused unless it passes; disabling always succeeds.
+  testErRoster: () => apiClient.post<TestConnectionResult>('/api/hospital-directory/config/er-roster/test'),
+  setErRosterEnabled: (enabled: boolean) =>
+    apiClient.post<ErRosterSwitchResult>('/api/hospital-directory/config/er-roster/enable', { enabled }),
   getMiddleNameCandidates: () =>
     apiClient.get<MiddleNameCandidatesResponse>('/api/hospital-directory/config/middle-name-candidates'),
   saveMiddleNameCandidates: (names: string[]) =>

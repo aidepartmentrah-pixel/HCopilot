@@ -28,6 +28,27 @@ export function findPatientsAwaitingIsbar(rosterItems: ErRosterItem[], activePat
   })
 }
 
+/**
+ * Alert Type 3 (availability half): what, if anything, to tell the user about
+ * the roster feed itself. `roster_off` (the admin switch is off — the normal
+ * state on a v1.1 directory API) is deliberately silent: no "unavailable"
+ * warning and no staleness warning, because nothing is being polled.
+ */
+export function rosterFeedAlert(
+  roster: { status: string; message?: string } | undefined,
+  isError: boolean,
+  lastUpdatedAt: number | undefined,
+  now: Date,
+): OperationalAlert | null {
+  if (roster?.status === 'roster_off') return null
+  if (isError) return { id: 'roster-unavailable', severity: 'critical', message: 'ER roster connection unavailable.' }
+  if (roster && roster.status !== 'ok') {
+    return { id: 'roster-unavailable', severity: 'warning', message: roster.message || 'Hospital Directory is temporarily unreachable.' }
+  }
+  if (isRosterStale(lastUpdatedAt, now)) return { id: 'roster-stale', severity: 'warning', message: 'ER roster has not updated in over 8 minutes.' }
+  return null
+}
+
 /** Alert Type 2: occupancy_rate is already a 0-100 percentage from GET /api/beds/stats. */
 export function classifyOccupancy(occupancyRatePercent: number): AlertSeverity | null {
   if (occupancyRatePercent >= OCCUPANCY_HIGH_PCT) return 'critical'

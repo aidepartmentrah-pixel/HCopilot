@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ErRosterItem } from '@/types/er'
 import type { Patient } from '@/types/patient'
-import { classifyOccupancy, findPatientsAwaitingIsbar, isRosterStale } from './alertRules'
+import { classifyOccupancy, findPatientsAwaitingIsbar, isRosterStale, rosterFeedAlert } from './alertRules'
 
 const NOW = new Date('2026-09-22T12:00:00.000Z')
 
@@ -68,5 +68,29 @@ describe('isRosterStale', () => {
   })
   it('is false when there is no successful fetch yet (undefined)', () => {
     expect(isRosterStale(undefined, NOW)).toBe(false)
+  })
+})
+
+describe('rosterFeedAlert', () => {
+  const stale = NOW.getTime() - 20 * 60_000
+
+  it('is silent when the roster switch is off, even if the never-polled data looks stale', () => {
+    expect(rosterFeedAlert({ status: 'roster_off', message: 'Live ER roster is not enabled.' }, false, stale, NOW)).toBeNull()
+  })
+  it('is silent while healthy and fresh', () => {
+    expect(rosterFeedAlert({ status: 'ok' }, false, NOW.getTime(), NOW)).toBeNull()
+  })
+  it('is critical on a real network/HTTP failure', () => {
+    expect(rosterFeedAlert(undefined, true, undefined, NOW)).toMatchObject({ id: 'roster-unavailable', severity: 'critical' })
+  })
+  it('is a warning, carrying the backend message, when the directory is unreachable', () => {
+    expect(rosterFeedAlert({ status: 'timeout', message: 'slow' }, false, NOW.getTime(), NOW)).toEqual({
+      id: 'roster-unavailable',
+      severity: 'warning',
+      message: 'slow',
+    })
+  })
+  it('warns when an enabled roster has gone stale', () => {
+    expect(rosterFeedAlert({ status: 'ok' }, false, stale, NOW)).toMatchObject({ id: 'roster-stale' })
   })
 })

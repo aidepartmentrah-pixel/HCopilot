@@ -98,7 +98,10 @@ test.describe('Settings', () => {
     await expect(page.getByText('Connected').or(page.getByText('Unavailable')).or(page.getByText('Unknown')).first()).toBeVisible()
     await expect(page.getByText(/Current credential configured/)).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Patient Matching' })).toBeVisible()
-    await expect(page.getByText(/ER Current Visits.*uses this same connection/)).toBeVisible()
+    await expect(page.getByText(/Live ER roster and its auto-discharge safety net use this same connection/)).toBeVisible()
+    // Live ER roster switch — ships OFF in the product; global-setup turns it ON for this run, so just assert the control is present.
+    await expect(page.getByRole('heading', { name: 'Live ER Roster' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Test ER Roster' })).toBeVisible()
   })
 
   test('AI & Models shows the live model in Model Registry and real run history with faithful metrics in Training', async ({ page }) => {

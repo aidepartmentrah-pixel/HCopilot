@@ -22,6 +22,7 @@ export default defineConfig({
   // itself) is opted into per-test with `test.use({ storageState: {
   // cookies: [], origins: [] } })` — see e2e/shell.spec.ts.
   globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   use: {
     baseURL: 'http://localhost:8083',
     storageState: './e2e/.auth/admin.json',

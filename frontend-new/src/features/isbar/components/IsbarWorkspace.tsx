@@ -52,7 +52,7 @@ export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePati
         <EmptyState
           icon={<FileText size={28} />}
           title="No patient selected"
-          description="Select a patient from the Live ER Roster to begin ISBAR entry. The patient's information will load automatically, and you can then complete the ISBAR sections."
+          description="Select a patient (from the Live ER Roster when enabled, or via Search Directory · Enter Manually) to begin ISBAR entry. The patient's information will load automatically, and you can then complete the ISBAR sections."
         />
         <AccordionPreview />
       </div>

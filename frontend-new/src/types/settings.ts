@@ -6,6 +6,8 @@ export interface HospitalDirectoryConfig {
   api_key_error: 'key_missing' | 'key_error' | null
   timeout_seconds: number
   verify_tls: boolean
+  /** Admin switch for the Live ER roster (default off — the deployed directory API may predate /er/current-visits). */
+  er_roster_enabled: boolean
   last_test_status: 'success' | 'failure' | null
   last_test_message: string | null
   last_test_at: string | null
@@ -23,6 +25,14 @@ export interface TestConnectionResult {
   success: boolean
   status: string
   message: string
+}
+
+/** Result of POST /config/er-roster/enable — on a refused enable, `success` is false and `er_roster_enabled` stays false. */
+export interface ErRosterSwitchResult {
+  success: boolean
+  status: string
+  message: string
+  er_roster_enabled: boolean
 }
 
 export interface MiddleNameCandidatesResponse {

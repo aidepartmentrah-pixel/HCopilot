@@ -15,6 +15,8 @@ import {
   useMiddleNameCandidates,
   useSaveHospitalDirectoryConfig,
   useSaveMiddleNameCandidates,
+  useSetErRosterEnabled,
+  useTestErRoster,
   useTestHospitalDirectoryConnection,
 } from '@/hooks/useHospitalDirectory'
 import { formatClinicalDate } from '@/utils/dateFormat'
@@ -77,6 +79,8 @@ export function IntegrationsSettings() {
         isTesting={testConnection.isPending}
       />
 
+      <ErRosterSwitchCard enabled={data.er_roster_enabled} />
+
       <Card>
         <h3 className={styles.sectionTitle}>Patient Matching</h3>
         <p className={styles.sectionDescription}>
@@ -86,10 +90,73 @@ export function IntegrationsSettings() {
       </Card>
 
       <p className={styles.erNote}>
-        The Live ER auto-discharge safety net (ER Current Visits) uses this same connection — there is no separate configuration for
-        it.
+        The Live ER roster and its auto-discharge safety net use this same connection — the switch above only controls whether the
+        roster endpoint is called.
       </p>
     </div>
+  )
+}
+
+/**
+ * The Live ER roster switch. Default OFF: the deployed directory API may
+ * predate /er/current-visits (a v1.2 addition), so nothing calls it until an
+ * admin turns this on. The backend only accepts "on" after its own
+ * roster check passes, so a refused enable leaves the switch off — this
+ * card never decides that client-side.
+ */
+function ErRosterSwitchCard({ enabled }: { enabled: boolean }) {
+  const testRoster = useTestErRoster()
+  const setEnabled = useSetErRosterEnabled()
+  const { showToast } = useToast()
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  async function handleTest() {
+    try {
+      const result = await testRoster.mutateAsync()
+      setTestResult({ ok: result.success, message: result.message })
+    } catch {
+      setTestResult({ ok: false, message: 'Could not run the ER roster test.' })
+    }
+  }
+
+  async function handleToggle(value: string) {
+    const wantEnabled = value === 'On'
+    if (wantEnabled === enabled) return
+    try {
+      const result = await setEnabled.mutateAsync(wantEnabled)
+      if (wantEnabled && !result.success) {
+        setTestResult({ ok: false, message: `${result.message} The switch stays off.` })
+      } else {
+        setTestResult(null)
+        showToast(result.message, 'success')
+      }
+    } catch {
+      showToast('Could not change the Live ER roster setting.', 'error')
+    }
+  }
+
+  return (
+    <Card>
+      <h3 className={styles.sectionTitle}>Live ER Roster</h3>
+      <p className={styles.sectionDescription}>
+        Lists patients currently in the ER from the directory API's <code>/er/current-visits</code> endpoint. Leave this off until the
+        vendor has deployed it — while off, HCopilot never calls it, and directory search and manual add work as usual. It can only be
+        switched on after a successful test.
+      </p>
+      <div className={styles.statusRow}>
+        <span className={styles.statusLabel}>Live ER Roster</span>
+        <YesNoToggle id="hd-er-roster-enabled" value={enabled ? 'On' : 'Off'} options={['Off', 'On']} onChange={handleToggle} disabled={setEnabled.isPending} />
+        <Button variant="secondary" size="sm" loading={testRoster.isPending} onClick={handleTest}>
+          Test ER Roster
+        </Button>
+      </div>
+      {testResult && (
+        <p role="status" className={testResult.ok ? styles.erNote : styles.keyError}>
+          {testResult.ok ? '✓ ' : ''}
+          {testResult.message}
+        </p>
+      )}
+    </Card>
   )
 }
 
