@@ -22,7 +22,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 
@@ -122,7 +122,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
-    margin-bottom: 26px;
+    margin-bottom: 24px;
 }
 
 .hd-kpi-card {
@@ -185,7 +185,7 @@ body.home-active { padding-left: 32px; padding-right: 32px; }
 
 /* ── Section label (Quick Actions header) ───────────────────────────── */
 .hd-section-label {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 .hd-section-label h3 {
     font-size: 16px;
