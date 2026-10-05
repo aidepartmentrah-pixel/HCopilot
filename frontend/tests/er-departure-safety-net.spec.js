@@ -1,7 +1,7 @@
 // tests/er-departure-safety-net.spec.js — full ER Live-Roster Redesign
 // loop, end to end (slice ER12).
 //
-// Covers: pick a name off the live roster → completes via Edit → appears
+// Covers: pick a name off the live roster → Add → appears
 // in Beds Display's bedless section → assign a bed → discharge → shows in
 // History, tagged appropriately. Same roster-availability precondition as
 // addition-roster.spec.js — skips rather than fails if no roster item is
@@ -33,17 +33,18 @@ test.describe('ER Live-Roster Redesign — full loop', () => {
 
     const pickedName = (await results.first().locator('.pat-directory-result-name').textContent()).trim();
     await results.first().click();
-    // ER UI Architecture Redesign — the panel activates in place, no modal.
-    await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'active', { timeout: 10000 });
-    const stayId    = await page.locator('#pat-stay-id').inputValue();
-    const patientId = await page.locator('#pat-patient-id').inputValue();
+    // Create on Add (2026-10-01): picking only fills the form.
+    await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'draft', { timeout: 10000 });
 
     await page.selectOption('#pat-gender', 'Male');
     await page.fill('#pat-age', '52');
     await page.click('#pat-acuity-scale .pat-scale-btn[data-acuity="4"]');
     await page.fill('#pat-chiefcomplaint', 'PLAYWRIGHT_FULL_LOOP');
     await page.click('#pat-add-btn');
-    await expect(page.locator('#message')).toContainText(/updated/i, { timeout: 10000 });
+    await expect(page.locator('#message')).toContainText(/added/i, { timeout: 10000 });
+    await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'active', { timeout: 10000 });
+    const stayId    = await page.locator('#pat-stay-id').inputValue();
+    const patientId = await page.locator('#pat-patient-id').inputValue();
 
     let bedId = null;
     try {
@@ -73,11 +74,11 @@ test.describe('ER Live-Roster Redesign — full loop', () => {
       // this stay's arrival_time came from the live (real-dated) mock
       // roster, so a fixed past constant here would fail
       // validate_discharge_time's arrival <= departure check.
-      const departureTime = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16);
+      const departureTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
       const dischargeRes = await request.post(`${API_BASE}/api/beds/discharge/${bedId}`, {
         data: { departure_time: departureTime, destination: 'Home' },
       });
-      expect(dischargeRes.ok()).toBeTruthy();
+      expect(dischargeRes.ok(), await dischargeRes.text()).toBeTruthy();
 
       const detailsRes = await request.get(`${API_BASE}/api/patients/${stayId}/details`);
       const details = await detailsRes.json();

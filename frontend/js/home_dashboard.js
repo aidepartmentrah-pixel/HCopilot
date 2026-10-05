@@ -149,7 +149,7 @@ function _hdLoadKpis() {
         const data = await res.json();
         if (!res.ok) throw new Error();
         const total = data.total_beds || 0;
-        const pct = total > 0 ? Math.round((data.occupied / total) * 100) : 0;
+        const pct = total > 0 ? Number(((data.occupied / total) * 100).toFixed(1)) : 0;
         return { value: `${data.occupied ?? 0} / ${total}`, meta: `${pct}% occupancy` };
     });
 

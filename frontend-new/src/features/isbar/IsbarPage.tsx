@@ -1,9 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ColumnDef } from '@tanstack/react-table'
+import { ChevronDown, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { patientsApi } from '@/api/patients'
 import { DataTable } from '@/components/tables/DataTable'
+import { Badge } from '@/components/ui/Badge'
+import { IconButton } from '@/components/ui/IconButton'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { useToast } from '@/components/feedback/useToast'
 import { ConfirmDialog } from '@/components/feedback/ConfirmDialog'
@@ -23,11 +26,35 @@ import styles from './IsbarPage.module.css'
 
 type PanelMode = 'disabled' | 'draft' | 'active'
 
+// Active Patients is a secondary browse/resume tool, so it starts collapsed
+// (matches the legacy frontend); the choice is remembered for the session.
+const PATIENTS_OPEN_KEY = 'hcopilot-isbar-active-patients-open'
+
+function readPatientsOpen(): boolean {
+  try {
+    return sessionStorage.getItem(PATIENTS_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export function IsbarPage() {
   const [mode, setMode] = useState<PanelMode>('disabled')
   const [activeStayId, setActiveStayId] = useState<number | null>(null)
   const [fallbackOpen, setFallbackOpen] = useState(false)
   const [unsavedGuardOpen, setUnsavedGuardOpen] = useState(false)
+  const [patientsOpen, setPatientsOpen] = useState(readPatientsOpen)
+
+  function togglePatientsOpen() {
+    setPatientsOpen((open) => {
+      try {
+        sessionStorage.setItem(PATIENTS_OPEN_KEY, open ? '0' : '1')
+      } catch {
+        /* session storage unavailable - the toggle still works for this visit */
+      }
+      return !open
+    })
+  }
 
   const { data: patientsData, isLoading: patientsLoading, error: patientsError, refetch: refetchPatients } = usePatients()
   const { data: nextIds } = useNextIds()
@@ -41,6 +68,7 @@ export function IsbarPage() {
   })
 
   const activePatients = patientsData?.patients ?? []
+  const draftErVisitId = mode === 'draft' ? methods.watch('er_visit_id') || null : null
 
   function startDraft(seed: Partial<IsbarFormValues>) {
     if (!nextIds) return
@@ -57,30 +85,27 @@ export function IsbarPage() {
     setMode('active')
   }
 
+  /**
+   * Picking a roster name only FILLS the form (create on Add, 2026-10-01).
+   * Nothing is saved until the user clicks "Add Patient" (handleSubmit in
+   * draft mode), which creates the stay as roster-origin, drops the person
+   * from the roster list and puts them on the Live ER waiting list.
+   */
   async function handleSelectRosterItem(item: ErRosterItem, existingStayId: number | null) {
     if (existingStayId != null) {
       await loadActive(existingStayId)
       return
     }
-    if (!nextIds) return
     const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unknown'
-    try {
-      await createPatient.mutateAsync({
-        patient_id: nextIds.next_patient_id,
-        stay_id: nextIds.next_stay_id,
-        name,
-        arrival_time: item.arrival_time ? item.arrival_time.slice(0, 16) : new Date().toISOString().slice(0, 16),
-        er_visit_id: String(item.er_visit_id),
-        record_source: 'external',
-        gender: mapExternalGender(item.gender) || undefined,
-        age: item.age ?? undefined,
-        chiefcomplaint: item.chief_complaint ?? undefined,
-      })
-      await loadActive(nextIds.next_stay_id)
-      showToast(`${name} added from the ER roster — continue with ISBAR below.`, 'success')
-    } catch {
-      showToast('Could not add this patient from the roster. Please try again.', 'error')
-    }
+    startDraft({
+      name,
+      ...(item.arrival_time ? { arrival_time: item.arrival_time.slice(0, 16) } : {}),
+      gender: mapExternalGender(item.gender) || '',
+      age: item.age ?? undefined,
+      chiefcomplaint: item.chief_complaint ?? '',
+      er_visit_id: String(item.er_visit_id),
+      record_source: 'external',
+    })
   }
 
   function handleSelectDirectoryPatient(item: DirectoryPatient) {
@@ -123,7 +148,12 @@ export function IsbarPage() {
         await createPatient.mutateAsync(formValuesToCreateInput(values))
         setActiveStayId(values.stay_id)
         setMode('active')
-        showToast('Patient added — ISBAR entry started.', 'success')
+        showToast(
+          values.er_visit_id
+            ? `${values.name} added — now on the Live ER waiting list. Assign a bed in Live ER.`
+            : 'Patient added — ISBAR entry started.',
+          'success',
+        )
       } else if (mode === 'active' && activeStayId != null) {
         await modifyPatient.mutateAsync({ stayId: activeStayId, body: formValuesToModifyInput(values) })
         showToast('Changes saved.', 'success')
@@ -164,7 +194,7 @@ export function IsbarPage() {
       <div className={styles.layout}>
         <LiveErRoster
           activePatients={activePatients}
-          activeStayId={activeStayId}
+          draftErVisitId={draftErVisitId}
           onSelect={handleSelectRosterItem}
           onOpenFallback={() => setFallbackOpen(true)}
         />
@@ -174,26 +204,57 @@ export function IsbarPage() {
           methods={methods}
           onSubmit={handleSubmit}
           onChangePatient={handleChangePatient}
+          onCancelDraft={handleChangePatient}
           isSaving={createPatient.isPending || modifyPatient.isPending}
         />
       </div>
 
-      <div className={styles.tableSection}>
-        <h2 className={styles.tableTitle}>Active Patients</h2>
-        <DataTable
-          data={activePatients}
-          columns={columns}
-          getRowId={(p) => String(p.stay_id)}
-          isLoading={patientsLoading}
-          error={patientsError ? 'Could not load active patients.' : null}
-          onRetry={() => refetchPatients()}
-          emptyTitle="No active patients"
-          emptyDescription="Patients picked from the roster or added manually will appear here."
-          onRowClick={(p) => loadActive(p.stay_id)}
-          selectedRowId={activeStayId != null ? String(activeStayId) : null}
-          defaultSort={[{ id: 'arrival_time', desc: true }]}
-        />
-      </div>
+      <section className={styles.tableSection} aria-labelledby="active-patients-title">
+        <div className={styles.tableHeader}>
+          <button
+            type="button"
+            className={styles.tableToggle}
+            aria-expanded={patientsOpen}
+            aria-controls="active-patients-body"
+            onClick={togglePatientsOpen}
+          >
+            <span className={styles.tableHeading}>
+              <span className={styles.tableTitleRow}>
+                <h2 id="active-patients-title" className={styles.tableTitle}>
+                  Active Patients
+                </h2>
+                <Badge>{patientsLoading ? '…' : `${activePatients.length} active`}</Badge>
+              </span>
+              <span className={styles.tableSubtitle}>Patients currently in the ER, from the live roster or entered manually</span>
+            </span>
+            <ChevronDown size={18} className={[styles.chevron, patientsOpen ? styles.chevronOpen : ''].filter(Boolean).join(' ')} aria-hidden="true" />
+          </button>
+          <IconButton
+            icon={<RefreshCw size={16} />}
+            label="Refresh active patients"
+            variant="secondary"
+            onClick={() => refetchPatients()}
+          />
+        </div>
+
+        {patientsOpen && (
+          <div id="active-patients-body" className={styles.tableBody}>
+            <DataTable
+              data={activePatients}
+              columns={columns}
+              getRowId={(p) => String(p.stay_id)}
+              isLoading={patientsLoading}
+              error={patientsError ? 'Could not load active patients.' : null}
+              onRetry={() => refetchPatients()}
+              emptyTitle="No active patients"
+              emptyDescription="Patients picked from the roster or added manually will appear here."
+              onRowClick={(p) => loadActive(p.stay_id)}
+              selectedRowId={activeStayId != null ? String(activeStayId) : null}
+              defaultSort={[{ id: 'arrival_time', desc: true }]}
+            />
+          </div>
+        )}
+      </section>
 
       <FallbackEntryDrawer
         open={fallbackOpen}
