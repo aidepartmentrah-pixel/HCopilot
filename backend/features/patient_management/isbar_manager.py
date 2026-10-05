@@ -68,6 +68,10 @@ def _from_store(field, value):
     return value
 
 
+# Max ids per IN (...) query; well under SQL Server's 2100-parameter limit.
+_IN_CHUNK_SIZE = 1000
+
+
 class ISBARManager:
     """CRUD for the PatientISBARDetails side table."""
 
@@ -83,14 +87,24 @@ class ISBARManager:
             return self._row(r) if r is not None else None
 
     def get_many(self, stay_ids: list[int]) -> dict:
-        """Batched lookup keyed by stay_id, for merging a small field subset into list views."""
+        """Batched lookup keyed by stay_id, for merging a small field subset into list views.
+
+        Queried in chunks: SQL Server rejects any statement with more than 2100
+        bound parameters ("COUNT field incorrect"), and the History list asks for
+        every archived stay at once — it broke once the history passed ~2100 rows.
+        """
         if not stay_ids:
             return {}
+        found: dict = {}
         with SessionLocal() as session:
-            rows = session.query(PatientISBARDetails).filter(
-                PatientISBARDetails.stay_id.in_(stay_ids)
-            ).all()
-            return {r.stay_id: self._row(r) for r in rows}
+            for start in range(0, len(stay_ids), _IN_CHUNK_SIZE):
+                chunk = stay_ids[start:start + _IN_CHUNK_SIZE]
+                rows = session.query(PatientISBARDetails).filter(
+                    PatientISBARDetails.stay_id.in_(chunk)
+                ).all()
+                for r in rows:
+                    found[r.stay_id] = self._row(r)
+        return found
 
     def upsert(self, stay_id: int, data: dict) -> dict:
         """Insert a new ISBAR row for stay_id, or update the existing one. Unspecified fields are left unchanged."""
