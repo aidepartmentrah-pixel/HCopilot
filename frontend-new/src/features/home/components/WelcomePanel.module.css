@@ -3,11 +3,29 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 190px;
+  min-height: 300px;
   padding: var(--space-6) var(--space-8);
   border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--shell-bg) 0%, var(--brand-700) 100%);
+  /* Solid fallback color only (shows briefly before the image loads, or
+     if it fails to) — the image itself already has the brand-indigo
+     fade baked into its left edge, so there's no gradient layered
+     underneath it at runtime. */
+  background-color: var(--shell-bg);
+  background-image: url('../../../assets/home/welcome-hero.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   overflow: hidden;
+}
+
+/* Responsive safety net: reinforces the image's own baked-in fade so
+   text stays legible even if the panel's rendered aspect ratio crops
+   the source image differently than expected at a given viewport width. */
+.textFade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--shell-bg) 0%, rgba(30, 27, 75, 0.35) 30%, rgba(30, 27, 75, 0) 55%);
+  pointer-events: none;
 }
 
 .text {
@@ -38,16 +56,3 @@
   max-width: 480px;
 }
 
-.artwork {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.artworkSvg {
-  position: absolute;
-  right: 0;
-  top: 0;
-  height: 100%;
-  width: auto;
-}

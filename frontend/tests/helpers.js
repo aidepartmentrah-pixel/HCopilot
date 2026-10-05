@@ -37,8 +37,7 @@ async function gotoStatistics(page) {
 // Board, ER UI Architecture Redesign Page B) lives under the "Care"
 // nav-group dropdown (desktop), not a direct top-level nav-btn.
 async function gotoBedsDisplay(page) {
-  await page.click('#navg-care-btn');
-  await page.click('#navg-care-dd .nav-dd-item[data-section="beds-display"]');
+  await page.click('.nav-btn[data-section="beds-display"]');
   await page.waitForSelector('#beds-display.section.active');
   await page.waitForSelector('#erb-lanes .loading', { state: 'detached', timeout: 15000 });
   await page.waitForSelector('#erb-lanes .erb-lane', { state: 'attached', timeout: 15000 });

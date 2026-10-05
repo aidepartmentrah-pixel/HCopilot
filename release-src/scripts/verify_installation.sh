@@ -50,6 +50,37 @@ else
   FAIL=1
 fi
 
+echo "==> Checking new frontend is reachable..."
+if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FRONTEND_NEW_PORT:-8083}/" | grep -q "200"; then
+  echo "==> New frontend is reachable."
+else
+  echo "==> NEW FRONTEND CHECK FAILED." >&2
+  FAIL=1
+fi
+
+echo "==> Checking new frontend can reach the backend through its own proxy..."
+if curl -s -o /dev/null -w "%{http_code}" "http://localhost:${FRONTEND_NEW_PORT:-8083}/api/beds/list" | grep -q "200"; then
+  echo "==> New frontend -> backend proxy path OK."
+else
+  echo "==> NEW FRONTEND PROXY CHECK FAILED." >&2
+  FAIL=1
+fi
+
+# Hospital Directory (Malin): informational only — never fails the install,
+# because the directory is optional and may be unreachable from a lab VM.
+echo "==> Checking the backend container can resolve 'malin' (Hospital Directory)..."
+if docker compose exec -T backend python -c "import socket; print('malin ->', socket.gethostbyname('malin'))" 2>/dev/null; then
+  echo "==> 'malin' resolves inside the backend container."
+else
+  warn "'malin' does NOT resolve inside the backend container (extra_hosts missing?). Hospital Directory features will not work."
+fi
+if [ -n "${SETTINGS_ENCRYPTION_KEY:-}" ] && [ "${#SETTINGS_ENCRYPTION_KEY}" -eq 44 ]; then
+  echo "==> SETTINGS_ENCRYPTION_KEY present and 44 chars."
+else
+  warn "SETTINGS_ENCRYPTION_KEY missing or not 44 chars — the stored Hospital Directory API key cannot be decrypted."
+fi
+echo
+
 echo "==> Checking install directory independence markers..."
 [ -f "$INSTALL_ENV_FILE" ] && echo "==> Persistent .env present at $INSTALL_ENV_FILE." || { echo "==> Persistent .env MISSING." >&2; FAIL=1; }
 [ -f "$INSTALL_VERSION_FILE" ] && echo "==> Installed version recorded: $(cat "$INSTALL_VERSION_FILE")." || echo "==> (No INSTALLED_VERSION file yet — expected during a first-time install run.)"

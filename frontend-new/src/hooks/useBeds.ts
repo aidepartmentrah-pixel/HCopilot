@@ -29,8 +29,7 @@ export function useBedStats() {
 export function useAssignBed() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ bedId, patientId, bedOccupationTime }: { bedId: number; patientId: number; bedOccupationTime?: string }) =>
-      bedsApi.assign(bedId, patientId, bedOccupationTime),
+    mutationFn: ({ bedId, patientId }: { bedId: number; patientId: number }) => bedsApi.assign(bedId, patientId),
     onSuccess: () => invalidateBoard(queryClient),
   })
 }

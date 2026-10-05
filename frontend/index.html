@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="css/models.css">
     <link rel="stylesheet" href="css/model_training.css">
     <link rel="stylesheet" href="css/hospital_directory.css">
-    <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/modals.css?v=assign-search">
     <link rel="stylesheet" href="css/settings.css">
     <link rel="stylesheet" href="css/patients.css">
     <link rel="stylesheet" href="css/patient-isbar-form.css">
@@ -41,13 +41,14 @@
     <link rel="stylesheet" href="css/settings_reset.css">
     <link rel="stylesheet" href="css/auth.css">
     <link rel="stylesheet" href="css/datetime-picker.css">
+    <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
 </head>
 <body>
     <div class="container">
         <header class="app-header">
             <!-- Brand strip -->
             <div class="app-header-brand">
-                <img class="app-logo-img" src="assets/logo-mark.png" alt="HCopilot">
+                <img class="app-logo-img" src="assets/logo-mark.svg" alt="HCopilot">
                 <div class="app-brand-text">
                     <span class="app-brand-name">HCopilot</span>
                     <span class="app-brand-sub">Healthcare Data Management</span>
@@ -83,12 +84,10 @@
                     <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 1 1 2 6.5"/><path d="M4 5.5V10h4.5"/><path d="M12 8v4.5l3 2"/></svg></span>
                     <span class="nav-label">History</span>
                 </button>
-                <!-- Group: Care (Beds Display, including its bedless section) -->
-                <button class="nav-btn nav-group-btn" id="navg-care-btn"
-                        onclick="toggleNavGroup('navg-care', event)">
+                <button class="nav-btn" data-section="beds-display"
+                        onclick="showSection('beds-display')">
                     <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span>
-                    <span class="nav-label">Care</span>
-                    <span class="nav-chevron">▾</span>
+                    <span class="nav-label">Live ER</span>
                 </button>
                 <!-- Group: Operations (Scheduling + Simulation) -->
                 <button class="nav-btn nav-group-btn" id="navg-ops-btn"
@@ -407,22 +406,18 @@
                     <p><strong>Patient:</strong> <span id="modal-patient-id">—</span></p>
                 </div>
 
-                <!-- Assign form: visible when bed is available -->
+                <!-- Assign form: visible when bed is available. Type to search waiting
+                     patients by name, click one, then Assign. The assignment time is
+                     stamped by the server as the bed occupation time. -->
                 <div id="modal-assign-section" style="display:none; margin-top:14px;">
-                    <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Enter a Patient ID to assign to this bed:</p>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <input type="number" id="modal-assign-patient-input"
-                               class="patient-edit-input" placeholder="Patient ID" min="1"
-                               style="flex:1;" />
-                        <button class="modal-btn occupied-btn" onclick="assignPatientToBed()">
-                            🔴 Assign Patient
-                        </button>
-                    </div>
-                    <div style="margin-top:10px;">
-                        <p style="font-size:12px;color:#6b7280;margin-bottom:4px;">🕐 Bed Occupation Time <span style="color:#9ca3af;">(suggested: now — edit if needed)</span></p>
-                        <input type="text" id="modal-assign-arrival-time"
-                               class="patient-edit-input dt-picker" style="width:100%;box-sizing:border-box;" />
-                    </div>
+                    <p style="font-size:13px;color:#6b7280;margin-bottom:8px;">Search the waiting patients by name, then pick one to assign to this bed:</p>
+                    <input type="text" id="modal-assign-patient-input" class="patient-edit-input assign-search"
+                           placeholder="🔍 Type a patient name…" autocomplete="off" dir="auto"
+                           oninput="_renderAssignPatientList()" onkeydown="if(event.key==='Enter'){event.preventDefault();assignPatientToBed();}" />
+                    <ul id="modal-assign-patient-list" class="assign-list" role="listbox" aria-label="Waiting patients"></ul>
+                    <button class="modal-btn occupied-btn" id="modal-assign-btn" onclick="assignPatientToBed()" style="width:100%;margin-top:10px;">
+                        🔴 Assign Patient
+                    </button>
                     <p id="modal-assign-error" style="color:#e74c3c;font-size:12px;margin-top:6px;min-height:16px;"></p>
                 </div>
 
@@ -1051,12 +1046,7 @@
                                     <label>🔍 Search Hospital Directory <span class="pat-hint">(optional — leave blank to enter manually)</span></label>
 
                                     <div id="pat-directory-search-ui">
-                                        <div class="pat-directory-tabs" role="tablist">
-                                            <button type="button" class="pat-directory-tab active" id="pat-directory-tab-name" onclick="switchPatDirectoryTab('name')">Search by name</button>
-                                            <button type="button" class="pat-directory-tab" id="pat-directory-tab-id" onclick="switchPatDirectoryTab('id')">Search by patient ID</button>
-                                        </div>
-
-                                        <div class="pat-directory-panel" id="pat-directory-panel-name">
+                                                                                <div class="pat-directory-panel" id="pat-directory-panel-name">
                                             <div class="pat-directory-panel-heading">البحث بالاسم الثلاثي</div>
                                             <div class="pat-directory-name-grid" dir="rtl">
                                                 <div class="pat-directory-name-field">
@@ -1078,11 +1068,7 @@
                                             </div>
                                         </div>
 
-                                        <div class="pat-directory-panel" id="pat-directory-panel-id" hidden>
-                                            <input class="isbar-input" type="text" id="pat-directory-patient-id" placeholder="Patient ID" oninput="onPatDirectorySearchInput()" autocomplete="off">
-                                        </div>
-
-                                        <div class="pat-directory-results" id="pat-directory-results" hidden></div>
+                                                                                <div class="pat-directory-results" id="pat-directory-results" hidden></div>
                                     </div>
 
                                     <!-- Shown instead of the search UI once a result is picked — the
@@ -1149,7 +1135,7 @@
                                                 <option value="months">Months</option>
                                                 <option value="days">Days</option>
                                             </select>
-                                        </div>
+                                        </div></div>
                                     <div class="isbar-field"><label>Arrival Time <span class="pat-hint">(auto, required)</span></label>
                                         <input class="isbar-input dt-picker" type="text" id="pat-arrival-time" required></div>
                                     <!-- Departure Time / Bed Occupation Time removed from this entry
@@ -3310,7 +3296,7 @@
     <script src="js/utils.js"></script>
     <script src="js/dataset_display.js"></script>
     <script src="js/flow_prediction.js"></script>
-    <script src="js/beds_display.js"></script>
+    <script src="js/beds_display.js?v=assign-search"></script>
     <script src="js/change_bed.js"></script>
     <script src="js/settings.js"></script>
     <script src="js/settings_shifts.js"></script>
@@ -3345,7 +3331,7 @@
     <div class="nav-overlay" id="nav-overlay" onclick="closeNavMenu()"></div>
     <div class="nav-drawer" id="nav-drawer">
         <div class="nav-drawer-header">
-            <img class="nav-drawer-logo" src="assets/logo-mark.png" alt="HCopilot">
+            <img class="nav-drawer-logo" src="assets/logo-mark.svg" alt="HCopilot">
             <span class="nav-drawer-name">HCopilot</span>
             <button class="nav-drawer-close" onclick="closeNavMenu()">✕</button>
         </div>
@@ -3367,19 +3353,10 @@
                     onclick="showSection('patient-history')">
                 <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 1 1 2 6.5"/><path d="M4 5.5V10h4.5"/><path d="M12 8v4.5l3 2"/></svg></span><span>History</span>
             </button>
-            <!-- Group: Care -->
-            <div class="nav-drawer-group" id="dg-care">
-                <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-care')">
-                    <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span><span>Care</span>
-                    <span class="nav-drawer-caret">▾</span>
-                </button>
-                <div class="nav-drawer-group-items">
-                    <button class="nav-drawer-btn nav-drawer-sub" data-section="beds-display"
-                            onclick="showSection('beds-display')">
-                        <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span><span>Beds Display</span>
-                    </button>
-                </div>
-            </div>
+            <button class="nav-drawer-btn" data-section="beds-display"
+                    onclick="showSection('beds-display')">
+                <span class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span><span>Live ER</span>
+            </button>
             <!-- Group: Operations -->
             <div class="nav-drawer-group" id="dg-ops">
                 <button class="nav-drawer-group-btn" onclick="toggleDrawerGroup('dg-ops')">
@@ -3409,12 +3386,6 @@
     </div>
 
     <!-- ── Nav group dropdowns (fixed-position, avoids header overflow) ── -->
-    <div class="nav-dropdown" id="navg-care-dd">
-        <button class="nav-dd-item" data-section="beds-display"
-                onclick="showSection('beds-display')">
-            <span class="nav-dd-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.5V8a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.5"/><path d="M3 13.5h18v4"/><path d="M11.5 12.5H16a2.5 2.5 0 0 1 2.5 2.5v.5"/><path d="M3 20v-2.5"/><path d="M21 20v-2.5"/><circle cx="7" cy="9.3" r="1.1"/></svg></span> Beds Display
-        </button>
-    </div>
     <div class="nav-dropdown" id="navg-ops-dd">
         <button class="nav-dd-item" data-section="scheduling"
                 onclick="showSection('scheduling')">

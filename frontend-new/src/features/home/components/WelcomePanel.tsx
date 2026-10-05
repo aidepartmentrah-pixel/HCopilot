@@ -3,15 +3,16 @@ import { getGreeting } from '../greeting'
 import styles from './WelcomePanel.module.css'
 
 /**
- * Compact branded welcome strip (Dashboard spec §4, 180-220px). The spec
- * asks for a "restrained clinical photograph" on the right — no such
- * asset exists in this repo, and generating or sourcing one now would
- * mean either fabricating a "real" hospital photo or reusing the GPT
- * mockup images as literal content, both of which this mission's own
- * no-fabrication rule (source spec §24, kickoff prompt's standing rules)
- * rules out. Uses a locally-rendered abstract pattern in the brand
- * palette instead — professional, cool-toned, zero network dependency,
- * and honestly not a photograph rather than pretending to be one.
+ * Branded welcome strip (Dashboard spec §4). A restrained clinical
+ * photograph on the right, purpose-built by the user as a wide banner
+ * with the indigo fade already composited into the image itself (left
+ * edge solid brand-indigo, fading into the photo) — `.panel` uses it
+ * directly as its own background rather than layering a separate CSS
+ * fade on top of a plain photo crop. A thin CSS gradient reinforces the
+ * fade at the far left edge as a responsive safety net (so text stays
+ * legible even if the panel's rendered aspect ratio doesn't exactly
+ * match the source image's). Purely decorative — never a stand-in for
+ * real clinical data.
  */
 export function WelcomePanel() {
   const { user } = useAuth()
@@ -20,6 +21,7 @@ export function WelcomePanel() {
 
   return (
     <section className={styles.panel} aria-label="Welcome">
+      <div className={styles.textFade} aria-hidden="true" />
       <div className={styles.text}>
         <p className={styles.eyebrow}>{greeting.toUpperCase()}</p>
         <h2 className={styles.name} dir="auto">
@@ -28,13 +30,6 @@ export function WelcomePanel() {
         <p className={styles.message}>
           Here is what is happening in the ER today. HCopilot helps you stay informed, act faster, and keep patient flow visible.
         </p>
-      </div>
-      <div className={styles.artwork} aria-hidden="true">
-        <svg viewBox="0 0 240 220" fill="none" className={styles.artworkSvg}>
-          <circle cx="190" cy="40" r="90" fill="rgba(255,255,255,0.06)" />
-          <circle cx="60" cy="190" r="70" fill="rgba(255,255,255,0.05)" />
-          <circle cx="150" cy="170" r="30" fill="rgba(255,255,255,0.08)" />
-        </svg>
       </div>
     </section>
   )

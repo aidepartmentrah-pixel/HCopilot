@@ -60,18 +60,8 @@ log "Step 3/8: Reconciling persistent configuration (existing values are never o
 # existing persistent .env — never touch a key that already has a value.
 # Per §3.3/§6.3: production .env is deployment-owned state, not something a
 # new release template gets to replace.
-ADDED=0
-while IFS='=' read -r key value; do
-  case "$key" in ''|'#'*) continue ;; esac
-  if ! grep -q "^${key}=" "$INSTALL_ENV_FILE" 2>/dev/null; then
-    if [ "$value" = "__GENERATE_ME__" ]; then
-      value="$(generate_password)"
-    fi
-    echo "${key}=${value}" >> "$INSTALL_ENV_FILE"
-    log "  Added new required variable: $key"
-    ADDED=1
-  fi
-done < "$RELEASE_DIR/configuration/.env.offline.template"
+merge_env_template "$RELEASE_DIR/configuration/.env.offline.template"
+ADDED=$ENV_KEYS_ADDED
 [ "$ADDED" -eq 0 ] && log "  No new configuration variables introduced by this release."
 echo
 
@@ -92,8 +82,9 @@ chmod +x "$INSTALL_ROOT"/scripts/*.sh 2>/dev/null || true
 compose_cd
 BACKEND_PORT="${BACKEND_PORT:-8090}"
 FRONTEND_PORT="${FRONTEND_PORT:-8082}"
+FRONTEND_NEW_PORT="${FRONTEND_NEW_PORT:-8083}"
 DATABASE_PORT="${DATABASE_PORT:-1433}"
-log "Current ports — backend:${BACKEND_PORT} frontend:${FRONTEND_PORT} database:${DATABASE_PORT}"
+log "Current ports — backend:${BACKEND_PORT} frontend:${FRONTEND_PORT} frontend-new:${FRONTEND_NEW_PORT} database:${DATABASE_PORT}"
 
 # Non-fatal: warn if a port is bound by something outside this app's own
 # Compose project. A normal update always finds its own stack already
@@ -103,7 +94,7 @@ log "Current ports — backend:${BACKEND_PORT} frontend:${FRONTEND_PORT} databas
 _warn_port_conflicts() {
   local our_containers port name
   our_containers="$(docker compose ps -q 2>/dev/null || true)"
-  for pair in "backend:$BACKEND_PORT" "frontend:$FRONTEND_PORT" "database:$DATABASE_PORT"; do
+  for pair in "backend:$BACKEND_PORT" "frontend:$FRONTEND_PORT" "frontend-new:$FRONTEND_NEW_PORT" "database:$DATABASE_PORT"; do
     name="${pair%%:*}"; port="${pair##*:}"
     if (echo > "/dev/tcp/127.0.0.1/$port") >/dev/null 2>&1; then
       local holder
@@ -143,6 +134,7 @@ echo
 echo "=================================================================="
 echo " Update complete ($PREVIOUS_VERSION -> $RELEASE_VERSION). Existing data was preserved."
 echo
-echo " Open:      http://<this-server-IP>:${FRONTEND_PORT}"
+echo " Open (old UI): http://<this-server-IP>:${FRONTEND_PORT}"
+echo " Open (new UI): http://<this-server-IP>:${FRONTEND_NEW_PORT}"
 echo " This release folder ($RELEASE_DIR) can now be archived/removed."
 echo "=================================================================="

@@ -28,6 +28,8 @@
 #   See create_chariot_bed() and cleanup_chariot_if_unneeded() below.
 # =============================================================================
 
+from datetime import datetime
+
 from fastapi import HTTPException
 
 from db.session import SessionLocal
@@ -368,8 +370,9 @@ class BedManager:
             session.query(PatientBed).filter(PatientBed.bed_id == bed_id).delete(synchronize_session=False)
             session.add(PatientBed(patient_id=patient_id, bed_id=bed_id))
 
-            if bed_occupation_time:
-                patient.bed_occupation_time = bed_occupation_time
+            # The moment of assignment IS the bed occupation time; clients no
+            # longer send it. An explicit value is still honoured (API callers).
+            patient.bed_occupation_time = bed_occupation_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
 
             session.commit()
 

@@ -9,6 +9,7 @@ import { LoadingState } from '@/components/feedback/LoadingState'
 import { useToast } from '@/components/feedback/useToast'
 import { useAssignBed, useBedlessPatients, useBeds } from '@/hooks/useBeds'
 import type { Bed } from '@/types/bed'
+import { AssignBedDialog } from './components/AssignBedDialog'
 import { PlacementDetailDrawer } from './components/PlacementDetailDrawer'
 import { SummaryStatRow } from './components/SummaryStatRow'
 import { WardLane } from './components/WardLane'
@@ -38,6 +39,7 @@ export function LiveErPage() {
   const [selectedCard, setSelectedCard] = useState<PlacementCardData | null>(null)
   const [selectedWaitingCard, setSelectedWaitingCard] = useState<PlacementCardData | null>(null)
   const [pendingAssignment, setPendingAssignment] = useState<{ waiting: PlacementCardData; bed: PlacementCardData } | null>(null)
+  const [assignBedCard, setAssignBedCard] = useState<PlacementCardData | null>(null)
   const { showToast } = useToast()
   const assignBed = useAssignBed()
 
@@ -86,8 +88,25 @@ export function LiveErPage() {
       setPendingAssignment({ waiting: selectedWaitingCard, bed: card })
       return
     }
+    // Available bed, nobody selected: pop up the search-and-assign dialog.
+    if (card.bed?.bed_status === 'Available') {
+      setAssignBedCard(card)
+      return
+    }
     setSelectedWaitingCard(null)
     setSelectedCard(card)
+  }
+
+  async function assignFromDialog(patientId: number) {
+    if (!assignBedCard?.bed) return
+    const patient = waitingCards.find((c) => c.patientId === patientId)
+    try {
+      await assignBed.mutateAsync({ bedId: assignBedCard.bed.bed_id, patientId })
+      showToast(`${patient?.primary ?? `Patient #${patientId}`} assigned to ${assignBedCard.primary}.`, 'success')
+      setAssignBedCard(null)
+    } catch {
+      showToast('Could not assign this bed.', 'error')
+    }
   }
 
   async function confirmAssignment() {
@@ -165,6 +184,14 @@ export function LiveErPage() {
       )}
 
       <PlacementDetailDrawer card={selectedCard} onClose={() => setSelectedCard(null)} />
+
+      <AssignBedDialog
+        bed={assignBedCard}
+        waitingPatients={waitingCards}
+        loading={assignBed.isPending}
+        onAssign={assignFromDialog}
+        onClose={() => setAssignBedCard(null)}
+      />
 
       <ConfirmDialog
         open={!!pendingAssignment}

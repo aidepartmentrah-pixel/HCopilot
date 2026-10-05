@@ -5,8 +5,8 @@ export const bedsApi = {
   list: () => apiClient.get<BedListResponse>('/api/beds/list'),
   bedless: () => apiClient.get<BedlessResponse>('/api/beds/bedless'),
   stats: () => apiClient.get<BedStats>('/api/beds/stats'),
-  assign: (bedId: number, patientId: number, bedOccupationTime?: string) =>
-    apiClient.post(`/api/beds/assign/${bedId}`, { patient_id: patientId, bed_occupation_time: bedOccupationTime }),
+  // The server stamps bed_occupation_time = now; the assignment moment is the occupation time.
+  assign: (bedId: number, patientId: number) => apiClient.post(`/api/beds/assign/${bedId}`, { patient_id: patientId }),
   move: (patientId: number, newBedId: number) => apiClient.post(`/api/beds/move/${patientId}`, { new_bed_id: newBedId }),
   release: (bedId: number) => apiClient.post(`/api/beds/release/${bedId}`),
   dischargeFromBed: (bedId: number, body: BedDischargeInput) =>

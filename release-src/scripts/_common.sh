@@ -67,6 +67,35 @@ generate_password() {
   tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 24 || true
 }
 
+# Generates a valid Fernet key: url-safe base64 of 32 random bytes = exactly
+# 44 chars ending in "=". Pure shell (base64 + tr), so it works on the offline
+# host without Python/cryptography installed. `|| true` for the same SIGPIPE
+# reason as generate_password above.
+generate_fernet_key() {
+  head -c 32 /dev/urandom 2>/dev/null | base64 | tr '+/' '-_' | tr -d '\n' || true
+}
+
+# Appends to $INSTALL_ENV_FILE every variable present in the given template
+# that the file does not define yet. Never changes a key that already has a
+# value — the persistent .env is deployment-owned state. Placeholders are
+# replaced with generated secrets. Sets ENV_KEYS_ADDED=1 if anything was added.
+merge_env_template() {
+  local template="$1" key value
+  ENV_KEYS_ADDED=0
+  while IFS='=' read -r key value; do
+    case "$key" in ''|'#'*) continue ;; esac
+    if ! grep -q "^${key}=" "$INSTALL_ENV_FILE" 2>/dev/null; then
+      case "$value" in
+        __GENERATE_ME__)     value="$(generate_password)" ;;
+        __GENERATE_FERNET__) value="$(generate_fernet_key)" ;;
+      esac
+      echo "${key}=${value}" >> "$INSTALL_ENV_FILE"
+      log "  Added new required variable: $key"
+      ENV_KEYS_ADDED=1
+    fi
+  done < "$template"
+}
+
 require_existing_install() {
   [ -f "$INSTALL_ENV_FILE" ] || die \
     "No existing installation found at $INSTALL_ROOT (missing $INSTALL_ENV_FILE). Run install_offline.sh from a release first."

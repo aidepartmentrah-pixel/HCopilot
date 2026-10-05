@@ -31,6 +31,14 @@
   gap: var(--space-1);
   flex: 1;
   overflow-x: auto;
+  /* Still scrollable (wheel/trackpad/touch) when nav items don't all fit
+     at high browser zoom or a narrow window — just without the native
+     scrollbar's chunky bar-with-arrows rendering under the links. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.nav::-webkit-scrollbar {
+  display: none;
 }
 
 .navLink {

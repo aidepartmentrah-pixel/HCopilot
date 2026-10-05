@@ -19,12 +19,10 @@ interface PlacementDetailDrawerProps {
 
 /**
  * Right-side drawer, not a page navigation or a centered modal (Live ER
- * spec §29) — the board stays visible and in context behind it. Routine
- * bed assignment does not happen here anymore: that's the select-a-waiting-
- * card-then-click-an-available-bed flow on the board itself (§22-§26);
- * this drawer covers View/Discharge for an existing placement, and an
- * honest "nothing to do yet" state for an available bed with no patient
- * selected.
+ * spec §29) — the board stays visible and in context behind it. Covers
+ * View/Discharge for an existing placement. Assigning a patient to an
+ * available bed happens in AssignBedDialog (centered pop-up) or via the
+ * select-a-waiting-card-then-click-a-bed flow on the board (§22-§26).
  */
 export function PlacementDetailDrawer({ card, onClose }: PlacementDetailDrawerProps) {
   const { showToast } = useToast()
@@ -106,11 +104,7 @@ export function PlacementDetailDrawer({ card, onClose }: PlacementDetailDrawerPr
             </>
           )}
 
-          {isAvailableBed && (
-            <p className={styles.hint}>
-              This bed is available. Select a patient from the Waiting / No Bed lane, then click this bed to assign it.
-            </p>
-          )}
+          {isAvailableBed && <p className={styles.hint}>This bed is available.</p>}
 
           {isUnderRepair && <p className={styles.hint}>This bed is marked Under Repair. Change its condition from Settings → Beds.</p>}
 

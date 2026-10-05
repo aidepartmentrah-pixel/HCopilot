@@ -40,8 +40,10 @@ export function HistoryFiltersBar({ filters, onChange, bedOptions }: HistoryFilt
         value={filters.bed}
         onChange={(e) => onChange({ ...filters, bed: e.target.value })}
         aria-label="Filter by bed"
+        disabled={bedOptions.length === 0}
+        title={bedOptions.length === 0 ? 'No discharged stay in this list has a recorded bed history yet' : undefined}
       >
-        <option value="">All Beds</option>
+        <option value="">{bedOptions.length === 0 ? 'No Bed History Recorded' : 'All Beds'}</option>
         {bedOptions.map((b) => (
           <option key={b} value={b}>
             Bed {b}

@@ -30,11 +30,8 @@
 // in the mobile slide-in drawer so both desktop and mobile state can be kept
 // in sync by iterating a single data structure.
 var NAV_GROUPS = {
-    // 'unurgent' was its own section here; it's gone (folded into the Live
-    // ER Board's Waiting/No-Bed lane, ER Live-Roster Redesign slice ER8,
-    // re-surfaced by the ER UI Architecture Redesign) — see
-    // beds_display.js's loadBeds().
-    'navg-care': { sections: ['beds-display'],                drawer: 'dg-care' },
+    // Care was a one-item group (Beds Display) — now a direct 'Live ER' nav
+    // button (data-section="beds-display"), so it no longer needs a group.
     'navg-ops':  { sections: ['scheduling',   'simulation'], drawer: 'dg-ops'  },
 };
 
@@ -139,7 +136,7 @@ function showSection(sectionId) {
  * dropdowns) from firing on the same event and immediately closing the one we
  * just opened.
  *
- * @param {string} groupId - ID prefix of the nav group (e.g. 'navg-care').
+ * @param {string} groupId - ID prefix of the nav group (e.g. 'navg-ops').
  * @param {Event}  event   - Click event; stopPropagation() prevents the document
  *                           click handler from immediately closing the dropdown.
  */

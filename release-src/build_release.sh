@@ -26,12 +26,17 @@ fi
 
 echo "==> Building HCopilot release $VERSION into $OUT_DIR"
 
-mkdir -p "$OUT_DIR"/{compose,database,documentation,scripts,docker-images,checksums}
+mkdir -p "$OUT_DIR"/{compose,configuration,database,documentation,scripts,docker-images,checksums}
 
 echo "==> Copying release template (compose/database/documentation/scripts) from release-src/..."
 sed "s/__APP_VERSION__/${VERSION}/g" "$SCRIPT_DIR/compose/docker-compose.yml" > "$OUT_DIR/compose/docker-compose.yml"
-cp "$SCRIPT_DIR/compose/.env.offline.template" "$OUT_DIR/compose/.env.offline.template"
+# install_offline.sh / update_offline.sh read the template from configuration/
+cp "$SCRIPT_DIR/compose/.env.offline.template" "$OUT_DIR/configuration/.env.offline.template"
 cp -r "$SCRIPT_DIR"/database/. "$OUT_DIR/database/"
+# install_offline.sh seeds the persistent models dir from $RELEASE_DIR/models/AIModels
+# (the compose bind mount shadows the copy baked into the image).
+mkdir -p "$OUT_DIR/models"
+cp -r "$SCRIPT_DIR"/models/. "$OUT_DIR/models/"
 cp -r "$SCRIPT_DIR"/documentation/. "$OUT_DIR/documentation/"
 cp "$SCRIPT_DIR"/scripts/*.sh "$SCRIPT_DIR"/scripts/*.py "$OUT_DIR/scripts/" 2>/dev/null || true
 chmod +x "$OUT_DIR"/scripts/*.sh
@@ -39,10 +44,14 @@ chmod +x "$OUT_DIR"/scripts/*.sh
 echo "==> Building application images..."
 docker build -t "hcopilot-backend:${VERSION}" -f "$REPO_ROOT/backend/Dockerfile" "$REPO_ROOT/backend"
 docker build -t "hcopilot-frontend:${VERSION}" -f "$REPO_ROOT/frontend/Dockerfile" "$REPO_ROOT/frontend"
+# New React frontend: multi-stage (node build -> nginx) — needs internet on
+# THIS workstation for `npm ci`; the resulting image runs fully offline.
+docker build -t "hcopilot-frontend-new:${VERSION}" -f "$REPO_ROOT/frontend-new/Dockerfile" "$REPO_ROOT/frontend-new"
 
 echo "==> Exporting images to $OUT_DIR/docker-images/..."
 docker save -o "$OUT_DIR/docker-images/backend.tar" "hcopilot-backend:${VERSION}"
 docker save -o "$OUT_DIR/docker-images/frontend.tar" "hcopilot-frontend:${VERSION}"
+docker save -o "$OUT_DIR/docker-images/frontend-new.tar" "hcopilot-frontend-new:${VERSION}"
 if docker image inspect mcr.microsoft.com/mssql/server:2022-latest >/dev/null 2>&1; then
   docker save -o "$OUT_DIR/docker-images/sqlserver.tar" mcr.microsoft.com/mssql/server:2022-latest
 else

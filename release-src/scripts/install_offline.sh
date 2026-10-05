@@ -51,6 +51,10 @@ if [ -s "$INSTALL_ENV_FILE" ]; then
   # dedicated login's own real, independently-generated password with the
   # wrong credential.
   log "Using existing persistent configuration already present at $INSTALL_ENV_FILE."
+  # Add anything this release needs that an older/Platform-written .env lacks
+  # (e.g. FRONTEND_NEW_PORT, SETTINGS_ENCRYPTION_KEY) without touching values
+  # already set.
+  merge_env_template "$RELEASE_DIR/configuration/.env.offline.template"
 else
   # No .env yet -- genuine first-time manual install (operator running
   # this script directly, no Platform involved). Original behavior,
@@ -58,6 +62,7 @@ else
   # template.
   GENERATED_PASSWORD="$(generate_password)"
   sed -e "s/__GENERATE_ME__/${GENERATED_PASSWORD}/g" \
+      -e "s|__GENERATE_FERNET__|$(generate_fernet_key)|g" \
       "$RELEASE_DIR/configuration/.env.offline.template" > "$INSTALL_ENV_FILE"
   chmod 600 "$INSTALL_ENV_FILE"
   log "Generated a new database password and wrote it to $INSTALL_ENV_FILE (mode 600)."
@@ -120,7 +125,8 @@ echo
 echo " Installed at:  $INSTALL_ROOT"
 echo " Day-2 operations (start/stop/logs/backup/restore/verify) now live at:"
 echo "   $INSTALL_ROOT/scripts/"
-echo " Open:  http://<this-server-IP>:<FRONTEND_PORT>/ (default port 8082)"
+echo " Open (old UI):  http://<this-server-IP>:<FRONTEND_PORT>/      (default port 8082)"
+echo " Open (new UI):  http://<this-server-IP>:<FRONTEND_NEW_PORT>/  (default port 8083)"
 echo " Log in with admin / admin and change the password immediately."
 echo " Database password was generated and saved to:"
 echo "   $INSTALL_ENV_FILE"

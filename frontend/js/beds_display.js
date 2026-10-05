@@ -414,10 +414,10 @@ function openBedModal(bedId, bedNumber, bedStatus, patientId, bedType) {
         assignSection.style.display = isAvailable ? 'block' : 'none';
         const input = document.getElementById('modal-assign-patient-input');
         if (input) input.value = '';
+        _assignSelectedId = null;
+        _renderAssignPatientList();
         const err = document.getElementById('modal-assign-error');
         if (err) err.textContent = '';
-        const arrivalInput = document.getElementById('modal-assign-arrival-time');
-        if (arrivalInput) setDateTimeValue('modal-assign-arrival-time', nowLocalIso());
     }
 
     // Release button — only meaningful when a patient is currently occupying the bed
@@ -439,6 +439,46 @@ function openBedModal(bedId, bedNumber, bedStatus, patientId, bedType) {
     document.getElementById('bed-modal').style.display = 'block';
 }
 
+let _assignSelectedId = null;   // subject_id picked in the bed modal's waiting-patient list
+
+function _assignMatches() {
+    // Waiting patients narrowed by the search text (name, ID or complaint)
+    const q = (document.getElementById('modal-assign-patient-input')?.value || '').trim().toLowerCase();
+    if (!q) return _bedlessPatients;
+    return _bedlessPatients.filter(p =>
+        `${p.name || ''} ${p.subject_id} ${p.chiefcomplaint || ''}`.toLowerCase().includes(q));
+}
+
+function _assignEffectiveId(matches) {
+    // A clicked row wins; otherwise typing down to exactly one patient is enough
+    if (_assignSelectedId != null && matches.some(p => p.subject_id === _assignSelectedId)) return _assignSelectedId;
+    return matches.length === 1 ? matches[0].subject_id : null;
+}
+
+function _renderAssignPatientList() {
+    const list = document.getElementById('modal-assign-patient-list');
+    if (!list) return;
+    const matches = _assignMatches();
+    const chosen = _assignEffectiveId(matches);
+    if (matches.length === 0) {
+        list.innerHTML = `<li class="assign-empty">${_bedlessPatients.length ? 'No waiting patient matches that search.' : 'No patients are waiting for a bed.'}</li>`;
+        return;
+    }
+    list.innerHTML = matches.map(p => `
+        <li role="option" aria-selected="${p.subject_id === chosen}">
+            <button type="button" class="assign-row${p.subject_id === chosen ? ' selected' : ''}"
+                    onclick="_pickAssignPatient(${p.subject_id})" ondblclick="_pickAssignPatient(${p.subject_id}); assignPatientToBed();">
+                <span class="assign-name" dir="auto">${_escapeHtml(p.name || 'Unknown Patient')}</span>
+                <span class="assign-meta" dir="auto">#${p.subject_id}${p.chiefcomplaint ? ' · ' + _escapeHtml(p.chiefcomplaint) : ''}</span>
+            </button>
+        </li>`).join('');
+}
+
+function _pickAssignPatient(id) {
+    _assignSelectedId = id;
+    _renderAssignPatientList();
+}
+
 function closeBedModal() {
     document.getElementById('bed-modal').style.display = 'none';
     currentBedId     = null;
@@ -449,17 +489,16 @@ async function assignPatientToBed() {
     // Read the patient ID from the assign form and POST to the beds API
     const input     = document.getElementById('modal-assign-patient-input');
     const errEl     = document.getElementById('modal-assign-error');
-    const arrivalEl = document.getElementById('modal-assign-arrival-time');
-    const patientId = parseInt(input?.value);
+    const patientId = _assignEffectiveId(_assignMatches());
 
     if (!patientId || isNaN(patientId)) {
-        if (errEl) errEl.textContent = 'Please enter a valid Patient ID.';
+        if (errEl) errEl.textContent = 'Please pick a waiting patient from the list.';
         return;
     }
     if (errEl) errEl.textContent = '';
 
+    // The server stamps bed_occupation_time = now; the moment of assignment is the occupation time.
     const body = { patient_id: patientId };
-    if (arrivalEl && arrivalEl.value) body.bed_occupation_time = arrivalEl.value;
 
     try {
         const response = await fetch(`/api/beds/assign/${currentBedId}`, {
