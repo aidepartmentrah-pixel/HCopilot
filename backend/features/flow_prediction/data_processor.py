@@ -32,12 +32,18 @@
 # originally edstays_with_synth.csv / meteo.csv, migrated in Stage 2.
 # =============================================================================
 
+import logging
+import os
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from sqlalchemy import or_
 
 from db.session import SessionLocal
 from db.models import HistoricalEdStay, DailyWeather
+
+logger = logging.getLogger(__name__)
 
 # Fallback temperature (°C) used only when a row's calendar date has no
 # DailyWeather coverage at all — e.g. this deployment's live 2026+ arrivals
@@ -45,6 +51,28 @@ from db.models import HistoricalEdStay, DailyWeather
 # A climate-neutral placeholder so those rows keep a usable feature value
 # instead of being dropped entirely by the lag-only dropna() below.
 FALLBACK_TEMPERATURE_C = 20.0
+
+
+def live_data_start():
+    """
+    Optional start date for this deployment's own ("live") arrivals, from the
+    FLOW_LIVE_DATA_START environment variable (ISO date, e.g. 2026-09-22).
+
+    When set, live HistoricalEdStays rows dated BEFORE it are ignored by both
+    training and the Flow Prediction chart — used to drop the software's
+    testing period so only real ER activity is learned from. Nothing is deleted
+    (the rows stay in the table; unset the variable to bring them back), and
+    the synthetic demo history is never affected. Unset/blank/invalid = no
+    cutoff, i.e. the previous behaviour.
+    """
+    raw = os.getenv("FLOW_LIVE_DATA_START", "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        logger.warning("FLOW_LIVE_DATA_START=%r is not an ISO date (YYYY-MM-DD) — ignoring it", raw)
+        return None
 
 
 class FlowDataProcessor:
@@ -91,8 +119,19 @@ class FlowDataProcessor:
             pd.DataFrame with columns: ds (date), y (daily arrival count),
             temperature_2m_mean (average temperature for that day).
         """
+        cutoff = live_data_start()
         with SessionLocal() as session:
             query = session.query(HistoricalEdStay.intime_synth)
+            if cutoff is not None:
+                # Drop only LIVE rows before the cutoff. Spelled out with
+                # IS NULL because `source != 'live'` alone is unknown (not
+                # true) for a NULL source and would silently drop those rows.
+                query = query.filter(or_(
+                    HistoricalEdStay.source.is_(None),
+                    HistoricalEdStay.source != "live",
+                    HistoricalEdStay.intime_synth >= cutoff,
+                ))
+                logger.info("Flow data: ignoring live arrivals before %s (FLOW_LIVE_DATA_START)", cutoff.date())
             if prefer_live:
                 live_query = query.filter(HistoricalEdStay.source == "live")
                 intimes = [r[0] for r in live_query.all()]

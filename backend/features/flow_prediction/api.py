@@ -34,7 +34,7 @@ import joblib
 import os
 import pandas as pd
 import numpy as np
-from .data_processor import FlowDataProcessor
+from .data_processor import FlowDataProcessor, live_data_start
 from db.session import SessionLocal
 from db.models import HistoricalEdStay
 
@@ -67,6 +67,12 @@ _ml_df_row_count: int = -1
 # get_statistics() downstream (e.g. live activity that doesn't yet span
 # enough calendar days for the 7-lag features).
 MIN_LIVE_ML_ROWS = 14
+# When FLOW_LIVE_DATA_START is set (see data_processor.live_data_start()), the
+# live window starts over at that date and is short by design for the first
+# weeks; falling back to the full corpus would then draw a long run of
+# artificial zero days before the cutoff. One row above the bare minimum of 7
+# is enough for predict_flow()'s lag seeding.
+MIN_LIVE_ML_ROWS_WITH_CUTOFF = 8
 
 
 def _get_model_data() -> dict:
@@ -124,7 +130,7 @@ def _get_ml_df():
         master_df = processor.load_and_prepare_data(prefer_live=True)
         ml_df     = processor.create_features(master_df)
 
-        if len(ml_df) < MIN_LIVE_ML_ROWS:
+        if len(ml_df) < (MIN_LIVE_ML_ROWS_WITH_CUTOFF if live_data_start() is not None else MIN_LIVE_ML_ROWS):
             # The live-preferring path produced too little (or nothing) to
             # serve safely — fall back to the full, non-live-restricted
             # corpus rather than caching an unusably small DataFrame.
