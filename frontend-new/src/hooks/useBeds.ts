@@ -34,6 +34,14 @@ export function useAssignBed() {
   })
 }
 
+export function useMoveBed() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ patientId, newBedId }: { patientId: number; newBedId: number }) => bedsApi.move(patientId, newBedId),
+    onSuccess: () => invalidateBoard(queryClient),
+  })
+}
+
 export function useDischargeFromBed() {
   const queryClient = useQueryClient()
   return useMutation({

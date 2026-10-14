@@ -35,3 +35,19 @@ export const apiClient = {
     request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
+
+/** Human-readable message from a failed call: FastAPI's `{"detail": "..."}` text when present, else `fallback`. */
+export function apiErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof ApiError)) return fallback
+  try {
+    const detail = (JSON.parse(err.message) as { detail?: unknown }).detail
+    if (typeof detail === 'string' && detail) return detail
+    if (Array.isArray(detail)) {
+      const msgs = detail.map((d) => (d as { msg?: string }).msg).filter(Boolean)
+      if (msgs.length) return msgs.join('; ')
+    }
+  } catch {
+    /* not JSON - fall through */
+  }
+  return fallback
+}

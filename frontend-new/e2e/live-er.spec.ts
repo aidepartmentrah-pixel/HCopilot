@@ -26,7 +26,7 @@ test.describe('Live ER Board', () => {
     expect(widths.size).toBe(1)
   })
 
-  test('clicking an available bed with nothing selected opens an informational drawer, not an immediate assignment; clicking occupied opens discharge', async ({
+  test('clicking an available bed with nothing selected opens the assign dialog, not an immediate assignment; clicking occupied opens the detail dialog with a Discharge tab', async ({
     page,
   }) => {
     await page.goto('/live-er')
@@ -35,7 +35,7 @@ test.describe('Live ER Board', () => {
     const availableCard = page.getByTestId('placement-card').filter({ hasText: 'Available' }).first()
     if (await availableCard.count()) {
       await availableCard.click()
-      await expect(page.getByText('Select a patient from the Waiting / No Bed lane, then click this bed to assign it.')).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Assign a patient to/ })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toHaveCount(0)
       await page.keyboard.press('Escape')
     }
@@ -43,12 +43,14 @@ test.describe('Live ER Board', () => {
     const occupiedCard = page.getByTestId('placement-card').filter({ hasText: 'Occupied' }).first()
     if (await occupiedCard.count()) {
       await occupiedCard.click()
+      await expect(page.getByRole('tab', { name: 'Change bed' })).toBeVisible()
+      await page.getByRole('tab', { name: 'Discharge' }).click()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toBeVisible()
       await page.keyboard.press('Escape')
     }
   })
 
-  test('clicking a waiting card selects it; clicking the same card again opens its detail drawer with a discharge action', async ({
+  test('clicking a waiting card selects it; clicking the same card again opens its detail dialog with a discharge action', async ({
     page,
   }) => {
     await page.goto('/live-er')
@@ -61,6 +63,8 @@ test.describe('Live ER Board', () => {
       await expect(page.getByText(/selected — click an available bed to assign it/)).toBeVisible()
 
       await waitingCard.click()
+      await expect(page.getByRole('tab', { name: 'Assign bed' })).toBeVisible()
+      await page.getByRole('tab', { name: 'Discharge' }).click()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toBeVisible()
       await page.keyboard.press('Escape')
     }

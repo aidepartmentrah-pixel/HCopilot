@@ -10,7 +10,7 @@ import { useToast } from '@/components/feedback/useToast'
 import { useAssignBed, useBedlessPatients, useBeds } from '@/hooks/useBeds'
 import type { Bed } from '@/types/bed'
 import { AssignBedDialog } from './components/AssignBedDialog'
-import { PlacementDetailDrawer } from './components/PlacementDetailDrawer'
+import { PlacementDetailDialog } from './components/PlacementDetailDialog'
 import { SummaryStatRow } from './components/SummaryStatRow'
 import { WardLane } from './components/WardLane'
 import { cardFromBed, cardFromBedless, type PlacementCardData } from './utils'
@@ -183,7 +183,7 @@ export function LiveErPage() {
         </>
       )}
 
-      <PlacementDetailDrawer card={selectedCard} onClose={() => setSelectedCard(null)} />
+      <PlacementDetailDialog card={selectedCard} onClose={() => setSelectedCard(null)} />
 
       <AssignBedDialog
         bed={assignBedCard}

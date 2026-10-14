@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ColumnDef } from '@tanstack/react-table'
 import { ChevronDown, RefreshCw } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useSearchParams } from 'react-router-dom'
 import { patientsApi } from '@/api/patients'
 import { DataTable } from '@/components/tables/DataTable'
 import { Badge } from '@/components/ui/Badge'
@@ -84,6 +85,20 @@ export function IsbarPage() {
     setActiveStayId(stayId)
     setMode('active')
   }
+
+  // Deep link from Live ER ("Edit ISBAR data"): /isbar?stay=<id> opens that active stay once.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const deepLinkHandled = useRef(false)
+  useEffect(() => {
+    const raw = searchParams.get('stay')
+    if (!raw || deepLinkHandled.current) return
+    deepLinkHandled.current = true
+    const stayId = Number(raw)
+    setSearchParams({}, { replace: true })
+    if (!Number.isFinite(stayId)) return
+    loadActive(stayId).catch(() => showToast('Could not open that patient record.', 'error'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   /**
    * Picking a roster name only FILLS the form (create on Add, 2026-10-01).
