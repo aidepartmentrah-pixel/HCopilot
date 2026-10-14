@@ -27,6 +27,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from db.session import SessionLocal
+from db.models import LogPatient
 from . import client, settings_db, crypto_utils, candidates_db, guess
 
 router = APIRouter()
@@ -201,9 +203,28 @@ async def er_current_visits():
         result = client.get_er_current_visits()
         if result["status"] != "ok":
             return {"success": False, "status": result["status"], "message": result.get("message", ""), "items": []}
-        return {"success": True, "status": "ok", "items": result["items"], "total": result["total"]}
+        items = _without_handled_visits(result["items"])
+        return {"success": True, "status": "ok", "items": items, "total": len(items)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _without_handled_visits(items: list) -> list:
+    """
+    Drop roster entries whose visit HCopilot has already admitted AND discharged.
+
+    The hospital system keeps listing a visit until its own staff close it, so a person a nurse
+    admitted and then discharged in HCopilot would otherwise reappear on the roster. The
+    er_visit_id identifies one visit (a later visit gets a new id), so hiding by id is exact.
+    Anyone hidden by mistake can still be re-admitted through Search Directory / Enter Manually,
+    which creates a brand-new stay (never a resumed one — see er_sync.py).
+    Currently-active stays are hidden client-side already; this covers the archived ones.
+    """
+    with SessionLocal() as session:
+        handled = {row[0] for row in session.query(LogPatient.er_visit_id).filter(LogPatient.er_visit_id.isnot(None)).all()}
+    if not handled:
+        return items
+    return [i for i in items if str(i.get("er_visit_id")) not in handled]
 
 
 @router.get("/patients/find-possible-matches")
