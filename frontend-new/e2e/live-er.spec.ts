@@ -7,7 +7,7 @@ test.describe('Live ER Board', () => {
     await expect(page.getByRole('heading', { name: 'Live ER', exact: true })).toBeVisible()
     await expect(page.getByText('Occupied').first()).toBeVisible({ timeout: 10000 })
     await expect(page.getByText('Available').first()).toBeVisible()
-    await expect(page.getByText('Without Bed')).toBeVisible()
+    await expect(page.getByText('Without a bed')).toBeVisible()
     await expect(page.getByText('Waiting > 5 min')).toBeVisible()
 
     const cards = page.getByTestId('placement-card')

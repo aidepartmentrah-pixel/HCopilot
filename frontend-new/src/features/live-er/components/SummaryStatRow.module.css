@@ -1,20 +1,169 @@
 .row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
-  align-items: stretch;
 }
 
-.alert {
-  grid-column: 1 / -1;
+.card {
+  /* Per-tone colours; everything below reads these. */
+  --accent: var(--slate-500);
+  --tint: var(--slate-100);
+
+  position: relative;
   display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: 116px;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
+  font: inherit;
+  text-align: start;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* A short accent strip inset from the corners (a full-width one would bend with the rounded corners). */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.1);
+  transform: translateY(-1px);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 2px;
+}
+
+.indigo {
+  --accent: var(--brand-600);
+  --tint: var(--brand-50);
+}
+
+.green {
+  --accent: var(--success);
+  --tint: var(--success-bg);
+}
+
+.amber {
+  --accent: var(--warning);
+  --tint: var(--warning-bg);
+}
+
+.red {
+  --accent: var(--danger);
+  --tint: var(--danger-bg);
+}
+
+.neutral {
+  --accent: var(--slate-300, #cbd5e1);
+  --tint: var(--slate-100);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.label {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--warning-bg);
-  color: var(--warning);
-  border-radius: var(--radius-md);
   font-size: var(--font-size-label);
   font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--accent);
+}
+
+.neutral .icon {
+  color: var(--text-secondary);
+}
+
+.value {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  display: block;
+  height: 5px;
+  margin-top: var(--space-1);
+  border-radius: 3px;
+  background: var(--tint);
+  overflow: hidden;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.detail {
+  margin-top: auto;
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(216 37 37 / 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgb(216 37 37 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(216 37 37 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+  .card {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
 }

@@ -8,6 +8,8 @@ const FALLBACK_CARDS_PER_ROW = 4
 
 interface WardLaneProps {
   title: string
+  /** DOM id so the summary cards can scroll here. */
+  id?: string
   /** 'bed' shows the ward occupancy summary and "no beds configured" empty state; 'waiting' shows a plain count and the waiting-specific empty state. Explicit rather than inferred from `cards[0]`, which breaks when the lane is empty. */
   kind: 'bed' | 'waiting'
   cards: PlacementCardData[]
@@ -19,7 +21,7 @@ interface WardLaneProps {
 }
 
 /** One ward = one framed panel whose cards wrap onto as many rows as needed, so every bed is visible without scrolling. */
-export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assignableBedIds, collapsedRows }: WardLaneProps) {
+export function WardLane({ title, id, kind, cards, onCardClick, selectedCardId, assignableBedIds, collapsedRows }: WardLaneProps) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [cardsPerRow, setCardsPerRow] = useState(FALLBACK_CARDS_PER_ROW)
   const [expanded, setExpanded] = useState(false)
@@ -51,7 +53,7 @@ export function WardLane({ title, kind, cards, onCardClick, selectedCardId, assi
   const availableCount = cards.filter((c) => c.statusLabel === 'Available').length
 
   return (
-    <section className={styles.lane}>
+    <section id={id} className={styles.lane}>
       <div className={styles.header}>
         <h3 className={styles.title}>{title}</h3>
         {kind === 'bed' ? (

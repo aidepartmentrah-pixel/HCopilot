@@ -2,6 +2,27 @@
   animation: spin 0.8s linear infinite;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.updated {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

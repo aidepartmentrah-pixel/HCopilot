@@ -15,11 +15,12 @@ function invalidateBoard(queryClient: ReturnType<typeof useQueryClient>) {
 }
 
 export function useBeds() {
-  return useQuery({ queryKey: bedsKeys.list, queryFn: bedsApi.list })
+  // Re-checked every 30 s (not while the tab is hidden) so the board stays live without pressing Refresh.
+  return useQuery({ queryKey: bedsKeys.list, queryFn: bedsApi.list, refetchInterval: 30_000 })
 }
 
 export function useBedlessPatients() {
-  return useQuery({ queryKey: bedsKeys.bedless, queryFn: bedsApi.bedless })
+  return useQuery({ queryKey: bedsKeys.bedless, queryFn: bedsApi.bedless, refetchInterval: 30_000 })
 }
 
 export function useBedStats() {

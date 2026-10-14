@@ -18,6 +18,8 @@ import { cardFromBed, cardFromBedless, type PlacementCardData } from './utils'
 import styles from './LiveErPage.module.css'
 
 const UNASSIGNED_WARD_LABEL = 'Unassigned'
+const BEDS_ANCHOR_ID = 'live-er-beds'
+const WAITING_ANCHOR_ID = 'live-er-waiting'
 /** The waiting lane can hold hundreds of patients; show this many rows until "Show all" is clicked. */
 const WAITING_COLLAPSED_ROWS = 3
 
@@ -35,7 +37,7 @@ function groupBedsByWard(beds: Bed[]): { wardName: string; beds: Bed[] }[] {
 }
 
 export function LiveErPage() {
-  const { data: bedsData, isLoading: bedsLoading, error: bedsError, refetch: refetchBeds, isFetching: bedsFetching } = useBeds()
+  const { data: bedsData, isLoading: bedsLoading, error: bedsError, refetch: refetchBeds, isFetching: bedsFetching, dataUpdatedAt } = useBeds()
   const { data: bedlessData, isLoading: bedlessLoading, error: bedlessError, refetch: refetchBedless } = useBedlessPatients()
   const [selectedCard, setSelectedCard] = useState<PlacementCardData | null>(null)
   const [selectedWaitingCard, setSelectedWaitingCard] = useState<PlacementCardData | null>(null)
@@ -47,7 +49,6 @@ export function LiveErPage() {
 
   const wardLanes = useMemo(() => groupBedsByWard(bedsData?.beds ?? []), [bedsData])
   const waitingCards = useMemo(() => (bedlessData?.patients ?? []).map((p) => cardFromBedless(p)), [bedlessData])
-  const waitingOverThresholdCount = useMemo(() => waitingCards.filter((c) => c.isWaitingOverThreshold).length, [waitingCards])
 
   const assignableBedIds = useMemo(() => {
     if (!selectedWaitingCard) return undefined
@@ -133,9 +134,17 @@ export function LiveErPage() {
         title="Live ER"
         subtitle="Monitor current patient placement"
         actions={
-          <Button variant="secondary" onClick={refreshAll} disabled={bedsFetching}>
-            <RefreshCw size={16} className={bedsFetching ? styles.spinning : undefined} /> Refresh
-          </Button>
+          <div className={styles.headerActions}>
+            {dataUpdatedAt > 0 && (
+              <span className={styles.updated} title="The board refreshes by itself every 30 seconds">
+                <span className={styles.liveDot} aria-hidden="true" />
+                Updated {new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <Button variant="secondary" onClick={refreshAll} disabled={bedsFetching}>
+              <RefreshCw size={16} className={bedsFetching ? styles.spinning : undefined} /> Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -144,12 +153,7 @@ export function LiveErPage() {
 
       {!isLoading && !error && bedsData && (
         <>
-          <SummaryStatRow
-            occupied={bedsData.status_summary.Occupied ?? 0}
-            available={bedsData.status_summary.Available ?? 0}
-            withoutBed={bedlessData?.total ?? 0}
-            waitingOverThreshold={waitingOverThresholdCount}
-          />
+          <SummaryStatRow beds={bedsData.beds} waiting={waitingCards} bedsAnchorId={BEDS_ANCHOR_ID} waitingAnchorId={WAITING_ANCHOR_ID} />
 
           {selectedWaitingCard && (
             <div className={styles.selectionHint} role="status">
@@ -162,9 +166,10 @@ export function LiveErPage() {
             <EmptyState title="No beds configured" description="Add beds from Settings → Beds to see the live board." />
           ) : (
             <>
-              {wardLanes.map(({ wardName, beds }) => (
+              {wardLanes.map(({ wardName, beds }, index) => (
                 <WardLane
                   key={wardName}
+                  id={index === 0 ? BEDS_ANCHOR_ID : undefined}
                   title={wardName}
                   kind="bed"
                   cards={beds.map(cardFromBed)}
@@ -173,6 +178,7 @@ export function LiveErPage() {
                 />
               ))}
               <WardLane
+                id={WAITING_ANCHOR_ID}
                 title="Waiting / No Bed"
                 kind="waiting"
                 collapsedRows={WAITING_COLLAPSED_ROWS}

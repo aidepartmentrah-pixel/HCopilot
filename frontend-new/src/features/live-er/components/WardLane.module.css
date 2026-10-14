@@ -1,4 +1,5 @@
 .lane {
+  scroll-margin-top: 80px;
   margin-bottom: var(--space-4);
   padding: var(--space-4);
   background: var(--slate-50);
