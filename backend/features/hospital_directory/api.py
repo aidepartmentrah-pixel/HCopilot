@@ -22,6 +22,8 @@
 # from non-admin users; that is a UI convenience only, not an access boundary.
 # =============================================================================
 
+import os
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
@@ -209,19 +211,38 @@ async def er_current_visits():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# How long a manually discharged visit stays off the roster while the hospital API still lists it.
+_ROSTER_HIDE_HOURS = float(os.environ.get("ER_ROSTER_HIDE_HOURS", "24"))
+
+
 def _without_handled_visits(items: list) -> list:
     """
-    Drop roster entries whose visit HCopilot has already admitted AND discharged.
+    Drop roster entries a nurse already admitted AND manually discharged in HCopilot within the last
+    _ROSTER_HIDE_HOURS (default 24 h).
 
-    The hospital system keeps listing a visit until its own staff close it, so a person a nurse
-    admitted and then discharged in HCopilot would otherwise reappear on the roster. The
-    er_visit_id identifies one visit (a later visit gets a new id), so hiding by id is exact.
-    Anyone hidden by mistake can still be re-admitted through Search Directory / Enter Manually,
-    which creates a brand-new stay (never a resumed one — see er_sync.py).
-    Currently-active stays are hidden client-side already; this covers the archived ones.
+    The hospital system keeps listing a visit until its own staff close it, so a person discharged
+    in HCopilot would otherwise reappear on the roster straight away. Deliberately narrow:
+      * only departure_source == "manual" — an "api_detected" departure means the hospital already
+        dropped the visit, so the same id showing up again is a NEW visit and must stay visible;
+      * only recent discharges — if ids were ever reused later, a genuinely new visit is not hidden.
+    Anyone hidden by mistake can still be re-admitted via Search Directory / Enter Manually, which
+    creates a brand-new stay (never a resumed one — see er_sync.py). Currently-active stays are
+    hidden client-side already; this covers the archived ones.
     """
+    cutoff = datetime.now() - timedelta(hours=_ROSTER_HIDE_HOURS)
     with SessionLocal() as session:
-        handled = {row[0] for row in session.query(LogPatient.er_visit_id).filter(LogPatient.er_visit_id.isnot(None)).all()}
+        rows = (
+            session.query(LogPatient.er_visit_id, LogPatient.departure_time)
+            .filter(LogPatient.er_visit_id.isnot(None), LogPatient.departure_source == "manual")
+            .all()
+        )
+    handled = set()
+    for visit_id, departed in rows:
+        try:
+            if datetime.fromisoformat(str(departed)) >= cutoff:
+                handled.add(str(visit_id))
+        except (TypeError, ValueError):
+            continue
     if not handled:
         return items
     return [i for i in items if str(i.get("er_visit_id")) not in handled]
