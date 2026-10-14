@@ -33,7 +33,7 @@ test.describe('ER ISBAR Entry — clinical controls (V2.2b)', () => {
     // PainScaleSelector — visual 0-10 cells, not a text box.
     await page.getByRole('radio', { name: '8' }).click()
 
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // Reload and re-select from Active Patients to confirm this reached the real backend.

@@ -2,7 +2,7 @@
 // (New Patient / ISBAR).
 //
 // BEHAVIOR (2026-10-01, user decision "create on Add"): picking a roster
-// name only FILLS the form - nothing is saved. Clicking Add Patient creates
+// name only FILLS the form - nothing is saved. Clicking Enter ER creates
 // the stay (roster-origin, record_source="external", only name + arrival
 // required), the person disappears from the not-yet-added roster list, and
 // they land on the Live ER waiting (bedless) list for bed assignment.
@@ -40,7 +40,7 @@ test.describe('Page A - live ER roster picker (create on Add)', () => {
     await expect(page.locator('.pat-a-isbar-panel')).toHaveAttribute('data-mode', 'draft');
     await expect(page.locator('#pat-name')).toHaveValue(pickedName);
     await expect(page.locator('.pat-a-roster-row[data-er-visit-id="' + erVisitId + '"] .pat-a-roster-chip')).toContainText(/selected/i);
-    await expect(page.locator('#pat-add-btn')).toContainText(/Add Patient/);
+    await expect(page.locator('#pat-add-btn')).toContainText(/Enter ER/);
 
     // Add with only name + arrival (gender/age/acuity/chief complaint are optional for roster picks).
     await page.click('#pat-add-btn');

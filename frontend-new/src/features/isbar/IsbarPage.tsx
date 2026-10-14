@@ -87,7 +87,7 @@ export function IsbarPage() {
 
   /**
    * Picking a roster name only FILLS the form (create on Add, 2026-10-01).
-   * Nothing is saved until the user clicks "Add Patient" (handleSubmit in
+   * Nothing is saved until the user clicks "Enter ER" (handleSubmit in
    * draft mode), which creates the stay as roster-origin, drops the person
    * from the roster list and puts them on the Live ER waiting list.
    */

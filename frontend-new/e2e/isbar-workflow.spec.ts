@@ -68,7 +68,7 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     visitIds.push((await firstRow.getAttribute('data-er-visit-id')) ?? '')
     await firstRow.click()
     // Create on Add (2026-10-01): a pick only fills a draft; add the patient to reach the active workspace.
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // No unsaved changes yet — Change Patient goes straight through.
@@ -81,7 +81,7 @@ test.describe('ER ISBAR Entry — workflow scaffolding (V2.2a)', () => {
     await nextRow.waitFor({ state: 'visible', timeout: 15000 })
     visitIds.push((await nextRow.getAttribute('data-er-visit-id')) ?? '')
     await nextRow.click()
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
     const complaintField = page.getByRole('textbox', { name: 'Chief Complaint (Triage)' })
     if (!(await complaintField.isVisible())) {

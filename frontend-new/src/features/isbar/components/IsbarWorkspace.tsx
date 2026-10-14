@@ -132,7 +132,7 @@ export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePati
               </Button>
             )}
             <Button type="submit" loading={isSaving}>
-              {mode === 'draft' ? 'Add Patient' : 'Save Changes'}
+              {mode === 'draft' ? 'Enter ER' : 'Save Changes'}
             </Button>
           </div>
         </form>

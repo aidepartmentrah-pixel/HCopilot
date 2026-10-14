@@ -840,7 +840,7 @@ function setPatFormMode(mode) {
     if (cancelBtn) cancelBtn.hidden = mode !== 'draft';
     if (resetBtn)  resetBtn.hidden  = mode !== 'draft';
     const addBtn = document.getElementById('pat-add-btn');
-    if (addBtn) addBtn.textContent = mode === 'active' ? '💾 Save ISBAR Entry' : '➕ Add Patient';
+    if (addBtn) addBtn.textContent = mode === 'active' ? '💾 Save ISBAR Entry' : '➕ Enter ER';
 }
 
 // Secondary fallback (directory search / manual entry) — collapsed by
@@ -1598,7 +1598,7 @@ async function createPatientFromForm() {
     } finally {
         btn.disabled = false;
         const m = document.getElementById('pat-a-isbar-panel')?.dataset.mode;
-        btn.textContent = m === 'active' ? '💾 Save ISBAR Entry' : '➕ Add Patient';
+        btn.textContent = m === 'active' ? '💾 Save ISBAR Entry' : '➕ Enter ER';
     }
 }
 
@@ -1688,7 +1688,7 @@ async function saveActivePatientForm() {
     } finally {
         btn.disabled = false;
         const m = document.getElementById('pat-a-isbar-panel')?.dataset.mode;
-        btn.textContent = m === 'active' ? '💾 Save ISBAR Entry' : '➕ Add Patient';
+        btn.textContent = m === 'active' ? '💾 Save ISBAR Entry' : '➕ Enter ER';
     }
 }
 

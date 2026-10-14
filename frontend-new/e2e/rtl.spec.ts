@@ -34,7 +34,7 @@ test.describe('Arabic / RTL (§19)', () => {
 
     // Create on Add (2026-10-01): picking only fills a draft (Patient & Arrival may auto-collapse, §9).
     const nameInput = page.getByRole('textbox', { name: 'Full Name' })
-    await expect(page.getByRole('button', { name: 'Add Patient' })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: 'Enter ER' })).toBeVisible({ timeout: 10000 })
     if (!(await nameInput.isVisible())) {
       await page.getByTestId('isbar-section-patient-arrival').click()
     }

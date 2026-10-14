@@ -14,7 +14,7 @@ test.describe('ER ISBAR Entry', () => {
     await expect(page.getByTestId('er-roster-row').first()).toBeVisible({ timeout: 10000 })
   })
 
-  test('picking a roster patient only fills the form; Add Patient creates the stay and removes them from the roster', async ({ page, request }) => {
+  test('picking a roster patient only fills the form; Enter ER creates the stay and removes them from the roster', async ({ page, request }) => {
     await page.goto('/isbar')
 
     const firstRow = page.getByTestId('er-roster-row').first()
@@ -37,8 +37,8 @@ test.describe('ER ISBAR Entry', () => {
       await expect(pickedRow).toHaveCount(1)
       await expect(pickedRow.getByText('Selected')).toBeVisible()
 
-      // Add Patient (roster picks only need a name + arrival) creates the stay in place.
-      await page.getByRole('button', { name: 'Add Patient' }).click()
+      // Enter ER (roster picks only need a name + arrival) creates the stay in place.
+      await page.getByRole('button', { name: 'Enter ER' }).click()
       await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
       // ... and the person has left the not-yet-added roster list.
@@ -55,7 +55,7 @@ test.describe('ER ISBAR Entry', () => {
     await firstRow.waitFor({ state: 'visible', timeout: 15000 })
     const visitId = await firstRow.getAttribute('data-er-visit-id')
     await firstRow.click()
-    await expect(page.getByRole('button', { name: 'Add Patient' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Enter ER' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     // Pre-filled values count as unsaved edits only if the form is dirty; either way discard.
@@ -102,7 +102,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Abdominal pain')
     await page.getByRole('radio', { name: /^3/ }).click()
 
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
 
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
     // Patient & Arrival auto-completes and collapses once submitted (§9) — reopen it to confirm the saved value.
@@ -124,7 +124,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('spinbutton', { name: 'Age' }).fill('50')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Chest pain')
     await page.getByRole('radio', { name: /^2/ }).click()
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     await page.getByRole('button', { name: 'Change Patient' }).click()
@@ -143,7 +143,7 @@ test.describe('ER ISBAR Entry', () => {
     await page.getByRole('spinbutton', { name: 'Age' }).fill('60')
     await page.getByRole('textbox', { name: 'Chief Complaint (Triage)' }).fill('Fall')
     await page.getByRole('radio', { name: /^2/ }).click()
-    await page.getByRole('button', { name: 'Add Patient' }).click()
+    await page.getByRole('button', { name: 'Enter ER' }).click()
     await expect(page.getByRole('button', { name: 'Change Patient' })).toBeVisible({ timeout: 10000 })
 
     // V2.2a auto-opens the next section once Patient & Arrival is complete
