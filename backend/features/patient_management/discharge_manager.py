@@ -36,7 +36,7 @@ from features.data_management.log_patients_manager import LogPatientsManager
 from features.relations.relations_manager import RelationsManager
 from features.staff_management.doctors_manager import DoctorsManager
 from features.staff_management.nurses_manager import NursesManager
-from features.timestamp_utils import validate_discharge_time
+from features.timestamp_utils import validate_discharge_time, _parse_ts
 from features.staff_logs.link_archiver import archive_patient_doctor_links, archive_patient_nurse_links
 
 log_mgr     = LogPatientsManager()
@@ -94,6 +94,20 @@ def discharge_active_stay(patient_id: int, departure_time: Optional[str] = None,
         stay_id = row.stay_id
 
         resolved_departure = departure_time or datetime.now().strftime("%Y-%m-%dT%H:%M")
+        if not departure_time:
+            # "Discharge now" must always succeed. If the stored arrival / bed
+            # time is later than now (bad data entered earlier, e.g. a future
+            # arrival), correct it to the departure moment instead of trapping
+            # the patient in the ER. An explicit departure_time is still
+            # validated below, so a user-chosen impossible time gets a clear 400.
+            now_dt = _parse_ts(resolved_departure)
+            if now_dt is not None:
+                arr_dt = _parse_ts(row.arrival_time)
+                if arr_dt is not None and arr_dt > now_dt:
+                    row.arrival_time = resolved_departure
+                bed_dt = _parse_ts(row.bed_occupation_time)
+                if bed_dt is not None and bed_dt > now_dt:
+                    row.bed_occupation_time = resolved_departure
         validate_discharge_time(row.arrival_time, row.bed_occupation_time, resolved_departure)
 
         row.destination = destination
