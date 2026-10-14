@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
+import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { HomePage } from '@/features/home/HomePage'
 
@@ -18,7 +19,13 @@ const PredictionsPage = lazy(() => import('@/features/predictions/PredictionsPag
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 
 function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<LoadingState label="Loading page…" />}>{children}</Suspense>
+  const { pathname } = useLocation()
+  // The boundary keeps the navigation alive if a page's file fails to load (e.g. a tab left open across an update).
+  return (
+    <ErrorBoundary resetKey={pathname}>
+      <Suspense fallback={<LoadingState label="Loading page…" />}>{children}</Suspense>
+    </ErrorBoundary>
+  )
 }
 
 export function AppRouter() {
