@@ -48,8 +48,8 @@ export function DateTimeInput({ id, value, onChange, onBlur, disabled, invalid, 
       altInput: true,
       altFormat: 'M j, Y — h:i K',
       altInputClass: `${styles.control} dt-input`,
-      // A native <dialog> lives in the browser's top layer: a calendar appended to <body> would render behind it.
-      appendTo: inputRef.current.closest('dialog') ?? undefined,
+      // Mount the calendar inside the surrounding popup so it is positioned and stacked with it.
+      appendTo: inputRef.current.closest<HTMLElement>('[role="dialog"]') ?? undefined,
       onOpen: (_d, _s, inst) => {
         if (maxNow) inst.set('maxDate', new Date())
       },

@@ -8,10 +8,6 @@
   box-shadow: var(--shadow-lg);
   color: var(--text-primary);
 }
-.dialog::backdrop {
-  background: rgb(15 23 42 / 0.45);
-}
-
 .form {
   display: flex;
   flex-direction: column;

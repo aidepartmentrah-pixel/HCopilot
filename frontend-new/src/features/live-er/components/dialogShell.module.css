@@ -15,10 +15,6 @@
   overflow: visible;
 }
 
-.dialog::backdrop {
-  background: rgb(15 23 42 / 0.45);
-}
-
 .shell {
   display: flex;
   flex-direction: column;

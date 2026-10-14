@@ -1,7 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
-import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { apiErrorMessage } from '@/api/client'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -14,6 +13,7 @@ import { formValuesToModifyInput, patientDetailsToFormValues } from '../mapping'
 import { isbarFormSchema, type IsbarFormValues } from '../schema'
 import { IsbarWorkspace } from './IsbarWorkspace'
 import styles from './EditPatientDialog.module.css'
+import { Dialog } from '@/components/feedback/Dialog'
 
 interface EditPatientDialogProps {
   /** The active stay to edit; null = closed. */
@@ -27,29 +27,12 @@ interface EditPatientDialogProps {
  * Native <dialog>: focus trap, Escape and backdrop for free.
  */
 export function EditPatientDialog({ stayId, onClose }: EditPatientDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const open = stayId !== null
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
-  }, [open])
-
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      aria-labelledby="edit-patient-title"
-      onCancel={(e) => {
-        e.preventDefault()
-        onClose()
-      }}
-      onClose={onClose}
-    >
+    <Dialog open={open} onClose={onClose} className={styles.dialog} aria-labelledby="edit-patient-title">
       {stayId !== null && <EditBody key={stayId} stayId={stayId} onClose={onClose} />}
-    </dialog>
+    </Dialog>
   )
 }
 

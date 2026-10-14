@@ -7,10 +7,6 @@
   color: var(--text-primary);
 }
 
-.dialog::backdrop {
-  background: rgb(15 23 42 / 0.45);
-}
-
 .title {
   font-size: var(--font-size-card-title);
   font-weight: var(--font-weight-semibold);

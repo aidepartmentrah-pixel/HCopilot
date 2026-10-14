@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRightLeft, BedDouble, ClipboardList, Clock, LogOut, Pencil, UserRound, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { apiErrorMessage } from '@/api/client'
 import { useToast } from '@/components/feedback/useToast'
 import { DateTimeInput, toLocalDatetimeString } from '@/components/forms/DateTimeInput'
@@ -15,6 +15,7 @@ import { formatClinicalDate } from '@/utils/dateFormat'
 import type { PlacementCardData } from '../utils'
 import shell from './dialogShell.module.css'
 import local from './PlacementDetailDialog.module.css'
+import { Dialog } from '@/components/feedback/Dialog'
 
 const styles = { ...shell, ...local }
 
@@ -36,30 +37,13 @@ interface PlacementDetailDialogProps {
  * button. Native <dialog>: focus trap, Escape and backdrop for free.
  */
 export function PlacementDetailDialog({ card, onClose, onEdit }: PlacementDetailDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const open = card !== null
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
-  }, [open])
-
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      aria-labelledby="placement-dialog-title"
-      onCancel={(e) => {
-        e.preventDefault()
-        onClose()
-      }}
-      onClose={onClose}
-    >
+    <Dialog open={open} onClose={onClose} className={styles.dialog} aria-labelledby="placement-dialog-title">
       {/* Mounted only while open so the step, inputs and errors reset for every card. */}
       {card && <DialogBody key={card.id} card={card} onClose={onClose} onEdit={onEdit} />}
-    </dialog>
+    </Dialog>
   )
 }
 

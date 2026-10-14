@@ -11,6 +11,12 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  build: {
+    // The hospital PCs run Firefox 97 (Feb 2022). Compile the JavaScript and CSS down to what that browser
+    // understands, so a future code or library change cannot silently ship syntax it cannot parse.
+    // Missing browser *APIs* are not covered by this - the Firefox 97 container check (see docs) does that.
+    target: ['firefox97', 'chrome100', 'edge100', 'safari15'],
+  },
   server: {
     port: 8083,
     strictPort: true,

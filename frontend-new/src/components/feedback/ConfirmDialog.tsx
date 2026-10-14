@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react'
 import { Button } from '../ui/Button'
 import styles from './ConfirmDialog.module.css'
+import { Dialog } from './Dialog'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -32,29 +32,9 @@ export function ConfirmDialog({
   onCancel,
   extraAction,
 }: ConfirmDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.showModal()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      onCancel={(e) => {
-        e.preventDefault()
-        onCancel()
-      }}
-      onClose={onCancel}
-      aria-labelledby="confirm-dialog-title"
-    >
+    <Dialog open={open} onClose={onCancel} className={styles.dialog} aria-labelledby="confirm-dialog-title">
       <h2 id="confirm-dialog-title" className={styles.title}>
         {title}
       </h2>
@@ -72,6 +52,6 @@ export function ConfirmDialog({
           {confirmLabel}
         </Button>
       </div>
-    </dialog>
+    </Dialog>
   )
 }

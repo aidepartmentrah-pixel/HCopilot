@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
 import styles from './ResourceFormDialog.module.css'
+import { Dialog } from '@/components/feedback/Dialog'
 
 export interface ResourceField {
   name: string
@@ -24,16 +25,11 @@ interface ResourceFormDialogProps {
 
 /** Compact administrative create/edit (§32) — one small, consistent dialog shape reused across every Settings resource. */
 export function ResourceFormDialog({ open, title, fields, initialValues, onSubmit, onClose }: ResourceFormDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const [values, setValues] = useState<Record<string, string>>(initialValues)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
     setValues(initialValues)
     setError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -54,7 +50,7 @@ export function ResourceFormDialog({ open, title, fields, initialValues, onSubmi
   }
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} aria-labelledby="resource-dialog-title">
+    <Dialog open={open} onClose={onClose} className={styles.dialog} aria-labelledby="resource-dialog-title">
       <form onSubmit={handleSubmit} className={styles.form}>
         <h2 id="resource-dialog-title" className={styles.title}>
           {title}
@@ -100,6 +96,6 @@ export function ResourceFormDialog({ open, title, fields, initialValues, onSubmi
           </Button>
         </div>
       </form>
-    </dialog>
+    </Dialog>
   )
 }

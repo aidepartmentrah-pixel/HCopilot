@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
@@ -7,6 +7,7 @@ import type { UserAccount, UserAccountInput } from '@/types/settings'
 import { grantAllKnownKeys, SECTION_PERMISSIONS, SETTINGS_TAB_PERMISSIONS } from '../permissions'
 import { PermissionsEditor } from './PermissionsEditor'
 import styles from './AccountFormDialog.module.css'
+import { Dialog } from '@/components/feedback/Dialog'
 
 interface AccountFormDialogProps {
   open: boolean
@@ -19,17 +20,12 @@ const EMPTY: UserAccountInput = { username: '', password: '', name: '', role: 'u
 
 /** A dedicated form (§33) rather than forced into the generic ResourceFormDialog — accounts need password/role/permission widgets no other Settings resource does. */
 export function AccountFormDialog({ open, account, onSubmit, onClose }: AccountFormDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const [values, setValues] = useState<UserAccountInput>(EMPTY)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const isNew = account === 'new'
 
   useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) dialog.showModal()
-    else if (!open && dialog.open) dialog.close()
     if (account && account !== 'new') {
       setValues({
         username: account.username,
@@ -77,7 +73,7 @@ export function AccountFormDialog({ open, account, onSubmit, onClose }: AccountF
   }
 
   return (
-    <dialog ref={dialogRef} className={styles.dialog} onClose={onClose} aria-labelledby="account-dialog-title">
+    <Dialog open={open} onClose={onClose} className={styles.dialog} aria-labelledby="account-dialog-title">
       <form onSubmit={handleSubmit} className={styles.form}>
         <h2 id="account-dialog-title" className={styles.title}>
           {isNew ? 'Add User' : 'Edit User'}
@@ -150,6 +146,6 @@ export function AccountFormDialog({ open, account, onSubmit, onClose }: AccountF
           </Button>
         </div>
       </form>
-    </dialog>
+    </Dialog>
   )
 }

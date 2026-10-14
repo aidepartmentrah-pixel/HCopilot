@@ -1,10 +1,11 @@
 import { Search, UserPlus, X } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import type { PlacementCardData } from '../utils'
 import shell from './dialogShell.module.css'
 import local from './AssignBedDialog.module.css'
+import { Dialog } from '@/components/feedback/Dialog'
 
 const styles = { ...shell, ...local }
 
@@ -31,33 +32,13 @@ function displayName(p: PlacementCardData): string {
  * Escape, backdrop for free).
  */
 export function AssignBedDialog({ bed, waitingPatients, loading = false, onAssign, onClose }: AssignBedDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
   const open = bed !== null
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (open && !dialog.open) {
-      dialog.showModal()
-    } else if (!open && dialog.open) {
-      dialog.close()
-    }
-  }, [open])
-
   return (
-    <dialog
-      ref={dialogRef}
-      className={styles.dialog}
-      onCancel={(e) => {
-        e.preventDefault()
-        onClose()
-      }}
-      onClose={onClose}
-      aria-labelledby="assign-bed-title"
-    >
+    <Dialog open={open} onClose={onClose} className={styles.dialog} aria-labelledby="assign-bed-title">
       {/* Mounted only while open, so the search text and pick reset on every open. */}
       {bed && <AssignBedForm bed={bed} waitingPatients={waitingPatients} loading={loading} onAssign={onAssign} onClose={onClose} />}
-    </dialog>
+    </Dialog>
   )
 }
 
