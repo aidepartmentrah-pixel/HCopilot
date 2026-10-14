@@ -25,6 +25,7 @@
 #   data entry errors.
 # =============================================================================
 
+import os
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 import pandas as pd
@@ -161,11 +162,11 @@ def validate_timestamp_order(arrival_time=None, bed_occupation_time=None, depart
         )
 
 
-# Clients send naive local wall-clock times while the server container usually
-# runs in UTC, so "now" on the server can lag a UTC+ client by up to 14 h.
-# The UI blocks future times exactly (browser clock); this backstop only
-# rejects arrivals that cannot be explained by a timezone difference.
-_FUTURE_TOLERANCE = timedelta(hours=14)
+# Clients send naive local wall-clock times. docker-compose sets TZ=Asia/Beirut on
+# the backend, so server "now" equals the hospital's clock and a small tolerance
+# (clock skew between PC and server) is enough. If TZ is not set the container is
+# UTC and can lag a UTC+ client by up to 14 h, so fall back to that wide tolerance.
+_FUTURE_TOLERANCE = timedelta(minutes=10) if os.environ.get("TZ") else timedelta(hours=14)
 
 
 def validate_not_future(arrival_time=None, field_label="Arrival time"):

@@ -79,6 +79,7 @@ services:
   backend:
     image: hcopilot-backend:__APP_VERSION__
     environment:
+      TZ: Asia/Beirut  # hospital local time (Lebanon); all timestamps are wall-clock
       DATABASE_SERVER: sqlserver
       DATABASE_PORT: 1433
       DATABASE_NAME: ${DATABASE_NAME}

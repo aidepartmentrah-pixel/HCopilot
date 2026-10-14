@@ -16,13 +16,13 @@ def test_past_and_now_are_allowed():
     validate_not_future(_iso(timedelta(0)))
 
 
-def test_timezone_skew_is_tolerated():
-    validate_not_future(_iso(timedelta(hours=3)))
+def test_small_clock_skew_is_tolerated():
+    validate_not_future(_iso(timedelta(minutes=1)))
 
 
 def test_far_future_is_rejected():
     with pytest.raises(HTTPException) as exc:
-        validate_not_future(_iso(timedelta(days=2)))
+        validate_not_future(_iso(timedelta(hours=20)))
     assert exc.value.status_code == 400
     assert "future" in exc.value.detail
 
