@@ -7,7 +7,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from .patient_manager import PatientManager
 from .isbar_manager import ISBARManager
-from features.timestamp_utils import validate_timestamp_order
+from features.timestamp_utils import validate_timestamp_order, validate_not_future
 from db.session import SessionLocal
 from db.models import DailyPatient, LogPatient
 
@@ -394,6 +394,7 @@ async def patient_stats():
 
 @router.post("/add")
 async def add_patient(p: PatientCreate):
+    validate_not_future(p.arrival_time)
     try:
         result = mgr.add(
             p.patient_id, p.stay_id, p.arrival_time, p.departure_time, p.bed_occupation_time,
@@ -420,6 +421,7 @@ async def add_patient(p: PatientCreate):
 
 @router.put("/modify/{stay_id}")
 async def modify_patient(stay_id: int, p: PatientModify):
+    validate_not_future(p.arrival_time)
     validate_timestamp_order(p.arrival_time, p.bed_occupation_time, p.departure_time)
     try:
         result = mgr.modify(

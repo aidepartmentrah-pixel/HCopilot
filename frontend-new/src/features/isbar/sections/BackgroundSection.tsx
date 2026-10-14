@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from 'react-hook-form'
+import { FormDateTimeInput } from '@/components/forms/DateTimeInput'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
@@ -164,11 +165,11 @@ export function BackgroundSection({ disabled }: { disabled: boolean }) {
       </div>
       {recentProcedures.length > 0 && (
         <FormField label="Recent Procedure Date/Time" htmlFor="isbar.recent_procedure_datetime">
-          <Input
+          <FormDateTimeInput<IsbarFormValues>
+            name="isbar.recent_procedure_datetime"
             id="isbar.recent_procedure_datetime"
-            type="datetime-local"
             disabled={disabled}
-            {...register('isbar.recent_procedure_datetime')}
+            maxNow
           />
         </FormField>
       )}

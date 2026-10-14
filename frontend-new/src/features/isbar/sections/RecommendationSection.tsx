@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from 'react-hook-form'
+import { FormDateTimeInput } from '@/components/forms/DateTimeInput'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
@@ -112,7 +113,7 @@ export function RecommendationSection({ disabled }: { disabled: boolean }) {
         <Input id="isbar.incoming_nurse" disabled={disabled} {...register('isbar.incoming_nurse')} />
       </FormField>
       <FormField label="Handover Date/Time" htmlFor="isbar.handover_datetime">
-        <Input id="isbar.handover_datetime" type="datetime-local" disabled={disabled} {...register('isbar.handover_datetime')} />
+        <FormDateTimeInput<IsbarFormValues> name="isbar.handover_datetime" id="isbar.handover_datetime" disabled={disabled} />
       </FormField>
       <FormField label="Receiver Acknowledged" htmlFor="isbar.receiver_ack">
         <label className={sectionStyles.checkboxLabel}>

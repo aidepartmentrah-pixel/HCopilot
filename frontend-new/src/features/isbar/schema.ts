@@ -103,6 +103,13 @@ export const isbarFormSchema = z
     isbar: isbarDetailsSchema,
   })
   .superRefine((data, ctx) => {
+    // Future arrivals poison the prediction tables (the forecast would start at that future day).
+    for (const field of ['arrival_time', 'triage_time'] as const) {
+      const v = data[field]
+      if (v && new Date(v).getTime() > Date.now() + 60_000) {
+        ctx.addIssue({ code: 'custom', path: [field], message: 'cannot be in the future' })
+      }
+    }
     const isRosterOrigin = data.record_source === 'external' && !!data.er_visit_id
     if (isRosterOrigin) return
     if (!data.gender?.trim()) ctx.addIssue({ code: 'custom', path: ['gender'], message: 'is required' })

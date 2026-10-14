@@ -1,0 +1,14 @@
+/* Re-colour flatpickr with the app's brand tokens (see design-system/tokens.css). */
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover { background: var(--brand-500, #4f46e5); border-color: var(--brand-500, #4f46e5); }
+.flatpickr-day.today { border-color: var(--brand-500, #4f46e5); }
+.flatpickr-months .flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-weekdays,
+span.flatpickr-weekday { background: var(--brand-500, #4f46e5); color: #fff; }
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year { color: #fff; }
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg { fill: rgba(255, 255, 255, 0.85); }
+.flatpickr-calendar { z-index: 10000; }
+input.dt-input { cursor: pointer; }

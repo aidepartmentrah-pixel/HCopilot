@@ -1,4 +1,5 @@
 import { Controller, useFormContext } from 'react-hook-form'
+import { FormDateTimeInput } from '@/components/forms/DateTimeInput'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { MultiSelectChips } from '@/components/forms/MultiSelectChips'
@@ -66,7 +67,7 @@ export function FocusedAssessmentSection({ disabled }: { disabled: boolean }) {
         </FormField>
       </div>
       <FormField label="Last Bowel Movement" htmlFor="isbar.last_bowel_movement">
-        <Input id="isbar.last_bowel_movement" type="datetime-local" disabled={disabled} {...register('isbar.last_bowel_movement')} />
+        <FormDateTimeInput<IsbarFormValues> name="isbar.last_bowel_movement" id="isbar.last_bowel_movement" disabled={disabled} maxNow />
       </FormField>
       <div className={sectionStyles.fullWidth}>
         <FormField label="Voiding" htmlFor="isbar.voiding">

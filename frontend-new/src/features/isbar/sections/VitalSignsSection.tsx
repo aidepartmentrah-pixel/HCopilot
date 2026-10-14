@@ -1,4 +1,5 @@
 import { useController, useFormContext } from 'react-hook-form'
+import { FormDateTimeInput } from '@/components/forms/DateTimeInput'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
@@ -76,7 +77,7 @@ export function VitalSignsSection({ disabled }: { disabled: boolean }) {
         <Input id="isbar.vitals_recorded_by" disabled={disabled} {...register('isbar.vitals_recorded_by')} />
       </FormField>
       <FormField label="Vitals Measured At" htmlFor="isbar.vitals_measured_at">
-        <Input id="isbar.vitals_measured_at" type="datetime-local" disabled={disabled} {...register('isbar.vitals_measured_at')} />
+        <FormDateTimeInput<IsbarFormValues> name="isbar.vitals_measured_at" id="isbar.vitals_measured_at" disabled={disabled} maxNow />
       </FormField>
     </div>
   )

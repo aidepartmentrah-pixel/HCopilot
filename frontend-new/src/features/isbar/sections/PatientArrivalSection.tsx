@@ -1,4 +1,5 @@
 import { useController, useFormContext } from 'react-hook-form'
+import { FormDateTimeInput } from '@/components/forms/DateTimeInput'
 import { FormField } from '@/components/forms/FormField'
 import { Input } from '@/components/forms/Input'
 import { Select } from '@/components/forms/Select'
@@ -39,16 +40,16 @@ export function PatientArrivalSection({ disabled }: { disabled: boolean }) {
         <Input id="age" type="number" min={0} disabled={disabled} invalid={!!errors.age} {...register('age', numericFieldOptions)} />
       </FormField>
       <FormField label="Arrival Time" htmlFor="arrival_time" required error={errors.arrival_time?.message}>
-        <Input
+        <FormDateTimeInput<IsbarFormValues>
+          name="arrival_time"
           id="arrival_time"
-          type="datetime-local"
           disabled={disabled}
           invalid={!!errors.arrival_time}
-          {...register('arrival_time')}
+          maxNow
         />
       </FormField>
       <FormField label="Triage Time" htmlFor="triage_time" hint="Optional — when a doctor first saw the patient">
-        <Input id="triage_time" type="datetime-local" disabled={disabled} {...register('triage_time')} />
+        <FormDateTimeInput<IsbarFormValues> name="triage_time" id="triage_time" disabled={disabled} maxNow />
       </FormField>
       <FormField
         label="Chief Complaint (Triage)"

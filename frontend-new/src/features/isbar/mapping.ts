@@ -1,4 +1,5 @@
 import type { NextIds, PatientCreateInput, PatientDetails, PatientModifyInput } from '@/types/patient'
+import { toLocalDatetimeString } from '@/components/forms/DateTimeInput'
 import type { IsbarFormValues } from './schema'
 
 const EMPTY_ISBAR: IsbarFormValues['isbar'] = {}
@@ -9,7 +10,7 @@ export function emptyDraftValues(nextIds: NextIds): IsbarFormValues {
     patient_id: nextIds.next_patient_id,
     stay_id: nextIds.next_stay_id,
     name: '',
-    arrival_time: toDatetimeLocal(new Date().toISOString()),
+    arrival_time: toLocalDatetimeString(),
     gender: '',
     age: undefined,
     chiefcomplaint: '',

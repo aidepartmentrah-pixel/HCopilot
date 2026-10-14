@@ -48,6 +48,13 @@ function initDateTimePickers() {
             altInputClass: (ownClasses ? ownClasses + ' ' : '') + 'dt-picker-alt',
             altFormat: 'M j, Y — h:i K',
             time_24hr: false,
+            // Arrival times can never be in the future: it would shift the
+            // prediction tables to start at that day and make discharge fail
+            // (departure < arrival). Re-evaluated on every open so "now" is fresh.
+            maxDate: /arrival/i.test(el.id) && !/^sch-/.test(el.id) ? new Date() : null,
+            onOpen: (_d, _s, inst) => {
+                if (/arrival/i.test(el.id) && !/^sch-/.test(el.id)) inst.set('maxDate', new Date());
+            },
             // Inline oninput="..." handlers already wired on these inputs
             // must keep firing on a picker selection exactly as they did
             // for native datetime-local input events — don't rely on

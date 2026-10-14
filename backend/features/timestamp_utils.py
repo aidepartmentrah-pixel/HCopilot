@@ -25,7 +25,7 @@
 #   data entry errors.
 # =============================================================================
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import HTTPException
 import pandas as pd
 
@@ -158,6 +158,31 @@ def validate_timestamp_order(arrival_time=None, bed_occupation_time=None, depart
         raise HTTPException(
             status_code=400,
             detail=f"Departure time ({fmt(dep)}) must be at or after arrival time ({fmt(arr)})"
+        )
+
+
+# Clients send naive local wall-clock times while the server container usually
+# runs in UTC, so "now" on the server can lag a UTC+ client by up to 14 h.
+# The UI blocks future times exactly (browser clock); this backstop only
+# rejects arrivals that cannot be explained by a timezone difference.
+_FUTURE_TOLERANCE = timedelta(hours=14)
+
+
+def validate_not_future(arrival_time=None, field_label="Arrival time"):
+    """
+    Reject an arrival time that lies in the future.
+
+    A future arrival makes the prediction tables start at that future day
+    instead of tomorrow, and later makes discharge fail (departure < arrival).
+
+    Raises:
+        HTTPException(400) : If the timestamp is beyond now + _FUTURE_TOLERANCE.
+    """
+    arr = _parse_ts(arrival_time)
+    if arr and arr.tzinfo is None and arr > datetime.now() + _FUTURE_TOLERANCE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field_label} ({arr.strftime('%Y-%m-%d %H:%M')}) cannot be in the future"
         )
 
 
