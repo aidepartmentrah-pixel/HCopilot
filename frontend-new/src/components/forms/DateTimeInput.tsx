@@ -48,6 +48,8 @@ export function DateTimeInput({ id, value, onChange, onBlur, disabled, invalid, 
       altInput: true,
       altFormat: 'M j, Y — h:i K',
       altInputClass: `${styles.control} dt-input`,
+      // A native <dialog> lives in the browser's top layer: a calendar appended to <body> would render behind it.
+      appendTo: inputRef.current.closest('dialog') ?? undefined,
       onOpen: (_d, _s, inst) => {
         if (maxNow) inst.set('maxDate', new Date())
       },
@@ -75,11 +77,12 @@ export function DateTimeInput({ id, value, onChange, onBlur, disabled, invalid, 
     if (alt) {
       alt.disabled = !!disabled
       alt.classList.toggle(styles.invalid, !!invalid)
-      if (id) alt.id = `${id}-display`
+      if (id) alt.id = id
     }
   }, [disabled, invalid, id])
 
-  return <input ref={inputRef} id={id} type="text" defaultValue={value} />
+  // The source input only carries the value for flatpickr; the visible control is its alt input (which takes `id`).
+  return <input ref={inputRef} type="text" hidden defaultValue={value} />
 }
 
 interface FormDateTimeInputProps<T extends FieldValues> extends Omit<DateTimeInputProps, 'value' | 'onChange' | 'onBlur'> {
