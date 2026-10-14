@@ -88,7 +88,29 @@ class BedManager:
 
     # ── Public API ─────────────────────────────────────────────────────────────
 
+    def purge_orphan_links(self):
+        """
+        Release every bed whose linked patient has no active stay any more.
+
+        Such links (left behind when a stay was closed by a path that did not
+        release the bed, e.g. the roster-sync departure detection) made a bed
+        look "Occupied" by a ghost that could never be discharged (404).
+        Returns the list of freed bed ids.
+        """
+        with SessionLocal() as session:
+            active = {row[0] for row in session.query(DailyPatient.subject_id).all()}
+            orphans = [pb for pb in session.query(PatientBed).all() if pb.patient_id not in active]
+            freed = [pb.bed_id for pb in orphans]
+            for pb in orphans:
+                session.delete(pb)
+            if orphans:
+                session.commit()
+        for bed_id in freed:
+            self.cleanup_chariot_if_unneeded(bed_id)
+        return freed
+
     def get_all_beds(self):
+        self.purge_orphan_links()
         with SessionLocal() as session:
             beds_rows = session.query(EDBed).all()
             ward_by_bed = {wb.bed_id: wb.ward_id for wb in session.query(WardBed).all()}

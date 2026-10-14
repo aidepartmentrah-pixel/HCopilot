@@ -212,6 +212,15 @@ async def discharge_from_bed(bed_id: int, body: BedDischarge):
             if link is None:
                 raise HTTPException(status_code=404, detail=f"Bed {bed_id} has no assigned patient")
             patient_id = link.patient_id
+            has_active_stay = session.query(DailyPatient.subject_id).filter(DailyPatient.subject_id == patient_id).first() is not None
+
+        if not has_active_stay:
+            # Ghost occupant: the bed still points at a patient whose stay is already closed.
+            # Nothing to archive — just free the bed so it can be used again.
+            rel.delete_by_left("patient_bed", patient_id)
+            bed_manager.cleanup_chariot_if_unneeded(bed_id)
+            return {"ok": True, "message": f"Bed {bed_id} released (patient {patient_id} had no active stay)",
+                    "stay_id": None}
 
         result = discharge_active_stay(patient_id, departure_time=body.departure_time,
                                         destination=body.destination, departure_source="manual")

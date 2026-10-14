@@ -31,7 +31,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from db.session import SessionLocal
-from db.models import DailyPatient
+from db.models import DailyPatient, PatientBed
 from features.data_management.log_patients_manager import LogPatientsManager
 from features.relations.relations_manager import RelationsManager
 from features.staff_management.doctors_manager import DoctorsManager
@@ -54,12 +54,27 @@ def _current_staff(patient_id: int):
     return doctor_ids, nurse_ids
 
 
+def _release_bed_links(patient_id: int) -> None:
+    """Drop the patient↔bed link(s) and remove a temporary chariot bed that is no longer needed."""
+    from features.beds_display.bed_manager import BedManager  # local import: avoids a circular import
+
+    with SessionLocal() as session:
+        bed_ids = [link.bed_id for link in session.query(PatientBed).filter(PatientBed.patient_id == patient_id).all()]
+        if bed_ids:
+            session.query(PatientBed).filter(PatientBed.patient_id == patient_id).delete(synchronize_session=False)
+            session.commit()
+    manager = BedManager()
+    for bed_id in bed_ids:
+        manager.cleanup_chariot_if_unneeded(bed_id)
+
+
 def discharge_active_stay(patient_id: int, departure_time: Optional[str] = None,
                            destination: Optional[str] = None,
                            departure_source: str = "manual") -> dict:
     """
-    Archive a patient's active DailyPatients row to LogPatients and unlink
-    all doctor/nurse relations. Does NOT touch any patient_bed relation.
+    Archive a patient's active DailyPatients row to LogPatients, unlink all
+    doctor/nurse relations and release the patient's bed (so a closed stay can
+    never leave a bed marked Occupied by a ghost).
 
     Args:
         patient_id       : subject_id of the active stay to discharge.
@@ -140,6 +155,8 @@ def discharge_active_stay(patient_id: int, departure_time: Optional[str] = None,
     rel.delete_by_left("patient_nurse", patient_id)
     for nid in old_nurse_ids:
         nurses_mgr.update_patient_count(nid, -1)
+
+    _release_bed_links(patient_id)
 
     return {"ok": True, "message": f"Patient {patient_id} discharged successfully",
             "stay_id": stay_id, "departure_time": resolved_departure}
