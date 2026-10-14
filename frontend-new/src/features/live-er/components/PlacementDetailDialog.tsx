@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRightLeft, LogOut, Pencil, X } from 'lucide-react'
+import { ArrowLeft, ArrowRightLeft, BedDouble, ClipboardList, Clock, LogOut, Pencil, UserRound, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { apiErrorMessage } from '@/api/client'
 import { useToast } from '@/components/feedback/useToast'
@@ -143,66 +143,87 @@ function DialogBody({ card, onClose, onEdit }: { card: PlacementCardData; onClos
   const dischargeIsArrivalProblem = !!dischargeError && /arrival|bed occupation/i.test(dischargeError)
   const bedBusy = moveBed.isPending || assignBed.isPending
 
+  const demographics = stay ? [stay.age != null ? `${stay.age}y` : null, stay.gender].filter(Boolean).join(' · ') : ''
+  // Bed cards: "Section A · Monitor bed"; a waiting patient has no bed yet.
+  const subtitle =
+    card.kind === 'bed'
+      ? [card.bed?.ward_name, card.bedType ? `${card.bedType} bed` : null].filter(Boolean).join(' · ')
+      : 'Waiting for a bed'
+  const HeaderIcon = card.kind === 'bed' ? BedDouble : UserRound
+
   return (
     <div className={styles.shell}>
       <div className={styles.header}>
+        <span className={styles.headerIcon} aria-hidden="true">
+          <HeaderIcon size={26} />
+        </span>
         <div className={styles.headerText}>
           <h2 id="placement-dialog-title" className={styles.title} dir="auto">
-            {card.kind === 'bed' ? `Manage ${card.primary}` : patientName}
+            {card.kind === 'bed' ? card.primary : patientName}
           </h2>
-          <div className={styles.identity}>
-            <StatusBadge label={card.statusLabel} tone={card.statusTone} />
-            {card.bedType && <span className={styles.bedType}>{card.bedType}</span>}
-          </div>
+          {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>
         <div className={styles.headerActions}>
-          {hasPatient && stay && (
-            <IconButton icon={<Pencil size={18} />} label="Edit patient data" onClick={() => onEdit(stay.stayId)} />
-          )}
+          <StatusBadge label={card.statusLabel} tone={card.statusTone} />
+          {hasPatient && stay && <IconButton icon={<Pencil size={18} />} label="Edit patient data" onClick={() => onEdit(stay.stayId)} />}
           <IconButton icon={<X size={18} />} label="Close" onClick={onClose} />
         </div>
       </div>
 
-      <div className={styles.body}>
-        {step === 'menu' && (
-          <>
+      {step === 'menu' && (
+        <>
+          <div className={styles.body}>
             {isAvailableBed && <p className={styles.hint}>This bed is available. Pick a waiting patient from the board to place them here.</p>}
             {isUnderRepair && <p className={styles.hint}>This bed is marked Under Repair. Change its condition from Settings → Beds.</p>}
             {hasPatient && (
               <>
+                <div>
+                  <p className={styles.sectionLabel}>{isOccupiedBed ? 'Current patient' : 'Patient'}</p>
+                  <h3 className={styles.patientName} dir="auto">
+                    {patientName}
+                  </h3>
+                  {(demographics || (stay?.name && card.patientId != null)) && (
+                    <p className={styles.demographics}>
+                      {[demographics, stay?.name && card.patientId != null ? `#${card.patientId}` : ''].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
                 <dl className={styles.facts}>
-                  <div className={styles.factWide}>
-                    <dt>Patient</dt>
-                    <dd dir="auto">
-                      {patientName}
-                      {stay && [stay.age != null ? `${stay.age}y` : null, stay.gender].filter(Boolean).length > 0
-                        ? ` · ${[stay.age != null ? `${stay.age}y` : null, stay.gender].filter(Boolean).join(' ')}`
-                        : ''}
-                      {stay?.name && card.patientId != null && <span className={styles.muted}> · #{card.patientId}</span>}
-                    </dd>
+                  <div className={styles.fact}>
+                    <Clock size={20} className={styles.factIcon} aria-hidden="true" />
+                    <div>
+                      <dt>Arrived</dt>
+                      <dd>{stay?.arrival ? formatClinicalDate(stay.arrival) : <span className={styles.notRecorded}>Not recorded</span>}</dd>
+                    </div>
                   </div>
-                  <div>
-                    <dt>Arrived</dt>
-                    <dd>{stay?.arrival ? formatClinicalDate(stay.arrival) : '—'}</dd>
-                  </div>
-                  <div>
-                    <dt>Chief complaint</dt>
-                    <dd dir="auto">{stay?.complaint || 'Not recorded'}</dd>
+                  <div className={styles.fact}>
+                    <ClipboardList size={20} className={styles.factIcon} aria-hidden="true" />
+                    <div>
+                      <dt>Chief complaint</dt>
+                      <dd dir="auto">{stay?.complaint || <span className={styles.notRecorded}>Not recorded</span>}</dd>
+                    </div>
                   </div>
                 </dl>
-                <div className={styles.choices}>
-                  <Button className={styles.choice} onClick={() => setStep('bed')}>
-                    <ArrowRightLeft size={18} aria-hidden="true" /> {isOccupiedBed ? 'Change bed' : 'Assign bed'}
-                  </Button>
-                  <Button className={styles.choice} variant="destructive" onClick={() => setStep('discharge')}>
-                    <LogOut size={18} aria-hidden="true" /> Discharge patient
-                  </Button>
-                </div>
               </>
             )}
-          </>
-        )}
+          </div>
+          {hasPatient && (
+            <div className={styles.footer}>
+              <div className={styles.choices}>
+                <Button className={styles.choice} onClick={() => setStep('bed')}>
+                  <ArrowRightLeft size={18} aria-hidden="true" /> {isOccupiedBed ? 'Change bed' : 'Assign bed'}
+                </Button>
+                <Button className={styles.choice} variant="destructive" onClick={() => setStep('discharge')}>
+                  <LogOut size={18} aria-hidden="true" /> Discharge patient
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
+      {step !== 'menu' && (
+        <div className={styles.body}>
         {step === 'bed' && hasPatient && (
           <>
             <button type="button" className={styles.back} onClick={() => setStep('menu')}>
@@ -289,7 +310,8 @@ function DialogBody({ card, onClose, onEdit }: { card: PlacementCardData; onClos
             </div>
           </>
         )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

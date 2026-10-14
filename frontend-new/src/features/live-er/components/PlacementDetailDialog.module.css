@@ -1,10 +1,11 @@
 .dialog {
-  width: min(560px, calc(100vw - var(--space-8)));
+  width: min(680px, calc(100vw - var(--space-8)));
   padding: 0;
-  border: none;
-  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
   box-shadow: var(--shadow-lg);
   color: var(--text-primary);
+  background: var(--surface);
   /* visible: the date-picker calendar is rendered inside the dialog and may extend past its edge */
   overflow: visible;
 }
@@ -18,75 +19,59 @@
   flex-direction: column;
 }
 
+/* ── Header ─────────────────────────────────────────── */
 .header {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-6) var(--space-6) var(--space-3);
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--brand-50);
+  border-bottom: 1px solid var(--border-default);
+  border-radius: 15px 15px 0 0;
+}
+
+.headerIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--brand-100);
+  color: var(--brand-600);
+}
+
+.headerText {
+  flex: 1;
+  min-width: 0;
 }
 
 .title {
   margin: 0;
-  font-size: var(--font-size-card-title);
+  font-size: 22px;
+  line-height: 1.2;
   font-weight: var(--font-weight-semibold);
 }
 
-.identity {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-size: var(--font-size-metadata);
+.subtitle {
+  margin: 2px 0 0;
+  font-size: var(--font-size-label);
   color: var(--text-secondary);
-}
-
-.bedType {
-  font-weight: var(--font-weight-medium);
-  text-transform: uppercase;
-  padding: 1px 6px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-}
-
-.headerText {
-  min-width: 0;
 }
 
 .headerActions {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
+  flex: none;
 }
 
-.tabs {
-  display: flex;
-  gap: var(--space-1);
-  padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--border-default);
+/* Ward and bed-type names are stored in lower case. */
+.subtitle::first-letter {
+  text-transform: uppercase;
 }
 
-.tab {
-  padding: var(--space-2) var(--space-3);
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font: inherit;
-  font-weight: var(--font-weight-medium);
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.tab:hover {
-  color: var(--text-primary);
-}
-
-.tabActive {
-  color: var(--text-primary);
-  border-bottom-color: var(--blue-500, #4f46e5);
-}
-
+/* ── Body ───────────────────────────────────────────── */
 .body {
   display: flex;
   flex-direction: column;
@@ -94,9 +79,62 @@
   padding: var(--space-6);
 }
 
-.detailLine {
+.sectionLabel {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-metadata);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.patientName {
   margin: 0;
-  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.demographics {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.fact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.fact + .fact {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--border-default);
+}
+
+.factIcon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+
+.fact dt {
+  font-size: var(--font-size-metadata);
+  color: var(--text-secondary);
+}
+
+.fact dd {
+  margin: 2px 0 0;
+  font-weight: var(--font-weight-medium);
+}
+
+.notRecorded {
+  color: var(--text-secondary);
+  font-weight: 400;
 }
 
 .hint {
@@ -108,73 +146,28 @@
   font-size: var(--font-size-label);
 }
 
-.error {
-  margin: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--danger);
-  background: rgb(220 38 38 / 0.06);
-  color: var(--danger);
-  font-size: var(--font-size-label);
-}
-
-.errorLink {
-  display: block;
-  padding: 0;
-  border: none;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-  margin-top: var(--space-2);
-  font-weight: var(--font-weight-medium);
-}
-
-.facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-4);
-  margin: 0;
-}
-
-.facts dt {
-  font-size: var(--font-size-metadata);
-  color: var(--text-secondary);
-}
-
-.facts dd {
-  margin: 0;
-  font-weight: var(--font-weight-medium);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.facts > .factWide {
-  grid-column: 1 / -1;
-}
-
-.muted {
-  color: var(--text-secondary);
-  font-weight: var(--font-weight-regular, 400);
+/* ── Footer (the two decisions) ─────────────────────── */
+.footer {
+  padding: var(--space-4) var(--space-6);
+  background: var(--slate-50);
+  border-top: 1px solid var(--border-default);
+  border-radius: 0 0 15px 15px;
 }
 
 .choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  gap: 12px;
 }
 
 .choice {
   width: 100%;
-  min-height: 48px;
+  height: 48px;
+  border-radius: 10px;
   justify-content: center;
 }
 
+/* ── Sub-steps ──────────────────────────────────────── */
 .back {
   align-self: flex-start;
   display: inline-flex;
@@ -196,4 +189,47 @@
   margin: 0;
   font-size: var(--font-size-body);
   font-weight: var(--font-weight-semibold);
+}
+
+.error {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: var(--font-size-label);
+}
+
+.errorLink {
+  display: block;
+  margin-top: var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@media (max-width: 520px) {
+  .facts {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  .fact + .fact {
+    padding-inline-start: 0;
+    border-inline-start: none;
+  }
+  .choices {
+    grid-template-columns: 1fr;
+  }
 }
