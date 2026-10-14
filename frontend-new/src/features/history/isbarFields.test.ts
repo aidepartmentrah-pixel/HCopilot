@@ -33,3 +33,14 @@ describe('sectionRecordedStatus', () => {
     expect(sectionRecordedStatus(fields)).toBe('recorded')
   })
 })
+
+describe('vitalsFields core vitals', () => {
+  it('shows the stay temperature/HR/BP/SpO2/pain when a patient is given', () => {
+    const fields = vitalsFields(null, { temperature: 36.4, heartrate: 79, resprate: 16, o2sat: 99, sbp: 137, dbp: 90, pain: '3.0' })
+    const byLabel = Object.fromEntries(fields.map((f) => [f.label, f.value]))
+    expect(byLabel['Temperature']).toBe('36.4 °C')
+    expect(byLabel['Blood Pressure']).toBe('137/90 mmHg')
+    expect(byLabel['SpO₂']).toBe('99 %')
+    expect(sectionRecordedStatus(fields)).toBe('partially-recorded')
+  })
+})

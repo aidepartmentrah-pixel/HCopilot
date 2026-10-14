@@ -49,7 +49,7 @@ export function FullRecordPage() {
       {patient && (
         <div className={styles.record}>
           <PatientSummary patient={patient} />
-          <IsbarReadOnlySections isbar={patient.isbar} defaultOpen="all" />
+          <IsbarReadOnlySections isbar={patient.isbar} vitals={patient} defaultOpen="all" />
         </div>
       )}
     </div>

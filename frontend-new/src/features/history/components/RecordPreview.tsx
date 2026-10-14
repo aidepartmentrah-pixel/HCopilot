@@ -26,7 +26,7 @@ export function RecordPreview({ stayId, onClose }: RecordPreviewProps) {
         <IconButton icon={<X size={16} />} label="Close preview" onClick={onClose} />
       </div>
       <PatientSummary patient={patient} />
-      <IsbarReadOnlySections isbar={patient.isbar} defaultOpen="none" />
+      <IsbarReadOnlySections isbar={patient.isbar} vitals={patient} defaultOpen="none" />
       <div className={styles.footer}>
         <Link to={`/history/${stayId}`}>
           <Button variant="secondary">

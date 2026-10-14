@@ -26,8 +26,37 @@ export function sectionRecordedStatus(fields: FieldSpec[]): RecordedStatus {
   return 'partially-recorded'
 }
 
-export function vitalsFields(isbar: ISBARDetails | null | undefined): FieldSpec[] {
+/** The triage vitals stored on the stay itself (not in ISBAR details). */
+export interface CoreVitals {
+  temperature?: number | null
+  heartrate?: number | null
+  resprate?: number | null
+  o2sat?: number | null
+  sbp?: number | null
+  dbp?: number | null
+  pain?: string | null
+}
+
+const present = (v: number | string | null | undefined) => v != null && v !== ''
+
+function coreVitalFields(v: CoreVitals): FieldSpec[] {
   return [
+    { label: 'Temperature', value: present(v.temperature) ? `${v.temperature} °C` : null },
+    { label: 'Heart Rate', value: present(v.heartrate) ? `${v.heartrate} bpm` : null },
+    { label: 'Respiratory Rate', value: present(v.resprate) ? `${v.resprate} /min` : null },
+    { label: 'SpO₂', value: present(v.o2sat) ? `${v.o2sat} %` : null },
+    {
+      label: 'Blood Pressure',
+      value: present(v.sbp) && present(v.dbp) ? `${v.sbp}/${v.dbp} mmHg` : present(v.sbp) ? `${v.sbp} mmHg (systolic)` : null,
+    },
+    { label: 'Pain', value: present(v.pain) ? `${v.pain}/10` : null },
+  ]
+}
+
+/** When `core` is given (a loaded patient), the stay's own triage vitals lead the section. */
+export function vitalsFields(isbar: ISBARDetails | null | undefined, core?: CoreVitals): FieldSpec[] {
+  return [
+    ...(core ? coreVitalFields(core) : []),
     { label: 'Blood Glucose', value: isbar?.blood_glucose != null ? `${isbar.blood_glucose} mg/dL` : null },
     { label: 'O2 Support', value: isbar?.o2_support ? humanize(isbar.o2_support) : null },
     { label: 'O2 Flow Rate', value: isbar?.o2_flow_rate != null ? `${isbar.o2_flow_rate} L/min` : null },
