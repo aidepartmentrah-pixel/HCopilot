@@ -11,7 +11,8 @@ interface PatientIdentityBannerProps {
   arrivalTime: string
   patientNumber: number
   acuity?: number | null
-  onChangePatient: () => void
+  /** Omit where the banner is not part of a patient picker (e.g. the Edit Patient popup). */
+  onChangePatient?: () => void
 }
 
 /** The active patient must be impossible to miss (§20) — shown only once a stay is loaded. */
@@ -42,9 +43,11 @@ export function PatientIdentityBanner({
             .join(' · ')}
         </div>
       </div>
-      <Button variant="secondary" size="sm" onClick={onChangePatient}>
-        Change Patient
-      </Button>
+      {onChangePatient && (
+        <Button variant="secondary" size="sm" onClick={onChangePatient}>
+          Change Patient
+        </Button>
+      )}
     </div>
   )
 }

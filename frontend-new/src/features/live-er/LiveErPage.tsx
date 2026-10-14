@@ -10,6 +10,7 @@ import { useToast } from '@/components/feedback/useToast'
 import { useAssignBed, useBedlessPatients, useBeds } from '@/hooks/useBeds'
 import type { Bed } from '@/types/bed'
 import { AssignBedDialog } from './components/AssignBedDialog'
+import { EditPatientDialog } from '@/features/isbar/components/EditPatientDialog'
 import { PlacementDetailDialog } from './components/PlacementDetailDialog'
 import { SummaryStatRow } from './components/SummaryStatRow'
 import { WardLane } from './components/WardLane'
@@ -40,6 +41,7 @@ export function LiveErPage() {
   const [selectedWaitingCard, setSelectedWaitingCard] = useState<PlacementCardData | null>(null)
   const [pendingAssignment, setPendingAssignment] = useState<{ waiting: PlacementCardData; bed: PlacementCardData } | null>(null)
   const [assignBedCard, setAssignBedCard] = useState<PlacementCardData | null>(null)
+  const [editStayId, setEditStayId] = useState<number | null>(null)
   const { showToast } = useToast()
   const assignBed = useAssignBed()
 
@@ -183,7 +185,16 @@ export function LiveErPage() {
         </>
       )}
 
-      <PlacementDetailDialog card={selectedCard} onClose={() => setSelectedCard(null)} />
+      <PlacementDetailDialog
+        card={selectedCard}
+        onClose={() => setSelectedCard(null)}
+        onEdit={(stayId) => {
+          setSelectedCard(null)
+          setEditStayId(stayId)
+        }}
+      />
+
+      <EditPatientDialog stayId={editStayId} onClose={() => setEditStayId(null)} />
 
       <AssignBedDialog
         bed={assignBedCard}

@@ -26,7 +26,7 @@ test.describe('Live ER Board', () => {
     expect(widths.size).toBe(1)
   })
 
-  test('clicking an available bed with nothing selected opens the assign dialog, not an immediate assignment; clicking occupied opens the detail dialog with a Discharge tab', async ({
+  test('clicking an available bed with nothing selected opens the assign dialog, not an immediate assignment; clicking occupied opens the detail dialog with Change bed / Discharge choices', async ({
     page,
   }) => {
     await page.goto('/live-er')
@@ -43,8 +43,9 @@ test.describe('Live ER Board', () => {
     const occupiedCard = page.getByTestId('placement-card').filter({ hasText: 'Occupied' }).first()
     if (await occupiedCard.count()) {
       await occupiedCard.click()
-      await expect(page.getByRole('tab', { name: 'Change bed' })).toBeVisible()
-      await page.getByRole('tab', { name: 'Discharge' }).click()
+      await expect(page.getByRole('button', { name: 'Change bed' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Edit patient data' })).toBeVisible()
+      await page.getByRole('button', { name: 'Discharge patient' }).click()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toBeVisible()
       await page.keyboard.press('Escape')
     }
@@ -63,10 +64,22 @@ test.describe('Live ER Board', () => {
       await expect(page.getByText(/selected — click an available bed to assign it/)).toBeVisible()
 
       await waitingCard.click()
-      await expect(page.getByRole('tab', { name: 'Assign bed' })).toBeVisible()
-      await page.getByRole('tab', { name: 'Discharge' }).click()
+      await expect(page.getByRole('button', { name: 'Assign bed' })).toBeVisible()
+      await page.getByRole('button', { name: 'Discharge patient' }).click()
       await expect(page.getByRole('button', { name: 'Discharge Patient' })).toBeVisible()
       await page.keyboard.press('Escape')
     }
+  })
+
+  test('the pencil on an occupied bed opens the Edit patient popup (not the ISBAR entry page)', async ({ page }) => {
+    await page.goto('/live-er')
+    const occupiedCard = page.getByTestId('placement-card').filter({ hasText: 'Occupied' }).first()
+    await occupiedCard.waitFor({ timeout: 10000 })
+    await occupiedCard.click()
+    await page.getByRole('button', { name: 'Edit patient data' }).click()
+    await expect(page.getByRole('heading', { name: 'Edit patient data' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save Changes' })).toBeVisible({ timeout: 10000 })
+    await expect(page).toHaveURL(/\/live-er$/)
+    await page.keyboard.press('Escape')
   })
 })

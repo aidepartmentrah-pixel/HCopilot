@@ -1,6 +1,5 @@
-import { X } from 'lucide-react'
+import { ArrowLeft, ArrowRightLeft, LogOut, Pencil, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { apiErrorMessage } from '@/api/client'
 import { useToast } from '@/components/feedback/useToast'
 import { DateTimeInput, toLocalDatetimeString } from '@/components/forms/DateTimeInput'
@@ -18,21 +17,22 @@ import styles from './PlacementDetailDialog.module.css'
 
 const DESTINATION_OPTIONS = ['Home', 'Hospital Department'] as const
 
-type TabId = 'overview' | 'bed' | 'discharge'
+type Step = 'menu' | 'bed' | 'discharge'
 
 interface PlacementDetailDialogProps {
   card: PlacementCardData | null
   onClose: () => void
+  /** Open the Edit Patient popup for this active stay. */
+  onEdit: (stayId: number) => void
 }
 
 /**
- * Centered dialog (replaces the old right-hand drawer) for one placement:
- * Overview, Bed (move an occupied patient / assign a waiting one),
- * Edit ISBAR (deep link into the ISBAR page for that stay) and Discharge
- * (with an explicit departure time and the server's reason on failure).
- * Native <dialog> like AssignBedDialog: focus trap, Escape and backdrop for free.
+ * Centered dialog for one placement. A patient's menu has exactly two
+ * decisions — move/assign a bed, or discharge — plus a pencil icon in the
+ * header for editing their data. Each decision opens in place with a Back
+ * button. Native <dialog>: focus trap, Escape and backdrop for free.
  */
-export function PlacementDetailDialog({ card, onClose }: PlacementDetailDialogProps) {
+export function PlacementDetailDialog({ card, onClose, onEdit }: PlacementDetailDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const open = card !== null
 
@@ -54,14 +54,13 @@ export function PlacementDetailDialog({ card, onClose }: PlacementDetailDialogPr
       }}
       onClose={onClose}
     >
-      {/* Mounted only while open so tab, inputs and errors reset for every card. */}
-      {card && <DialogBody key={card.id} card={card} onClose={onClose} />}
+      {/* Mounted only while open so the step, inputs and errors reset for every card. */}
+      {card && <DialogBody key={card.id} card={card} onClose={onClose} onEdit={onEdit} />}
     </dialog>
   )
 }
 
-function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () => void }) {
-  const navigate = useNavigate()
+function DialogBody({ card, onClose, onEdit }: { card: PlacementCardData; onClose: () => void; onEdit: (stayId: number) => void }) {
   const { showToast } = useToast()
   const { data: bedsData } = useBeds()
   const { data: patientsData } = usePatients()
@@ -76,7 +75,7 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
   const isWaiting = card.kind === 'waiting'
   const hasPatient = isOccupiedBed || isWaiting
 
-  const [tab, setTab] = useState<TabId>('overview')
+  const [step, setStep] = useState<Step>('menu')
   const [targetBedId, setTargetBedId] = useState('')
   const [bedError, setBedError] = useState<string | null>(null)
 
@@ -88,9 +87,12 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
 
   // The active stay behind this card: a bedless card carries it; a bed card resolves it by patient id.
   const stay = useMemo(() => {
-    if (card.patient) return { stayId: card.patient.stay_id, arrival: card.patient.arrival_time, complaint: card.patient.chiefcomplaint }
-    const match = (patientsData?.patients ?? []).find((p) => p.patient_id === card.patientId)
-    return match ? { stayId: match.stay_id, arrival: match.arrival_time, complaint: match.chiefcomplaint } : null
+    if (card.patient) {
+      const p = card.patient
+      return { stayId: p.stay_id, name: p.name, age: p.age, gender: p.gender, arrival: p.arrival_time, complaint: p.chiefcomplaint }
+    }
+    const m = (patientsData?.patients ?? []).find((p) => p.patient_id === card.patientId)
+    return m ? { stayId: m.stay_id, name: m.name, age: m.age, gender: m.gender, arrival: m.arrival_time, complaint: m.chiefcomplaint } : null
   }, [card.patient, card.patientId, patientsData])
 
   const freeBeds = useMemo(
@@ -98,6 +100,7 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
     [bedsData, card.bed?.bed_id],
   )
 
+  const patientName = stay?.name || (card.patientId != null ? `Patient #${card.patientId}` : 'Patient')
   const resolvedDestination =
     destination === 'Hospital Department' && destinationDetail.trim() ? `Hospital Department: ${destinationDetail.trim()}` : destination
 
@@ -107,10 +110,10 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
     try {
       if (isOccupiedBed) {
         await moveBed.mutateAsync({ patientId: card.patientId, newBedId: Number(targetBedId) })
-        showToast(`${card.sub.split(' · ')[0] || 'Patient'} moved to the new bed.`, 'success')
+        showToast(`${patientName} moved to the new bed.`, 'success')
       } else {
         await assignBed.mutateAsync({ bedId: Number(targetBedId), patientId: card.patientId })
-        showToast(`${card.primary} assigned to a bed.`, 'success')
+        showToast(`${patientName} assigned to a bed.`, 'success')
       }
       onClose()
     } catch (err) {
@@ -130,16 +133,11 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
       } else {
         return
       }
-      showToast('Patient discharged.', 'success')
+      showToast(`${patientName} discharged.`, 'success')
       onClose()
     } catch (err) {
       setDischargeError(apiErrorMessage(err, 'Could not discharge this patient. Please try again.'))
     }
-  }
-
-  const tabs: { id: TabId; label: string }[] = [{ id: 'overview', label: 'Overview' }]
-  if (hasPatient) {
-    tabs.push({ id: 'bed', label: isOccupiedBed ? 'Change bed' : 'Assign bed' }, { id: 'discharge', label: 'Discharge' })
   }
 
   const dischargeIsArrivalProblem = !!dischargeError && /arrival|bed occupation/i.test(dischargeError)
@@ -148,86 +146,75 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
   return (
     <div className={styles.shell}>
       <div className={styles.header}>
-        <div>
+        <div className={styles.headerText}>
           <h2 id="placement-dialog-title" className={styles.title} dir="auto">
-            {card.primary}
+            {card.kind === 'bed' ? `Manage ${card.primary}` : patientName}
           </h2>
           <div className={styles.identity}>
             <StatusBadge label={card.statusLabel} tone={card.statusTone} />
             {card.bedType && <span className={styles.bedType}>{card.bedType}</span>}
-            {card.patientId != null && <span>Patient #{card.patientId}</span>}
           </div>
         </div>
-        <IconButton icon={<X size={18} />} label="Close" onClick={onClose} />
+        <div className={styles.headerActions}>
+          {hasPatient && stay && (
+            <IconButton icon={<Pencil size={18} />} label="Edit patient data" onClick={() => onEdit(stay.stayId)} />
+          )}
+          <IconButton icon={<X size={18} />} label="Close" onClick={onClose} />
+        </div>
       </div>
 
-      {tabs.length > 1 && (
-        <div className={styles.tabs} role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              className={[styles.tab, tab === t.id ? styles.tabActive : ''].filter(Boolean).join(' ')}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       <div className={styles.body}>
-        {tab === 'overview' && (
+        {step === 'menu' && (
           <>
             {isAvailableBed && <p className={styles.hint}>This bed is available. Pick a waiting patient from the board to place them here.</p>}
             {isUnderRepair && <p className={styles.hint}>This bed is marked Under Repair. Change its condition from Settings → Beds.</p>}
             {hasPatient && (
               <>
-                <p className={styles.detailLine} dir="auto">
-                  {isWaiting
-                    ? [card.patient?.age != null ? `${card.patient.age}y` : null, card.patient?.gender, card.patient?.chiefcomplaint].filter(Boolean).join(' · ') || '—'
-                    : card.sub || '—'}
-                </p>
                 <dl className={styles.facts}>
+                  <div className={styles.factWide}>
+                    <dt>Patient</dt>
+                    <dd dir="auto">
+                      {patientName}
+                      {stay && [stay.age != null ? `${stay.age}y` : null, stay.gender].filter(Boolean).length > 0
+                        ? ` · ${[stay.age != null ? `${stay.age}y` : null, stay.gender].filter(Boolean).join(' ')}`
+                        : ''}
+                      {stay?.name && card.patientId != null && <span className={styles.muted}> · #{card.patientId}</span>}
+                    </dd>
+                  </div>
                   <div>
                     <dt>Arrived</dt>
                     <dd>{stay?.arrival ? formatClinicalDate(stay.arrival) : '—'}</dd>
                   </div>
                   <div>
                     <dt>Chief complaint</dt>
-                    <dd dir="auto">{stay?.complaint || '—'}</dd>
+                    <dd dir="auto">{stay?.complaint || 'Not recorded'}</dd>
                   </div>
                 </dl>
-                {stay ? (
-                  <div className={styles.actions}>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        onClose()
-                        navigate(`/isbar?stay=${stay.stayId}`)
-                      }}
-                    >
-                      Edit ISBAR data
-                    </Button>
-                  </div>
-                ) : (
-                  <p className={styles.hint}>Loading the patient's record…</p>
-                )}
+                <div className={styles.choices}>
+                  <Button className={styles.choice} onClick={() => setStep('bed')}>
+                    <ArrowRightLeft size={18} aria-hidden="true" /> {isOccupiedBed ? 'Change bed' : 'Assign bed'}
+                  </Button>
+                  <Button className={styles.choice} variant="destructive" onClick={() => setStep('discharge')}>
+                    <LogOut size={18} aria-hidden="true" /> Discharge patient
+                  </Button>
+                </div>
               </>
             )}
           </>
         )}
 
-        {tab === 'bed' && hasPatient && (
+        {step === 'bed' && hasPatient && (
           <>
+            <button type="button" className={styles.back} onClick={() => setStep('menu')}>
+              <ArrowLeft size={16} aria-hidden="true" /> Back
+            </button>
+            <h3 className={styles.stepTitle}>{isOccupiedBed ? 'Move to another bed' : 'Assign a bed'}</h3>
             <p className={styles.hint}>
               {isOccupiedBed
-                ? 'Move this patient to another available bed. The doctor and nurse links stay as they are.'
-                : 'Choose an available bed for this waiting patient. The time you assign is recorded as the bed occupation time.'}
+                ? 'The doctor and nurse links stay as they are.'
+                : 'The time you assign is recorded as the bed occupation time.'}
             </p>
-            <FormField label={isOccupiedBed ? 'Move to bed' : 'Assign to bed'} htmlFor="target-bed">
+            <FormField label="Available bed" htmlFor="target-bed">
               <Select id="target-bed" value={targetBedId} onChange={(e) => setTargetBedId(e.target.value)} placeholder="Select an available bed…">
                 {freeBeds.map((b) => (
                   <option key={b.bed_id} value={b.bed_id}>
@@ -251,8 +238,12 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
           </>
         )}
 
-        {tab === 'discharge' && hasPatient && (
+        {step === 'discharge' && hasPatient && (
           <>
+            <button type="button" className={styles.back} onClick={() => setStep('menu')}>
+              <ArrowLeft size={16} aria-hidden="true" /> Back
+            </button>
+            <h3 className={styles.stepTitle}>Discharge {patientName}</h3>
             <FormField label="Departure time" htmlFor="departure-time" hint="Leave as is to discharge right now.">
               <DateTimeInput
                 id="departure-time"
@@ -282,14 +273,14 @@ function DialogBody({ card, onClose }: { card: PlacementCardData; onClose: () =>
               <p className={styles.error} role="alert">
                 {dischargeError}
                 {dischargeIsArrivalProblem && stay && (
-                  <Link className={styles.errorLink} to={`/isbar?stay=${stay.stayId}`} onClick={onClose}>
-                    Fix the arrival time in ISBAR entry →
-                  </Link>
+                  <button type="button" className={styles.errorLink} onClick={() => onEdit(stay.stayId)}>
+                    Fix the arrival time →
+                  </button>
                 )}
               </p>
             )}
             <div className={styles.actions}>
-              <Button variant="secondary" onClick={onClose}>
+              <Button variant="secondary" onClick={() => setStep('menu')}>
                 Cancel
               </Button>
               <Button variant="destructive" onClick={handleDischarge} loading={dischargeFromBed.isPending || dischargeBedless.isPending}>

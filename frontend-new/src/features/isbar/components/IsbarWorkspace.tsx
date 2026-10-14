@@ -36,9 +36,10 @@ interface IsbarWorkspaceProps {
   resetKey: string | number
   methods: UseFormReturn<IsbarFormValues>
   onSubmit: (values: IsbarFormValues) => void
-  onChangePatient: () => void
+  /** Omit to hide the banner's "Change Patient" button (Edit Patient popup). */
+  onChangePatient?: () => void
   /** Discards an unsaved draft (asks first if it has edits). */
-  onCancelDraft: () => void
+  onCancelDraft?: () => void
   isSaving: boolean
 }
 
