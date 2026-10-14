@@ -5,6 +5,10 @@ export interface SettingsNavItem {
   id: string
   label: string
   icon: ComponentType<{ size?: number }>
+  /** `settings_tabs` keys that open this area (any one is enough); admins always can. */
+  tabKeys?: readonly string[]
+  /** Only administrators (the old UI's "accounts" tab has no key of its own). */
+  adminOnly?: boolean
 }
 
 export interface SettingsNavGroup {
@@ -26,21 +30,21 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
   {
     label: 'Resources',
     items: [
-      { id: 'beds', label: 'Beds', icon: BedDouble },
-      { id: 'doctors', label: 'Doctors', icon: Stethoscope },
-      { id: 'nurses', label: 'Nurses', icon: UserRound },
-      { id: 'wards', label: 'Wards', icon: Building2 },
+      { id: 'beds', label: 'Beds', icon: BedDouble, tabKeys: ['beds'] },
+      { id: 'doctors', label: 'Doctors', icon: Stethoscope, tabKeys: ['doctors'] },
+      { id: 'nurses', label: 'Nurses', icon: UserRound, tabKeys: ['nurses'] },
+      { id: 'wards', label: 'Wards', icon: Building2, tabKeys: ['wards'] },
     ],
   },
   {
     label: 'System',
     items: [
-      { id: 'integrations', label: 'Integrations', icon: BookUser },
-      { id: 'ai-models', label: 'AI & Models', icon: BrainCircuit },
+      { id: 'integrations', label: 'Integrations', icon: BookUser, tabKeys: ['hospital-directory'] },
+      { id: 'ai-models', label: 'AI & Models', icon: BrainCircuit, tabKeys: ['models', 'training'] },
     ],
   },
   {
     label: 'Access',
-    items: [{ id: 'accounts', label: 'Accounts & Permissions', icon: UsersRound }],
+    items: [{ id: 'accounts', label: 'Accounts & Permissions', icon: UsersRound, adminOnly: true }],
   },
 ]

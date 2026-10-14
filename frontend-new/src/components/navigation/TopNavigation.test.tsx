@@ -30,7 +30,7 @@ describe('TopNavigation', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ patients: [], total: 0 })))
     localStorage.setItem(
       SESSION_KEY,
-      JSON.stringify({ user_id: 1, username: 'jsmith', name: 'Jamie Smith', role: 'nurse', sections: '', settings_tabs: '', statistics_tabs: '' }),
+      JSON.stringify({ user_id: 1, username: 'jsmith', name: 'Jamie Smith', role: 'nurse', sections: 'home,patients,beds-display,patient-history,statistics,flow-prediction,settings', settings_tabs: '', statistics_tabs: '' }),
     )
   })
 
@@ -84,5 +84,35 @@ describe('TopNavigation', () => {
     const signOut = await screen.findByRole('menuitem', { name: /sign out/i })
     await user.click(signOut)
     expect(localStorage.getItem(SESSION_KEY)).toBeNull()
+  })
+
+  describe('per-user page access', () => {
+    const signIn = (role: string, sections: string) =>
+      localStorage.setItem(
+        SESSION_KEY,
+        JSON.stringify({ user_id: 2, username: 'u', name: 'U', role, sections, settings_tabs: '', statistics_tabs: '' }),
+      )
+    const linkNames = () =>
+      within(screen.getByRole('navigation', { name: 'Primary' }))
+        .getAllByRole('link')
+        .map((a) => a.textContent?.trim())
+
+    it('shows only the granted pages (Home is always there)', () => {
+      signIn('user', 'patients,patient-history')
+      renderShell()
+      expect(linkNames()).toEqual(['Home', 'ER ISBAR Entry', 'History'])
+    })
+
+    it('shows only Home when no section is granted', () => {
+      signIn('user', '')
+      renderShell()
+      expect(linkNames()).toEqual(['Home'])
+    })
+
+    it('shows every page to an administrator, whatever its sections say', () => {
+      signIn('admin', '')
+      renderShell()
+      expect(linkNames()).toEqual(['Home', 'ER ISBAR Entry', 'Live ER', 'History', 'Statistics', 'Predictions', 'Settings'])
+    })
   })
 })

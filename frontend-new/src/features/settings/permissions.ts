@@ -38,6 +38,7 @@ export const SETTINGS_TAB_PERMISSIONS: PermissionOption[] = [
   { key: 'doctors', label: 'Doctors' },
   { key: 'nurses', label: 'Nurses' },
   { key: 'wards', label: 'Wards' },
+  { key: 'hospital-directory', label: 'Integrations' },
   { key: 'models', label: 'Model Registry' },
   { key: 'training', label: 'Training' },
 ]

@@ -5,6 +5,8 @@ import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/feedback/ErrorBoundary'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { HomePage } from '@/features/home/HomePage'
+import { SECTION_KEYS } from '../access'
+import { RequireSection } from './RequireSection'
 
 // Route-level code splitting: each page (ISBAR's form alone is a large,
 // self-contained module) only loads when actually navigated to, instead of
@@ -36,57 +38,71 @@ export function AppRouter() {
         <Route
           path="isbar"
           element={
-            <LazyPage>
-              <IsbarPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.isbar}>
+              <LazyPage>
+                <IsbarPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="live-er"
           element={
-            <LazyPage>
-              <LiveErPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.liveEr}>
+              <LazyPage>
+                <LiveErPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="history"
           element={
-            <LazyPage>
-              <HistoryPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.history}>
+              <LazyPage>
+                <HistoryPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="history/:stayId"
           element={
-            <LazyPage>
-              <FullRecordPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.history}>
+              <LazyPage>
+                <FullRecordPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="statistics"
           element={
-            <LazyPage>
-              <StatisticsPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.statistics}>
+              <LazyPage>
+                <StatisticsPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="predictions"
           element={
-            <LazyPage>
-              <PredictionsPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.predictions}>
+              <LazyPage>
+                <PredictionsPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
         <Route
           path="settings"
           element={
-            <LazyPage>
-              <SettingsPage />
-            </LazyPage>
+            <RequireSection section={SECTION_KEYS.settings}>
+              <LazyPage>
+                <SettingsPage />
+              </LazyPage>
+            </RequireSection>
           }
         />
       </Route>

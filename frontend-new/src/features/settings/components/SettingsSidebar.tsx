@@ -1,15 +1,17 @@
-import { SETTINGS_NAV } from '../settingsNav'
+import type { SettingsNavGroup } from '../settingsNav'
 import styles from './SettingsSidebar.module.css'
 
 interface SettingsSidebarProps {
+  /** Already filtered to what the signed-in user may open. */
+  groups: SettingsNavGroup[]
   activeId: string
   onSelect: (id: string) => void
 }
 
-export function SettingsSidebar({ activeId, onSelect }: SettingsSidebarProps) {
+export function SettingsSidebar({ groups, activeId, onSelect }: SettingsSidebarProps) {
   return (
     <nav className={styles.sidebar} aria-label="Settings">
-      {SETTINGS_NAV.map((group) => (
+      {groups.map((group) => (
         <div key={group.label} className={styles.group}>
           <h3 className={styles.groupLabel}>{group.label}</h3>
           {group.items.map((item) => {
