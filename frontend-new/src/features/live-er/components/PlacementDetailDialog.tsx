@@ -13,7 +13,10 @@ import { useAssignBed, useBeds, useDischargeBedless, useDischargeFromBed, useMov
 import { usePatients } from '@/hooks/usePatients'
 import { formatClinicalDate } from '@/utils/dateFormat'
 import type { PlacementCardData } from '../utils'
-import styles from './PlacementDetailDialog.module.css'
+import shell from './dialogShell.module.css'
+import local from './PlacementDetailDialog.module.css'
+
+const styles = { ...shell, ...local }
 
 const DESTINATION_OPTIONS = ['Home', 'Hospital Department'] as const
 
@@ -155,16 +158,18 @@ function DialogBody({ card, onClose, onEdit }: { card: PlacementCardData; onClos
     <div className={styles.shell}>
       <div className={styles.header}>
         <span className={styles.headerIcon} aria-hidden="true">
-          <HeaderIcon size={26} />
+          <HeaderIcon size={24} />
         </span>
         <div className={styles.headerText}>
           <h2 id="placement-dialog-title" className={styles.title} dir="auto">
             {card.kind === 'bed' ? card.primary : patientName}
           </h2>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+          <div className={styles.headerBadge}>
+            <StatusBadge label={card.statusLabel} tone={card.statusTone} />
+          </div>
         </div>
         <div className={styles.headerActions}>
-          <StatusBadge label={card.statusLabel} tone={card.statusTone} />
           {hasPatient && stay && <IconButton icon={<Pencil size={18} />} label="Edit patient data" onClick={() => onEdit(stay.stayId)} />}
           <IconButton icon={<X size={18} />} label="Close" onClick={onClose} />
         </div>

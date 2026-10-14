@@ -41,9 +41,11 @@ interface IsbarWorkspaceProps {
   /** Discards an unsaved draft (asks first if it has edits). */
   onCancelDraft?: () => void
   isSaving: boolean
+  /** Rendered inside a popup that provides the scrolling. */
+  embedded?: boolean
 }
 
-export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePatient, onCancelDraft, isSaving }: IsbarWorkspaceProps) {
+export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePatient, onCancelDraft, isSaving, embedded = false }: IsbarWorkspaceProps) {
   const disabled = mode === 'disabled'
   const values = methods.watch()
   const { statuses, openSections, currentId, toggleSection, handleContinue, onWorkspaceBlur } = useSectionStatuses(methods, resetKey)
@@ -71,7 +73,7 @@ export function IsbarWorkspace({ mode, resetKey, methods, onSubmit, onChangePati
   }
 
   return (
-    <div className={styles.panel}>
+    <div className={[styles.panel, embedded ? styles.embedded : ''].filter(Boolean).join(' ')}>
       {mode === 'active' && (
         <div className={styles.stickyBanner}>
           <PatientIdentityBanner

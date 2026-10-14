@@ -100,6 +100,7 @@ function EditForm({ details, onClose }: { details: PatientDetails; onClose: () =
       methods={methods}
       onSubmit={handleSubmit}
       isSaving={modifyPatient.isPending}
+      embedded
     />
   )
 }

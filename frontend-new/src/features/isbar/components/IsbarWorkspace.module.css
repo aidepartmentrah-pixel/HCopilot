@@ -5,6 +5,12 @@
   overflow-y: auto;
 }
 
+/* Inside a popup the popup scrolls; a second scrollbar here would nest two vertical bars. */
+.embedded {
+  height: auto;
+  overflow: visible;
+}
+
 .footer {
   display: flex;
   justify-content: flex-end;

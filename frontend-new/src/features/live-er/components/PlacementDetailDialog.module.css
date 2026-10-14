@@ -1,84 +1,4 @@
-.dialog {
-  width: min(680px, calc(100vw - var(--space-8)));
-  padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  color: var(--text-primary);
-  background: var(--surface);
-  /* visible: the date-picker calendar is rendered inside the dialog and may extend past its edge */
-  overflow: visible;
-}
-
-.dialog::backdrop {
-  background: rgb(15 23 42 / 0.45);
-}
-
-.shell {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Header ─────────────────────────────────────────── */
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  background: var(--brand-50);
-  border-bottom: 1px solid var(--border-default);
-  border-radius: 15px 15px 0 0;
-}
-
-.headerIcon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: var(--brand-100);
-  color: var(--brand-600);
-}
-
-.headerText {
-  flex: 1;
-  min-width: 0;
-}
-
-.title {
-  margin: 0;
-  font-size: 22px;
-  line-height: 1.2;
-  font-weight: var(--font-weight-semibold);
-}
-
-.subtitle {
-  margin: 2px 0 0;
-  font-size: var(--font-size-label);
-  color: var(--text-secondary);
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: none;
-}
-
-/* Ward and bed-type names are stored in lower case. */
-.subtitle::first-letter {
-  text-transform: uppercase;
-}
-
-/* ── Body ───────────────────────────────────────────── */
-.body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding: var(--space-6);
-}
-
+/* Content layout specific to the Manage Bed popup. Template (header/body/footer) lives in dialogShell.module.css. */
 .sectionLabel {
   margin: 0 0 var(--space-1);
   font-size: var(--font-size-metadata);
@@ -90,7 +10,7 @@
 
 .patientName {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: var(--font-weight-semibold);
 }
 
@@ -99,9 +19,11 @@
   color: var(--text-secondary);
 }
 
+/* Stacked, not side by side: the popup is a compact upright panel. */
 .facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
   margin: 0;
 }
 
@@ -109,11 +31,6 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
-}
-
-.fact + .fact {
-  padding-inline-start: var(--space-4);
-  border-inline-start: 1px solid var(--border-default);
 }
 
 .factIcon {
@@ -135,36 +52,6 @@
 .notRecorded {
   color: var(--text-secondary);
   font-weight: 400;
-}
-
-.hint {
-  margin: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--slate-50);
-  color: var(--text-secondary);
-  font-size: var(--font-size-label);
-}
-
-/* ── Footer (the two decisions) ─────────────────────── */
-.footer {
-  padding: var(--space-4) var(--space-6);
-  background: var(--slate-50);
-  border-top: 1px solid var(--border-default);
-  border-radius: 0 0 15px 15px;
-}
-
-.choices {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.choice {
-  width: 100%;
-  height: 48px;
-  border-radius: 10px;
-  justify-content: center;
 }
 
 /* ── Sub-steps ──────────────────────────────────────── */
@@ -218,18 +105,4 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
-}
-
-@media (max-width: 520px) {
-  .facts {
-    grid-template-columns: 1fr;
-    gap: var(--space-3);
-  }
-  .fact + .fact {
-    padding-inline-start: 0;
-    border-inline-start: none;
-  }
-  .choices {
-    grid-template-columns: 1fr;
-  }
 }
