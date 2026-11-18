@@ -102,6 +102,14 @@ services:
       # server can. See HOW_TO_CONNECT_OFFLINE_DOCKER_APP_TO_MALIN.md.
       # Base URL entered in Settings: http://malin:8080/his-general/api/directory/v1
       - "malin:150.50.1.34"
+      # ER API (3iSoft v1.2) lives on a DIFFERENT host, "meraj" — NOT malin
+      # (http://malin:8080/his-er/... answers 500; that is not the ER API).
+      # ER base URL entered in Settings → ER API: http://meraj:8080/his-er/api/er/v1
+      # !!! PLACEHOLDER — 0.0.0.0 is NOT meraj's address. Replace it with the real IP.
+      # Find it on the hospital server with:  nslookup meraj   (or: getent hosts meraj)
+      # Compose needs a syntactically valid IP here, so 0.0.0.0 stands in; until it is
+      # replaced, "Test ER roster" reports "Could not reach the ER API".
+      - "meraj:0.0.0.0"  # TODO(IT): replace 0.0.0.0 with meraj's IP
     volumes:
       # Same rationale as ../backups above: lives under the persistent
       # install directory (/opt/rah/apps/hcopilot/models), NOT the

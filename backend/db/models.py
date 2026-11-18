@@ -613,9 +613,13 @@ class ExternalApiSettings(Base):
     api_key_encrypted  = Column(String(500), nullable=True)
     timeout_seconds    = Column(Integer, nullable=False, default=10)
     verify_tls         = Column(Boolean, nullable=False, default=True)
-    # Admin switch (default OFF): while false, nothing calls the v1.2-only
-    # /er/current-visits endpoint. See hospital_directory/client.py.
+    # Admin switch (default OFF): while false, nothing calls the ER API's
+    # /current-visits endpoint. See hospital_directory/client.py.
     er_roster_enabled  = Column(Boolean, nullable=False, default=False, server_default=text("0"))
+    # The ER roster is a SEPARATE 3iSoft API (v1.2, "meraj") with its own
+    # address and its own key — never the Directory base_url/key above.
+    er_base_url          = Column(String(500), nullable=True)
+    er_api_key_encrypted = Column(String(500), nullable=True)
     last_test_status   = Column(String(20), nullable=True)   # "success" | "failure"
     last_test_message  = Column(String(1000), nullable=True)
     last_test_at       = Column(DateTime, nullable=True)

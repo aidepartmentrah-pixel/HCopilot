@@ -18,10 +18,9 @@ interface StatusRow {
  * deliberately has no DB access and reports only overall backend
  * liveness — it does not break down Database separately, so Database is
  * left out here rather than inferred/faked (documented gap, V2.0 log and
- * this slice's log). Hospital Directory and "ER Current Visits" are the
- * same integration in this system (one endpoint,
- * /api/hospital-directory/er/current-visits) — shown as one real row
- * instead of two cosmetically-separate ones that would always agree.
+ * this slice's log). The row reflects the Live ER roster, which since
+ * 3iSoft's v1.2 delivery comes from the separate ER API (own address + key)
+ * via /api/hospital-directory/er/current-visits.
  */
 export function SystemStatusPanel() {
   const health = useHealth()
@@ -37,13 +36,15 @@ export function SystemStatusPanel() {
           : { tone: 'success' as StatusTone, text: 'Operational' }),
     },
     {
-      label: 'Hospital Directory / ER Roster API',
+      label: 'ER API (Live ER Roster)',
       ...(roster.isLoading
         ? { tone: 'neutral' as StatusTone, text: 'Checking…' }
         : roster.isError
           ? { tone: 'danger' as StatusTone, text: 'Unavailable' }
           : roster.data?.status === 'roster_off'
             ? { tone: 'neutral' as StatusTone, text: 'ER roster not enabled' }
+            : roster.data?.status === 'er_not_configured'
+            ? { tone: 'neutral' as StatusTone, text: 'ER API not configured' }
             : roster.data?.status !== 'ok'
             ? { tone: 'warning' as StatusTone, text: 'Degraded' }
             : { tone: 'success' as StatusTone, text: 'Operational' }),

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { hospitalDirectoryApi } from '@/api/settings'
 import { erRosterKeys } from '@/hooks/useErRoster'
-import type { HospitalDirectoryConfigInput } from '@/types/settings'
+import type { ErApiConfigInput, HospitalDirectoryConfigInput } from '@/types/settings'
 
 export const hospitalDirectoryKeys = {
   config: ['hospital-directory', 'config'] as const,
@@ -29,7 +29,19 @@ export function useTestHospitalDirectoryConnection() {
   })
 }
 
-/** Checks the directory API serves /er/current-visits, ignoring the switch. Changes nothing. */
+/** Saves the SEPARATE ER API's base URL + key; refreshes config and the roster (clearing the URL turns the roster off). */
+export function useSaveErApiConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: ErApiConfigInput) => hospitalDirectoryApi.saveErConfig(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: hospitalDirectoryKeys.config })
+      qc.invalidateQueries({ queryKey: erRosterKeys.current })
+    },
+  })
+}
+
+/** Checks the ER API's /current-visits with the saved ER settings, ignoring the switch. Changes nothing. */
 export function useTestErRoster() {
   return useMutation({ mutationFn: () => hospitalDirectoryApi.testErRoster() })
 }

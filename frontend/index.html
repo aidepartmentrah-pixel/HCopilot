@@ -2856,10 +2856,23 @@
                         <div class="hd-divider"></div>
 
                         <div class="hd-candidates-header">
-                            <h4>Live ER roster</h4>
-                            <p>Uses the directory API's <code>/er/current-visits</code> endpoint. Leave this off until the vendor has deployed it &mdash; while off, HCopilot never calls it and manual add / directory search work as usual. It can only be switched on after a successful test.</p>
+                            <h4>ER API &middot; Live ER roster</h4>
+                            <p>The Live ER roster comes from 3iSoft's <strong>separate ER API</strong> (<code>/current-visits</code>), with its own address and its own API key &mdash; not the Directory connection above. Timeout and TLS verification are shared. The roster can only be switched on after a successful test.</p>
                         </div>
                         <div id="hd-roster-error" class="form-error-box"></div>
+                        <div class="form-group">
+                            <label class="form-label">ER API Base URL</label>
+                            <input class="form-input" type="text" id="hd-er-base-url" placeholder="http://meraj:8080/his-er/api/er/v1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ER API Key</label>
+                            <div class="hd-key-wrap">
+                                <input class="form-input" type="password" id="hd-er-api-key" placeholder="Enter the ER API key" autocomplete="new-password">
+                            </div>
+                        </div>
+                        <div class="hd-actions">
+                            <button class="s-btn s-btn-primary" id="hd-er-save-btn" onclick="saveErApiSettings()">💾 Save ER Settings</button>
+                        </div>
                         <div class="hd-verify-row">
                             <label class="feat-toggle-label">
                                 <input type="checkbox" id="hd-roster-enabled" onchange="toggleErRosterSwitch(this.checked)">

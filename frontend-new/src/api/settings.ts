@@ -3,6 +3,7 @@ import type { Ward, WardCreateInput, WardListResponse } from '@/types/ward'
 import type { Doctor, DoctorInput, Nurse, NurseInput } from '@/types/staff'
 import type {
   HospitalDirectoryConfig,
+  ErApiConfigInput,
   ErRosterSwitchResult,
   HospitalDirectoryConfigInput,
   MiddleNameCandidatesResponse,
@@ -61,16 +62,17 @@ export const authApi = {
 }
 
 // Real, confirmed shapes (backend/features/hospital_directory/api.py) —
-// ONE connection config powers both patient search (ISBAR's directory
-// fallback) and the ER Current Visits poll-diff safety net (er_sync.py) —
-// there is no separate "ER Current Visits" connection to configure (see
-// V2.6's log for why a second integrations sub-page was deliberately not
-// built).
+// TWO connections live on this one settings row: the Hospital Directory
+// (patient search) and, since 3iSoft's v1.2 delivery, the SEPARATE ER API
+// (own base URL + own key) that feeds the Live ER roster and the er_sync.py
+// auto-discharge safety net. Timeout/TLS are shared.
 export const hospitalDirectoryApi = {
   getConfig: () => apiClient.get<HospitalDirectoryConfig>('/api/hospital-directory/config'),
   saveConfig: (body: HospitalDirectoryConfigInput) =>
     apiClient.post<{ success: boolean; message: string }>('/api/hospital-directory/config/save', body),
   testConnection: () => apiClient.post<TestConnectionResult>('/api/hospital-directory/config/test-connection'),
+  saveErConfig: (body: ErApiConfigInput) =>
+    apiClient.post<{ success: boolean; message: string }>('/api/hospital-directory/config/er-roster/save', body),
   // Live ER roster switch — enabling re-runs the roster test server-side and is refused unless it passes; disabling always succeeds.
   testErRoster: () => apiClient.post<TestConnectionResult>('/api/hospital-directory/config/er-roster/test'),
   setErRosterEnabled: (enabled: boolean) =>

@@ -1,10 +1,10 @@
 /**
- * One row from GET /api/hospital-directory/er/current-visits — the live ER
- * roster (ER Live-Roster Redesign). `er_visit_id` is the only field callers
- * should key on; gender/age/chief_complaint are optional, unconfirmed-shape
- * fields per the backend's own client.py docstring (a vendor shape that has
- * already been wrong once for this contract) — never treat them as required
- * or guaranteed-present.
+ * One row from GET /api/hospital-directory/er/current-visits — HCopilot's
+ * proxy of 3iSoft's separate ER API (v1.2). `er_visit_id` is the only field
+ * callers should key on. Every other field may be null, INCLUDING the names.
+ * The backend normalizes the vendor values: `gender` is "Male" | "Female" |
+ * null (the raw value is kept in `gender_raw`), and `arrival_time` is local
+ * wall-clock without an offset (the original is in `arrival_time_raw`).
  */
 export interface ErRosterItem {
   er_visit_id: string
@@ -12,8 +12,10 @@ export interface ErRosterItem {
   father_name?: string | null
   last_name?: string | null
   gender?: string | null
+  gender_raw?: string | null
   age?: number | null
   arrival_time?: string | null
+  arrival_time_raw?: string | null
   chief_complaint?: string | null
 }
 

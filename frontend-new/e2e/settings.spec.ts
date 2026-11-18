@@ -96,11 +96,13 @@ test.describe('Settings', () => {
     await expect(page.getByRole('heading', { name: 'Hospital Directory' })).toBeVisible({ timeout: 10000 })
     await expect(page.getByText('Connection Status')).toBeVisible()
     await expect(page.getByText('Connected').or(page.getByText('Unavailable')).or(page.getByText('Unknown')).first()).toBeVisible()
-    await expect(page.getByText(/Current credential configured/)).toBeVisible()
+    await expect(page.getByText(/Current credential configured/).first()).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Patient Matching' })).toBeVisible()
-    await expect(page.getByText(/Live ER roster and its auto-discharge safety net use this same connection/)).toBeVisible()
+    await expect(page.getByText(/Live ER roster and its auto-discharge safety net use the ER API connection above/)).toBeVisible()
     // Live ER roster switch — ships OFF in the product; global-setup turns it ON for this run, so just assert the control is present.
-    await expect(page.getByRole('heading', { name: 'Live ER Roster' })).toBeVisible()
+    // Since 3iSoft's v1.2 delivery the roster has its OWN connection (ER API base URL + key) on this card.
+    await expect(page.getByRole('heading', { name: 'ER API · Live ER Roster' })).toBeVisible()
+    await expect(page.getByLabel('ER API Base URL')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Test ER Roster' })).toBeVisible()
   })
 

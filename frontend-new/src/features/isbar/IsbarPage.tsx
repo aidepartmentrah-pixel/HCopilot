@@ -21,7 +21,7 @@ import { IsbarWorkspace } from './components/IsbarWorkspace'
 import { LiveErRoster } from './components/LiveErRoster'
 import { emptyDraftValues, formValuesToCreateInput, formValuesToModifyInput, patientDetailsToFormValues } from './mapping'
 import { isbarFormSchema, type IsbarFormValues } from './schema'
-import { mapExternalGender } from './utils'
+import { erRosterFullName, mapExternalGender } from './utils'
 import styles from './IsbarPage.module.css'
 
 type PanelMode = 'disabled' | 'draft' | 'active'
@@ -96,9 +96,11 @@ export function IsbarPage() {
       await loadActive(existingStayId)
       return
     }
-    const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unknown'
+    // No name from the ER API (all name parts may be null) -> leave it blank for the nurse to type; never save a placeholder as a name.
+    const name = erRosterFullName(item)
     startDraft({
       name,
+      // The backend converts the ER API's offset timestamp to local wall-clock (no offset), so the first 16 chars are the local minute.
       ...(item.arrival_time ? { arrival_time: item.arrival_time.slice(0, 16) } : {}),
       gender: mapExternalGender(item.gender) || '',
       age: item.age ?? undefined,

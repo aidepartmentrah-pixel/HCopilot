@@ -8,8 +8,14 @@
 # change saved via POST /api/hospital-directory/config/save takes effect on
 # the very next search or test-connection call — no backend restart needed.
 #
-# api_key_encrypted is Fernet ciphertext (see crypto_utils.py); this module
-# never decrypts it — client.py does that at call time.
+# api_key_encrypted / er_api_key_encrypted are Fernet ciphertext (see
+# crypto_utils.py); this module never decrypts them — client.py does that at
+# call time.
+#
+# The same row also holds the SEPARATE ER API's settings (er_base_url,
+# er_api_key_encrypted — v1.2 as delivered by 3iSoft lives on "meraj", with
+# its own key). Saving the Directory settings never touches them, and
+# save_er_settings() never touches the Directory ones.
 # =============================================================================
 
 from datetime import datetime, timezone
@@ -22,6 +28,7 @@ INTEGRATION_NAME = "hospital_directory"
 _DEFAULTS = {
     "base_url": None, "api_key_encrypted": None,
     "timeout_seconds": 10, "verify_tls": True, "er_roster_enabled": False,
+    "er_base_url": None, "er_api_key_encrypted": None,
     "last_test_status": None, "last_test_message": None, "last_test_at": None,
 }
 
@@ -33,6 +40,8 @@ def _row_to_dict(row: ExternalApiSettings) -> dict:
         "timeout_seconds":    row.timeout_seconds,
         "verify_tls":         row.verify_tls,
         "er_roster_enabled":  bool(row.er_roster_enabled),
+        "er_base_url":          row.er_base_url,
+        "er_api_key_encrypted": row.er_api_key_encrypted,
         "last_test_status":   row.last_test_status,
         "last_test_message":  row.last_test_message,
         "last_test_at":       row.last_test_at.isoformat() if row.last_test_at else None,
@@ -68,6 +77,32 @@ def save_settings(base_url: str, api_key_encrypted: str | None, timeout_seconds:
             row.api_key_encrypted = api_key_encrypted
         row.timeout_seconds = timeout_seconds
         row.verify_tls = verify_tls
+        session.commit()
+        session.refresh(row)
+        return _row_to_dict(row)
+
+
+def save_er_settings(er_base_url: str | None, er_api_key_encrypted: str | None) -> dict:
+    """
+    Create or update only the ER API settings on the single row.
+
+    er_api_key_encrypted=None leaves the stored ER key unchanged (same
+    masked-placeholder rule as save_settings). An empty er_base_url clears
+    it, which makes the ER roster "er_not_configured" again.
+    """
+    with SessionLocal() as session:
+        row = session.query(ExternalApiSettings).filter(
+            ExternalApiSettings.integration_name == INTEGRATION_NAME
+        ).first()
+        if row is None:
+            row = ExternalApiSettings(integration_name=INTEGRATION_NAME)
+            session.add(row)
+        row.er_base_url = er_base_url or None
+        if er_api_key_encrypted is not None:
+            row.er_api_key_encrypted = er_api_key_encrypted
+        if not row.er_base_url:
+            # No ER API -> nothing to poll; never leave the switch on pointing at nothing.
+            row.er_roster_enabled = False
         session.commit()
         session.refresh(row)
         return _row_to_dict(row)

@@ -3,7 +3,8 @@
 # =============================================================================
 #
 # The ONLY module in this codebase allowed to make HTTP calls to the external
-# Hospital Directory API. Any code that needs data from it (patient search,
+# Hospital Directory API and to 3iSoft's separate ER API (v1.2, see
+# get_er_current_visits). Any code that needs data from it (patient search,
 # the settings "Test Connection" button, a future doctor/worker lookup) must
 # go through the functions here — do not scatter ad-hoc requests/httpx calls
 # to this API elsewhere.
@@ -18,6 +19,8 @@
 # Status vocabulary:
 #   ok                — call succeeded
 #   disabled          — no base_url configured yet (not treated as an error)
+#   er_not_configured — no ER API base URL saved yet (ER roster only; not an
+#                        error — same treatment as "disabled")
 #   key_missing       — a key is stored but SETTINGS_ENCRYPTION_KEY isn't set
 #                        on this process
 #   key_error         — a key is stored but doesn't decrypt with the
@@ -28,7 +31,8 @@
 #   unhealthy         — /health responded but reports status != "healthy"
 #   timeout           — request timed out
 #   connection_error  — could not reach the server at all (also used for a
-#                        503 "dependency unavailable" response)
+#                        503 "dependency unavailable" response; the ER API
+#                        has no 503 — any failure there is "couldn't poll")
 #   ssl_error         — TLS verification failed
 #   http_error        — any other non-2xx
 #   invalid_response  — 2xx but the body wasn't parseable/expected shape
@@ -37,6 +41,7 @@
 # =============================================================================
 
 import logging
+from datetime import datetime
 
 import requests
 
@@ -70,6 +75,35 @@ def _load_config() -> dict:
     }
 
 
+ER_API_LABEL = "ER API"
+
+
+def _load_er_config() -> dict:
+    """
+    Load and decrypt the ER API's OWN settings (er_base_url/er_api_key_encrypted).
+    Never falls back to the Directory base_url/key: on the hospital network
+    the ER API (meraj) rejects the Directory key with 401, and the Directory
+    host (malin) answers 500 on /his-er. Timeout and TLS verification are
+    shared with the Directory settings.
+    """
+    row = settings_db.get_settings_row()
+    if not row.get("er_base_url"):
+        return {"status": "er_not_configured", "message": "The ER API is not configured yet (Settings → ER API)."}
+    api_key, key_err = crypto_utils.decrypt_api_key(row.get("er_api_key_encrypted"))
+    if key_err == "key_missing":
+        return {"status": "key_missing", "message": "SETTINGS_ENCRYPTION_KEY is not set on this server."}
+    if key_err == "key_error":
+        return {"status": "key_error", "message": "Stored ER API key could not be decrypted (was it copied from a different environment?)."}
+    return {
+        "status": "ok",
+        "label": ER_API_LABEL,
+        "base_url": row["er_base_url"].strip().rstrip("/"),
+        "api_key": api_key or "",
+        "timeout_seconds": row["timeout_seconds"] or 10,
+        "verify_tls": bool(row["verify_tls"]),
+    }
+
+
 def _parse_error_message(resp) -> str | None:
     """Every non-2xx response is contractually {"error": CODE, "message": text} — extract it."""
     try:
@@ -80,6 +114,7 @@ def _parse_error_message(resp) -> str | None:
 
 def _get(cfg: dict, path: str, params: dict | None = None, auth: bool = True) -> dict:
     """Issue one GET request using an already-loaded config dict; never raises."""
+    label = cfg.get("label", "Hospital Directory API")
     headers = {"X-API-Key": cfg["api_key"]} if auth else {}
     try:
         resp = requests.get(
@@ -90,9 +125,9 @@ def _get(cfg: dict, path: str, params: dict | None = None, auth: bool = True) ->
     except requests.exceptions.SSLError as e:
         return {"status": "ssl_error", "message": f"TLS verification failed: {e}"}
     except requests.exceptions.Timeout:
-        return {"status": "timeout", "message": "The Hospital Directory API did not respond in time."}
+        return {"status": "timeout", "message": f"The {label} did not respond in time."}
     except requests.exceptions.ConnectionError:
-        return {"status": "connection_error", "message": "Could not reach the Hospital Directory API."}
+        return {"status": "connection_error", "message": f"Could not reach the {label}."}
     except requests.exceptions.RequestException as e:
         return {"status": "http_error", "message": str(e)}
 
@@ -104,13 +139,13 @@ def _get(cfg: dict, path: str, params: dict | None = None, auth: bool = True) ->
 
     message = _parse_error_message(resp)
     if resp.status_code == 401:
-        return {"status": "unauthorized", "message": message or "API key rejected."}
+        return {"status": "unauthorized", "message": message or f"{label} key rejected."}
     if resp.status_code == 404:
         return {"status": "not_found", "message": message or "Not found."}
     if resp.status_code in (400, 422):
         return {"status": "bad_request", "message": message or "Invalid search parameters."}
     if resp.status_code == 503:
-        return {"status": "connection_error", "message": message or "Hospital Directory API dependency is unavailable."}
+        return {"status": "connection_error", "message": message or f"{label} dependency is unavailable."}
     return {"status": "http_error", "message": message or f"HTTP {resp.status_code}"}
 
 
@@ -220,41 +255,119 @@ def get_patient(patient_id: str) -> dict:
     return {"status": "ok", "patient": result["data"]}
 
 
+# 3iSoft v1.2 gender values: Arabic labels, or the raw code when they can't
+# resolve it. Mapped to HCopilot's own "Male"/"Female" convention (the ISBAR
+# gender options); anything else is "unknown" (None) — never guessed.
+_ER_GENDER_MAP = {"ذكر": "Male", "انثى": "Female", "أنثى": "Female"}
+
+
+def map_er_gender(raw) -> str | None:
+    """ذكر -> Male, انثى -> Female, anything else (incl. a raw code or null) -> None."""
+    if raw is None:
+        return None
+    return _ER_GENDER_MAP.get(str(raw).strip())
+
+
+def to_local_wall_clock(value) -> str | None:
+    """
+    ISO 8601 with offset (e.g. 2026-11-10T07:15:00+02:00) -> naive local
+    wall-clock "YYYY-MM-DDTHH:MM:SS" in this process's timezone (TZ=Asia/Beirut
+    in compose — every timestamp HCopilot stores is naive local time, see
+    features/timestamp_utils.py). A value without an offset is taken as
+    already-local. Unparseable -> None (never crash the roster on one bad row).
+    """
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone().replace(tzinfo=None)
+    return dt.replace(microsecond=0).isoformat()
+
+
+def _clean_name(value) -> str | None:
+    if value is None:
+        return None
+    v = str(value).strip()
+    return v or None
+
+
+def _normalize_er_item(item: dict) -> dict:
+    """
+    One v1.2 ER item -> HCopilot's shape. All 8 fields are always present but
+    any can be null, INCLUDING the names. Keeps the vendor's raw gender as
+    gender_raw and the original timestamp as arrival_time_raw.
+    """
+    age = item.get("age")
+    if isinstance(age, bool) or not isinstance(age, (int, float)):
+        age = None
+    complaint = item.get("chief_complaint")
+    return {
+        "er_visit_id":      str(item["er_visit_id"]),
+        "first_name":       _clean_name(item.get("first_name")),
+        "father_name":      _clean_name(item.get("father_name")),
+        "last_name":        _clean_name(item.get("last_name")),
+        "arrival_time":     to_local_wall_clock(item.get("arrival_time")),
+        "arrival_time_raw": item.get("arrival_time"),
+        "gender":           map_er_gender(item.get("gender")),
+        "gender_raw":       item.get("gender"),
+        "age":              int(age) if age is not None else None,
+        "chief_complaint":  (str(complaint).strip() or None) if complaint is not None else None,
+    }
+
+
 def get_er_current_visits(force: bool = False) -> dict:
     """
-    GET /er/current-visits — ER Live-Roster Redesign (see docs/development/
-    ER Live Roster Redesign/). A separate system from the his-general
-    Directory API in practice (ER data currently lives behind 3iSoft's
-    "meraj" system) but exposed on this same host/auth/conventions per the
-    v1.2 proposal — not yet sent to 3iSoft as of this writing; a mock
-    implementation is live at dev time for exactly this reason.
+    GET {ER base}/current-visits — the live ER roster (ER Live-Roster
+    Redesign, see docs/development/ER Live Roster Redesign/).
 
-    Always a full, unpaginated snapshot of everyone currently in the ER
-    (no limit/offset — see the requirement doc's own §4: a partial page
-    would make someone who simply fell off it look like they'd departed,
-    which would corrupt the departure-detection diff in features/
-    hospital_directory/er_sync.py). Treat `gender`/`age`/`chief_complaint`
-    as optional, unconfirmed-shape fields — never require them at the
-    call site (see the sex-field precedent in this module's own docstring:
-    vendor-documented shapes have already been wrong once for this
-    contract). `er_visit_id` is the only field callers should key on.
+    As DELIVERED by 3iSoft (v1.2, 18 Nov 2026) this is a SEPARATE ER API —
+    real: http://meraj:8080/his-er/api/er/v1 — with its own address and its
+    own X-API-Key, configured via the ER settings (_load_er_config), never
+    the Directory base_url/key. (Our original proposal had it as
+    /er/current-visits on the Directory API; that path now 404s.)
+
+    Contract: every active ER visit in state "in preparation", as one full
+    unpaginated snapshot ordered by arrival_time then visit id; an empty ER
+    is 200 with an empty list. All 8 fields always present, any may be null
+    (names included). No 503: ANY failure is "couldn't poll", never "the ER
+    is empty" — er_sync.py relies on that, since a wrongly-empty snapshot
+    would auto-discharge everyone. Items are normalized by
+    _normalize_er_item (gender mapped, arrival_time made local);
+    `er_visit_id` is the only field callers should key on.
 
     Gated by the admin "Live ER roster" switch (settings_db
     er_roster_enabled, default OFF): while off this returns "roster_off"
-    without touching the network, because the deployed directory API may
-    predate this endpoint. `force=True` bypasses the switch and is used
-    only by the "Test ER roster" check (see api.py) — never by pollers.
-    No API-version or endpoint-reaction detection is done on purpose.
+    without touching the network. `force=True` bypasses the switch and is
+    used only by the "Test ER roster" check (see api.py) — never by pollers.
     """
     if not force and not settings_db.get_settings_row()["er_roster_enabled"]:
         return {"status": "roster_off", "message": "Live ER roster is not enabled."}
-    cfg = _load_config()
+    cfg = _load_er_config()
     if cfg["status"] != "ok":
         return cfg
-    result = _get(cfg, "/er/current-visits")
+    result = _get(cfg, "/current-visits")
+    if result["status"] == "not_found":
+        return {"status": "not_found",
+                "message": "The ER API answered 404 for /current-visits — check the ER base URL "
+                           "(it should end in /his-er/api/er/v1)."}
+    if result["status"] == "unauthorized":
+        return {"status": "unauthorized",
+                "message": "ER API key rejected (HTTP 401) — check the ER API key in Settings. "
+                           "The ER API has its own key; the Directory key is not accepted."}
     if result["status"] != "ok":
         return result
     body = result["data"]
-    if not isinstance(body, dict) or "items" not in body:
-        return {"status": "invalid_response", "message": "Unexpected response shape from Hospital Directory API."}
-    return {"status": "ok", "items": body["items"], "total": body.get("total", len(body["items"]))}
+    if not isinstance(body, dict) or not isinstance(body.get("items"), list):
+        return {"status": "invalid_response", "message": "Unexpected response shape from the ER API."}
+    if body.get("success") is False:
+        return {"status": "invalid_response", "message": "The ER API reported success=false."}
+    raw_items = body["items"]
+    if any(not isinstance(i, dict) or i.get("er_visit_id") is None for i in raw_items):
+        # Refuse the WHOLE snapshot rather than silently dropping rows: a
+        # dropped row would look like a departure to er_sync.
+        return {"status": "invalid_response", "message": "The ER API responded, but some entries are missing er_visit_id."}
+    items = [_normalize_er_item(i) for i in raw_items]
+    return {"status": "ok", "items": items, "total": body.get("total", len(items))}

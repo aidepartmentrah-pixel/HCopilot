@@ -30,7 +30,17 @@ export default async function globalSetup() {
   // Specs that exercise the live ER roster need the admin "Live ER roster" switch ON (it ships OFF
   // so HCopilot can run against a directory API that predates /er/current-visits). Remember the
   // prior state so global-teardown can restore it — the dev switch isn't left changed by a test run.
-  const config = (await (await requestContext.get('/api/hospital-directory/config')).json()) as { er_roster_enabled?: boolean }
+  const config = (await (await requestContext.get('/api/hospital-directory/config')).json()) as {
+    er_roster_enabled?: boolean
+    er_configured?: boolean
+  }
+  // Since 3iSoft's v1.2 delivery the roster comes from a SEPARATE ER API (own URL + key). If this backend has none
+  // saved yet, configure it from E2E_ER_BASE_URL / E2E_ER_API_KEY when given (e.g. the v1.2 mock on port 6001).
+  if (!config.er_configured && process.env.E2E_ER_BASE_URL) {
+    await requestContext.post('/api/hospital-directory/config/er-roster/save', {
+      data: { er_base_url: process.env.E2E_ER_BASE_URL, er_api_key: process.env.E2E_ER_API_KEY ?? 'dev-secret-key' },
+    })
+  }
   fs.mkdirSync(path.dirname(ROSTER_PRIOR_STATE_PATH), { recursive: true })
   fs.writeFileSync(ROSTER_PRIOR_STATE_PATH, JSON.stringify({ er_roster_enabled: !!config.er_roster_enabled }))
   if (!config.er_roster_enabled) {
@@ -39,8 +49,8 @@ export default async function globalSetup() {
       message: string
     }
     if (!enable.success) {
-      // Directory API has no usable roster endpoint (e.g. pointed at v1.1) — roster-dependent specs will fail; say why.
-      console.warn(`e2e global setup: could not enable the Live ER roster (${enable.message}) — roster specs need a v1.2 directory API.`)
+      // No usable ER API (not configured, wrong key, unreachable) — roster-dependent specs will fail; say why.
+      console.warn(`e2e global setup: could not enable the Live ER roster (${enable.message}) — roster specs need the v1.2 ER API (set E2E_ER_BASE_URL).`)
     }
   }
 

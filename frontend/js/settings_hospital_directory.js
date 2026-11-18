@@ -10,6 +10,10 @@
  * key instead. Saving with the field left blank leaves the stored key
  * unchanged (see backend's ExternalApiConfigSave.api_key handling); typing a
  * new value replaces it.
+ *
+ * The Live ER roster has its OWN connection (3iSoft v1.2 delivered it as a
+ * separate ER API with its own base URL and key): saved via
+ * /config/er-roster/save, same blank-keeps-the-key rule.
  */
 
 function _hdSetError(msg) {
@@ -50,6 +54,16 @@ async function loadHospitalDirectorySettings() {
 
         _hdRenderLastTest(data.last_test_status, data.last_test_message, data.last_test_at);
         _hdRenderRosterSwitch(!!data.er_roster_enabled);
+        document.getElementById('hd-er-base-url').value = data.er_base_url || '';
+        document.getElementById('hd-er-api-key').value  = '';
+        document.getElementById('hd-er-api-key').placeholder =
+            data.er_api_key_masked ? `Current ER key: ${data.er_api_key_masked} — leave blank to keep it`
+                                    : 'Enter the ER API key';
+        if (data.er_api_key_error === 'key_error') {
+            _hdShowRosterError('The stored ER API key could not be decrypted. Re-enter it and save.');
+        } else {
+            _hdShowRosterError('');
+        }
     } catch (error) {
         _hdSetError('Error loading settings: ' + error.message);
     }
@@ -119,7 +133,38 @@ async function testHospitalDirectoryConnection() {
     }
 }
 
-// ── Live ER roster switch ───────────────────────────────────────────────────
+// ── ER API settings + Live ER roster switch ─────────────────────────────────
+
+function _hdShowRosterError(msg) {
+    const el = document.getElementById('hd-roster-error');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.display = msg ? 'block' : 'none';
+}
+
+async function saveErApiSettings() {
+    _hdShowRosterError('');
+    const payload = { er_base_url: document.getElementById('hd-er-base-url').value.trim() };
+    const erKey = document.getElementById('hd-er-api-key').value;
+    if (erKey) payload.er_api_key = erKey;
+    const btn = document.getElementById('hd-er-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+        const res  = await fetch('/api/hospital-directory/config/er-roster/save', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'HTTP ' + res.status);
+        showMessage(data.message || 'ER API settings saved', 'success');
+        await loadHospitalDirectorySettings();
+    } catch (error) {
+        _hdShowRosterError('Error saving ER API settings: ' + error.message);
+    } finally {
+        btn.disabled = false; btn.textContent = '💾 Save ER Settings';
+    }
+}
 // Default OFF. The backend refuses to turn it on unless a forced test call
 // to /er/current-visits passes (see api.py), so this UI can't skip the test.
 

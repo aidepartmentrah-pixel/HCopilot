@@ -13,6 +13,7 @@ import { useToast } from '@/components/feedback/useToast'
 import {
   useHospitalDirectoryConfig,
   useMiddleNameCandidates,
+  useSaveErApiConfig,
   useSaveHospitalDirectoryConfig,
   useSaveMiddleNameCandidates,
   useSetErRosterEnabled,
@@ -31,11 +32,11 @@ function connectionStatus(status: 'success' | 'failure' | null): { label: string
 }
 
 /**
- * Hospital Directory integration (§12–§15) — ONE connection config. The ER
- * Current Visits poll (er_sync.py, the Live ER auto-discharge safety net)
- * reuses this exact same saved connection rather than having its own — no
- * separate "ER Current Visits" settings sub-page was built, since there is
- * nothing distinct to configure there (see V2.6 log).
+ * Hospital Directory integration (§12–§15) plus the SEPARATE ER API. Since
+ * 3iSoft's v1.2 delivery the ER roster (and the er_sync.py auto-discharge
+ * safety net) has its own base URL and its own key — real:
+ * http://meraj:8080/his-er/api/er/v1 — so it gets its own card with its own
+ * Save. Timeout / TLS verification are shared with the Directory connection.
  */
 export function IntegrationsSettings() {
   const { data, dataUpdatedAt, isLoading, error, refetch } = useHospitalDirectoryConfig()
@@ -79,7 +80,12 @@ export function IntegrationsSettings() {
         isTesting={testConnection.isPending}
       />
 
-      <ErRosterSwitchCard enabled={data.er_roster_enabled} />
+      <ErApiCard
+        // Re-derive the ER form only when the SAVED ER settings change — not on every config
+        // refetch, which would also wipe the test / refused-enable message below the switch.
+        key={`er-${data.er_base_url ?? ''}-${data.er_api_key_masked ?? ''}`}
+        config={data}
+      />
 
       <Card>
         <h3 className={styles.sectionTitle}>Patient Matching</h3>
@@ -90,25 +96,38 @@ export function IntegrationsSettings() {
       </Card>
 
       <p className={styles.erNote}>
-        The Live ER roster and its auto-discharge safety net use this same connection — the switch above only controls whether the
-        roster endpoint is called.
+        The Live ER roster and its auto-discharge safety net use the ER API connection above; timeout and TLS verification are shared
+        with the Hospital Directory connection.
       </p>
     </div>
   )
 }
 
 /**
- * The Live ER roster switch. Default OFF: the deployed directory API may
- * predate /er/current-visits (a v1.2 addition), so nothing calls it until an
- * admin turns this on. The backend only accepts "on" after its own
- * roster check passes, so a refused enable leaves the switch off — this
- * card never decides that client-side.
+ * The ER API connection (its own base URL + key) and the Live ER roster
+ * switch. The switch defaults OFF and the backend only accepts "on" after
+ * its own roster check passes, so a refused enable leaves it off — this
+ * card never decides that client-side. Tests always use the SAVED settings.
  */
-function ErRosterSwitchCard({ enabled }: { enabled: boolean }) {
+function ErApiCard({ config }: { config: HospitalDirectoryConfig }) {
+  const enabled = config.er_roster_enabled
+  const saveEr = useSaveErApiConfig()
   const testRoster = useTestErRoster()
   const setEnabled = useSetErRosterEnabled()
   const { showToast } = useToast()
+  const [erBaseUrl, setErBaseUrl] = useState(config.er_base_url ?? '')
+  const [replacingKey, setReplacingKey] = useState(!config.er_api_key_masked)
+  const [erApiKey, setErApiKey] = useState('')
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+
+  async function handleSave() {
+    try {
+      await saveEr.mutateAsync({ er_base_url: erBaseUrl.trim(), er_api_key: replacingKey && erApiKey ? erApiKey : undefined })
+      showToast('ER API settings saved.', 'success')
+    } catch {
+      showToast('ER API settings could not be saved.', 'error')
+    }
+  }
 
   async function handleTest() {
     try {
@@ -137,21 +156,51 @@ function ErRosterSwitchCard({ enabled }: { enabled: boolean }) {
 
   return (
     <Card>
-      <h3 className={styles.sectionTitle}>Live ER Roster</h3>
+      <h3 className={styles.sectionTitle}>ER API · Live ER Roster</h3>
       <p className={styles.sectionDescription}>
-        Lists patients currently in the ER from the directory API's <code>/er/current-visits</code> endpoint. Leave this off until the
-        vendor has deployed it — while off, HCopilot never calls it, and directory search and manual add work as usual. It can only be
-        switched on after a successful test.
+        Lists patients currently in the ER from 3iSoft's ER API (<code>/current-visits</code>). It is a separate system from the
+        Hospital Directory, with its own address and its own API key. The roster can only be switched on after a successful test.
       </p>
+      <div className={styles.grid}>
+        <FormField label="ER API Base URL" htmlFor="er-base-url" hint="e.g. http://meraj:8080/his-er/api/er/v1">
+          <Input id="er-base-url" value={erBaseUrl} onChange={(e) => setErBaseUrl(e.target.value)} dir="ltr" />
+        </FormField>
+
+        <FormField label="ER API Key" htmlFor="er-api-key">
+          {!replacingKey ? (
+            <div className={styles.keyRow}>
+              <KeyRound size={16} aria-hidden="true" />
+              <span>Current credential configured ({config.er_api_key_masked})</span>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setReplacingKey(true)}>
+                Replace Key
+              </Button>
+            </div>
+          ) : (
+            <Input
+              id="er-api-key"
+              type="password"
+              value={erApiKey}
+              onChange={(e) => setErApiKey(e.target.value)}
+              placeholder="Enter the ER API key"
+              dir="ltr"
+              autoComplete="off"
+            />
+          )}
+        </FormField>
+      </div>
+      {config.er_api_key_error === 'key_error' && <p className={styles.keyError}>The stored ER API key could not be read — replace it.</p>}
       <div className={styles.statusRow}>
-        <span className={styles.statusLabel}>Live ER Roster</span>
-        <YesNoToggle id="hd-er-roster-enabled" value={enabled ? 'On' : 'Off'} options={['Off', 'On']} onChange={handleToggle} disabled={setEnabled.isPending} />
+        <Button size="sm" loading={saveEr.isPending} onClick={handleSave}>
+          Save ER Settings
+        </Button>
         <Button variant="secondary" size="sm" loading={testRoster.isPending} onClick={handleTest}>
           Test ER Roster
         </Button>
+        <span className={styles.statusLabel}>Live ER Roster</span>
+        <YesNoToggle id="hd-er-roster-enabled" value={enabled ? 'On' : 'Off'} options={['Off', 'On']} onChange={handleToggle} disabled={setEnabled.isPending} />
       </div>
       {testResult && (
-        <p role="status" className={testResult.ok ? styles.erNote : styles.keyError}>
+        <p role="status" data-testid="er-roster-test-result" className={testResult.ok ? styles.erNote : styles.keyError}>
           {testResult.ok ? '✓ ' : ''}
           {testResult.message}
         </p>

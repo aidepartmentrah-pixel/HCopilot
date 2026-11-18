@@ -74,6 +74,16 @@ if docker compose exec -T backend python -c "import socket; print('malin ->', so
 else
   warn "'malin' does NOT resolve inside the backend container (extra_hosts missing?). Hospital Directory features will not work."
 fi
+# ER API (meraj, 3iSoft v1.2 — Live ER roster): informational only, like malin.
+echo "==> Checking the backend container can resolve 'meraj' (ER API)..."
+MERAJ_IP=$(docker compose exec -T backend python -c "import socket; print(socket.gethostbyname('meraj'))" 2>/dev/null | tr -d '\r')
+if [ -z "$MERAJ_IP" ]; then
+  warn "'meraj' does NOT resolve inside the backend container (extra_hosts missing?). The Live ER roster will not work."
+elif [ "$MERAJ_IP" = "0.0.0.0" ]; then
+  warn "'meraj' still points at the PLACEHOLDER 0.0.0.0 in docker-compose.yml — run 'nslookup meraj' on this server and put the real IP in extra_hosts. The Live ER roster will not work until then."
+else
+  echo "==> 'meraj' resolves inside the backend container (meraj -> $MERAJ_IP)."
+fi
 if [ -n "${SETTINGS_ENCRYPTION_KEY:-}" ] && [ "${#SETTINGS_ENCRYPTION_KEY}" -eq 44 ]; then
   echo "==> SETTINGS_ENCRYPTION_KEY present and 44 chars."
 else

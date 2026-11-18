@@ -4,7 +4,8 @@
 #
 # See docs/development/Directory API v1.1 Compatibility/0. Slicing Task
 # Table.md. The switch keeps HCopilot from calling the v1.2-only
-# /er/current-visits endpoint against a v1.1 directory API. Most tests here
+# ER roster endpoint (since v1.2: the separate ER API's /current-visits)
+# until an admin enables it. Most tests here
 # patch the settings layer/HTTP so they never write to the dev DB; the one
 # DB round-trip test restores whatever it changed.
 # =============================================================================
@@ -39,7 +40,7 @@ def test_switch_off_returns_roster_off_without_http(monkeypatch):
 
 def test_switch_on_makes_the_call(monkeypatch):
     _settings(monkeypatch, True)
-    monkeypatch.setattr(hd_client, "_load_config", lambda: {"status": "ok"})
+    monkeypatch.setattr(hd_client, "_load_er_config", lambda: {"status": "ok"})
     monkeypatch.setattr(hd_client, "_get", lambda cfg, path, **k: {"status": "ok", "data": {"items": [{"er_visit_id": "1"}]}})
     r = hd_client.get_er_current_visits()
     assert r["status"] == "ok" and r["total"] == 1
@@ -47,7 +48,7 @@ def test_switch_on_makes_the_call(monkeypatch):
 
 def test_force_bypasses_the_switch(monkeypatch):
     _settings(monkeypatch, False)
-    monkeypatch.setattr(hd_client, "_load_config", lambda: {"status": "ok"})
+    monkeypatch.setattr(hd_client, "_load_er_config", lambda: {"status": "ok"})
     monkeypatch.setattr(hd_client, "_get", lambda cfg, path, **k: {"status": "ok", "data": {"items": []}})
     assert hd_client.get_er_current_visits(force=True)["status"] == "ok"
 

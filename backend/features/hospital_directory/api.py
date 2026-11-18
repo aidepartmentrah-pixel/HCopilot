@@ -9,7 +9,8 @@
 #                                            settings; persists the last-test result
 #   GET  /config/middle-name-candidates   — the admin-editable guess-loop candidate list
 #   POST /config/middle-name-candidates   — replace the candidate list
-#   POST /config/er-roster/test           — force one /er/current-visits call, ignoring the switch
+#   POST /config/er-roster/save           — save the SEPARATE ER API's base URL + key (v1.2)
+#   POST /config/er-roster/test           — force one ER API /current-visits call, ignoring the switch
 #   POST /config/er-roster/enable         — flip the "Live ER roster" switch (enable needs a passing test)
 #   GET  /patients/search                 — proxy a structured patient search
 #   GET  /patients/find-possible-matches  — the "Find possible matches" guess loop
@@ -44,12 +45,20 @@ class ExternalApiConfigSave(BaseModel):
     verify_tls: bool = True
 
 
+class ErApiConfigSave(BaseModel):
+    # Empty => ER API not configured (also turns the roster switch off).
+    er_base_url: Optional[str] = None
+    # None, empty, or a masked placeholder => leave the stored ER key unchanged.
+    er_api_key: Optional[str] = None
+
+
 @router.get("/config")
 async def get_config():
     """Current settings, API key masked. Never returns the real key — see reveal-key... (not exposed in v1)."""
     try:
         row = settings_db.get_settings_row()
         api_key, key_err = crypto_utils.decrypt_api_key(row["api_key_encrypted"])
+        er_key, er_key_err = crypto_utils.decrypt_api_key(row.get("er_api_key_encrypted"))
         return {
             "configured":         bool(row["base_url"]),
             "base_url":           row["base_url"],
@@ -58,6 +67,11 @@ async def get_config():
             "timeout_seconds":    row["timeout_seconds"],
             "verify_tls":         row["verify_tls"],
             "er_roster_enabled":  row["er_roster_enabled"],
+            # The ER API is separate (own address + own key) — see client.get_er_current_visits.
+            "er_configured":      bool(row.get("er_base_url")),
+            "er_base_url":        row.get("er_base_url"),
+            "er_api_key_masked":  crypto_utils.mask_api_key(er_key),
+            "er_api_key_error":   er_key_err,
             "last_test_status":   row["last_test_status"],
             "last_test_message":  row["last_test_message"],
             "last_test_at":       row["last_test_at"],
@@ -116,6 +130,38 @@ async def test_connection():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _encrypt_or_500(plain: str) -> str:
+    encrypted = crypto_utils.encrypt_api_key(plain)
+    if encrypted is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot encrypt the API key — SETTINGS_ENCRYPTION_KEY is not configured on this server.",
+        )
+    return encrypted
+
+
+@router.post("/config/er-roster/save")
+async def save_er_config(body: ErApiConfigSave):
+    """
+    Save the ER API's own base URL and key. Never touches the Directory
+    settings (and /config/save never touches these). Clearing the URL turns
+    the Live ER roster switch off.
+    """
+    try:
+        er_key_encrypted = None
+        if body.er_api_key and body.er_api_key.strip() and not crypto_utils.is_masked_placeholder(body.er_api_key):
+            er_key_encrypted = _encrypt_or_500(body.er_api_key.strip())
+        settings_db.save_er_settings(
+            er_base_url=(body.er_base_url or "").strip() or None,
+            er_api_key_encrypted=er_key_encrypted,
+        )
+        return {"success": True, "message": "ER API settings saved."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def _check_er_roster() -> dict:
     """One forced roster call (ignores the switch) plus a shape check. Never raises."""
     result = client.get_er_current_visits(force=True)
@@ -131,7 +177,7 @@ def _check_er_roster() -> dict:
 
 @router.post("/config/er-roster/test")
 async def test_er_roster():
-    """Check that the directory API serves /er/current-visits. Does not change the switch."""
+    """Check the ER API's /current-visits with the ER settings. Does not change the switch."""
     try:
         return _check_er_roster()
     except Exception as e:
@@ -156,7 +202,7 @@ async def set_er_roster_enabled(body: ErRosterEnable):
                 return {**check, "er_roster_enabled": False}
         if not settings_db.set_er_roster_enabled(body.enabled):
             return {"success": False, "status": "disabled",
-                     "message": "Save the Hospital Directory connection settings first.",
+                     "message": "Save the ER API settings first.",
                      "er_roster_enabled": False}
         return {"success": True, "status": "ok", "er_roster_enabled": body.enabled,
                  "message": "Live ER roster enabled." if body.enabled else "Live ER roster disabled."}

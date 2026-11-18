@@ -6,8 +6,13 @@ export interface HospitalDirectoryConfig {
   api_key_error: 'key_missing' | 'key_error' | null
   timeout_seconds: number
   verify_tls: boolean
-  /** Admin switch for the Live ER roster (default off — the deployed directory API may predate /er/current-visits). */
+  /** Admin switch for the Live ER roster (default off; can only be turned on after a passing ER roster test). */
   er_roster_enabled: boolean
+  /** The ER roster is a SEPARATE 3iSoft API (v1.2, "meraj") with its own base URL and its own key. */
+  er_configured: boolean
+  er_base_url: string | null
+  er_api_key_masked: string | null
+  er_api_key_error: 'key_missing' | 'key_error' | null
   last_test_status: 'success' | 'failure' | null
   last_test_message: string | null
   last_test_at: string | null
@@ -19,6 +24,12 @@ export interface HospitalDirectoryConfigInput {
   api_key?: string
   timeout_seconds: number
   verify_tls: boolean
+}
+
+/** POST /config/er-roster/save — omit `er_api_key` (or send the mask) to keep the stored ER key. Empty URL = not configured. */
+export interface ErApiConfigInput {
+  er_base_url: string
+  er_api_key?: string
 }
 
 export interface TestConnectionResult {

@@ -294,12 +294,13 @@ function _renderPatDirectoryLinked() {
 }
 
 function _mapDirectorySexToGender(sex) {
-    // The vendor's allowed `sex` values are unconfirmed — only map unambiguous
-    // matches to HCopilot's Male/Female options; never guess on anything else.
+    // Only map unambiguous values to HCopilot's Male/Female options; never
+    // guess on anything else. The backend already maps the ER API's (v1.2)
+    // Arabic labels (ذكر/انثى) to Male/Female; they're accepted here too.
     if (!sex) return null;
     const v = String(sex).trim().toLowerCase();
-    if (v === 'm' || v === 'male')   return 'Male';
-    if (v === 'f' || v === 'female') return 'Female';
+    if (v === 'm' || v === 'male' || v === 'ذكر')   return 'Male';
+    if (v === 'f' || v === 'female' || v === 'انثى' || v === 'أنثى') return 'Female';
     return null;
 }
 
@@ -413,8 +414,12 @@ function _renderPatErRosterItems() {
     resultsEl.hidden = false;
     resultsEl.innerHTML = '<div class="pat-directory-result-list">' + items.map((item, i) => {
         const isActive = !!patDraftRosterItem && String(patDraftRosterItem.er_visit_id) === String(item.er_visit_id);
-        const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ');
-        const meta = [item.arrival_time ? _formatDatetime(item.arrival_time) : null, item.chief_complaint || null]
+        // ER API v1.2: every field may be null, including the names.
+        const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unnamed patient';
+        const mappedGender = _mapDirectorySexToGender(item.gender);
+        const meta = [item.arrival_time ? _formatDatetime(item.arrival_time) : null,
+                      item.age != null ? item.age + ' y' : null, mappedGender,
+                      item.chief_complaint || null]
             .filter(Boolean).join(' · ');
         const rowCls = 'pat-directory-result-row pat-a-roster-row' +
             (isActive ? ' pat-a-roster-row-active' : '');
@@ -440,6 +445,7 @@ function _renderPatErRosterItems() {
 // puts them on the Live ER waiting list for bed assignment.
 async function pickPatErRosterItem(item) {
     const statusEl = document.getElementById('pat-er-roster-status');
+    // No name from the ER API -> leave the field blank for the nurse (never save a placeholder as a name).
     const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ');
 
     // Defensive: a stay for this visit already exists (e.g. added in another

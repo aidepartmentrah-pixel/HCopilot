@@ -9,7 +9,8 @@
 # from scheduler.py, same as every other background job in this app.
 #
 # DESIGN:
-#   1. Poll GET /er/current-visits (via hospital_directory.client, never
+#   1. Poll the ER API's GET /current-visits (v1.2 as delivered by 3iSoft: a
+#      separate API on "meraj" with its own key — via hospital_directory.client, never
 #      raises — any non-"ok" status is logged and skipped this cycle,
 #      matching every other job in scheduler.py).
 #   2. Compute the current er_visit_id set from the response.
@@ -34,6 +35,18 @@
 #      never a resumed stay" behavior — confirmed as a real, unconfirmed-
 #      by-the-vendor risk by the restful-api-integration-f9 peer session,
 #      not just a theoretical concern.
+#
+# OPEN QUESTION WITH 3iSOFT (v1.2, 18 Nov 2026) — logic deliberately UNCHANGED:
+#   The delivered /current-visits lists only ER visits in state "in
+#   preparation". If a patient moves to ANOTHER state while still physically
+#   in the ER (e.g. "under treatment"/"observation", if 3iSoft has such
+#   states), their visit drops off the list and step 4 auto-discharges them
+#   on the very next poll — a false departure. Until 3iSoft confirms that
+#   leaving "in preparation" really means leaving the ER, this is a known
+#   risk. A possible safeguard (NOT implemented — owner's decision pending):
+#   require N consecutive misses (e.g. two polls in a row) before
+#   discharging. A failed poll (any non-"ok" status, incl. 401/404/500/
+#   timeout) is never treated as an empty ER — see the status check below.
 # =============================================================================
 
 import logging

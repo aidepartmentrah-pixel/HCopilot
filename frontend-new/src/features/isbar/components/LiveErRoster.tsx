@@ -7,6 +7,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { LoadingState } from '@/components/feedback/LoadingState'
 import { useErRoster } from '@/hooks/useErRoster'
 import type { ErRosterItem } from '@/types/er'
+import { erRosterMeta, erRosterName } from '../utils'
 import type { Patient } from '@/types/patient'
 import styles from './LiveErRoster.module.css'
 
@@ -76,7 +77,7 @@ export function LiveErRoster({ activePatients, draftErVisitId, onSelect, onOpenF
         {error && <ErrorState description="Couldn't load the live ER roster." onRetry={() => refetch()} />}
         {data && data.status !== 'ok' && data.status !== 'roster_off' && (
           <ErrorState
-            title="Hospital Directory unavailable"
+            title="ER API unavailable"
             description={data.message || 'The live ER roster is temporarily unreachable. Use manual entry below.'}
             onRetry={() => refetch()}
           />
@@ -92,7 +93,7 @@ export function LiveErRoster({ activePatients, draftErVisitId, onSelect, onOpenF
           pending.map((item) => {
             const existing = byVisitId.get(String(item.er_visit_id))
             const isActive = draftErVisitId != null && String(item.er_visit_id) === draftErVisitId
-            const name = [item.first_name, item.father_name, item.last_name].filter(Boolean).join(' ') || 'Unnamed'
+            const name = erRosterName(item)
             return (
               <button
                 key={item.er_visit_id}
@@ -108,10 +109,8 @@ export function LiveErRoster({ activePatients, draftErVisitId, onSelect, onOpenF
                   </span>
                   {isActive && <Badge tone="brand">Selected</Badge>}
                 </div>
-                <div className={styles.rowMeta}>
-                  {[item.age != null ? `${item.age}${item.gender ? item.gender[0] : ''}` : null, item.chief_complaint]
-                    .filter(Boolean)
-                    .join(' · ') || '—'}
+                <div className={styles.rowMeta} dir="auto">
+                  {erRosterMeta(item)}
                 </div>
               </button>
             )

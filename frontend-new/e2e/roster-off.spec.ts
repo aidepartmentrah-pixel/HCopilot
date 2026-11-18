@@ -18,7 +18,7 @@ test.describe('Live ER roster switched off', () => {
 
     await expect(page.getByTestId('er-roster-off-note')).toContainText('not enabled')
     await expect(page.getByRole('heading', { name: 'Live ER Roster' })).toHaveCount(0)
-    await expect(page.getByText('Hospital Directory unavailable')).toHaveCount(0)
+    await expect(page.getByText('ER API unavailable')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Search Hospital Directory' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Enter Manually' })).toBeVisible()
   })
