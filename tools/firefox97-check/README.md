@@ -20,6 +20,7 @@ Run (with the stack up on 8082/8083; on Windows/Git Bash prefix `MSYS_NO_PATHCON
 | `run.py` | every page of the new UI renders (screenshots in `out/`) |
 | `run_old.py` | every section of the old UI renders, a bed click and the date picker work |
 | `run_dialogs.py` | every kind of popup in the new UI opens, steps, closes with Escape (19 checks) |
+| `run_er.py` | ER API v1.2 screens: new-UI ER API card (save, test, switch), Live ER roster (Arabic names, Male/Female), old-UI ER settings (9 checks; needs a reachable ER API, e.g. the v1.2 mock) |
 
 Findings that shaped the code (do not undo):
 - Firefox 97 has **no `<dialog>` / `showModal()`** (arrives in 98) - use `components/feedback/Dialog.tsx`, never the native element.

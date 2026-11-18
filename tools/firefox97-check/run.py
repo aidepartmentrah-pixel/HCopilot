@@ -43,7 +43,7 @@ def step(label, fn):
 def login(base, user="admin", pw="admin"):
     d.get(base + "/")
     time.sleep(2)
-    inputs = d.find_elements(By.CSS_SELECTOR, "input")
+    inputs = [i for i in d.find_elements(By.CSS_SELECTOR, "input") if i.is_displayed()]  # skip hidden date-picker inputs
     texts = [i for i in inputs if i.get_attribute("type") in ("text", None, "")]
     pws = [i for i in inputs if i.get_attribute("type") == "password"]
     if texts and pws:
